@@ -10,13 +10,19 @@ namespace hako::robots::physics
     class IWorld
     {
     protected:
-        mjModel* model;
-        mjData* data;
+        mjModel* model = nullptr;
+        mjData* data = nullptr;
     public:
-        ~IWorld()
+        virtual ~IWorld()
         {
-            mj_deleteData(data);
-            mj_deleteModel(model);
+            if (data) {
+                mj_deleteData(data);
+                data = nullptr;
+            }
+            if (model) {
+                mj_deleteModel(model);
+                model = nullptr;
+            }
         }
         virtual void loadModel(const std::string& model_file) = 0;
         virtual void advanceTimeStep() = 0;
