@@ -1,60 +1,60 @@
 #include <mujoco/mujoco.h>
 #include <iostream>
-#include <iomanip>
 #include <string>
 #include <thread>
 #include <mutex>
+
 #include "mujoco_debug.hpp"
 #include "mujoco_viewer.hpp"
+
 #include "physics/physics_impl.hpp"
 #include "actuator/actuator_impl.hpp"
+#include "robots/forklift.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
-
 static const std::string model_path = "models/forklift/forklift.xml";
 
 void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world,
-    bool& running_flag,
-    std::mutex& mutex)
+                       bool& running_flag,
+                       std::mutex& mutex)
 {
-    double simulation_timestep = world->getModel()->opt.timestep;  // **XMLから `timestep` を取得**
+    double simulation_timestep = world->getModel()->opt.timestep;
     std::cout << "[INFO] Simulation timestep: " << simulation_timestep << " sec" << std::endl;
-    auto pallet   = world->getRigidBody("pallet");
-    auto forklift = world->getRigidBody("forklift_base");
-    auto lift     = world->getRigidBody("lift_arm");
-    auto left_motor  = world->getTorqueActuator("left_motor");
-    auto right_motor = world->getTorqueActuator("right_motor");
-    auto lift_motor  = world->getTorqueActuator("lift_motor");
-        
+
+    hako::robots::Forklift forklift(world);
+    hako::robots::PhysicsObject pallet(world, "pallet");
+
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         double sim_time = world->getData()->time;
+
         {
             std::lock_guard<std::mutex> lock(mutex);
-            left_motor->SetTorque(0.2);
-            right_motor->SetTorque(0.2);
-            if (sim_time > 10.0) {
-                lift_motor->SetTorque(0.23); // フォークリフトのリフト
-            } else {
-                lift_motor->SetTorque(0.0); // フォークリフトのリフト
-            }
-            world->advanceTimeStep();
-            auto pos = forklift->GetPosition();
-            auto vel = forklift->GetVelocity();
-            auto ang = forklift->GetEuler();
-            auto lift_arm_pos = lift->GetPosition();
-            auto pallet_pos = pallet->GetPosition();
 
-            std::cout << "[forklift] pos: " << pos.to_string() << ", vel: " << vel.to_string()
-                 << ", euler: " << ang.to_string() << std::endl;
-            std::cout << "[lift_arm] pos: " << lift_arm_pos.to_string() << std::endl;
-            std::cout << "[pallet] pos: " << pallet_pos.to_string() << std::endl;
+            forklift.drive_motor(0.2, 0.2);
+            if (sim_time > 10.0) {
+                forklift.drive_lift(0.23);
+            } else {
+                forklift.drive_lift(0.0);
+            }
+
+            world->advanceTimeStep();
+
+            auto pos = forklift.getPosition();
+            auto vel = forklift.getVelocity();
+            auto ang = forklift.getEuler();
+
+            std::cout << "[forklift] pos: " << pos.to_string()
+                      << ", vel: " << vel.to_string()
+                      << ", euler: " << ang.to_string() << std::endl;
+
+            std::cout << "[lift_arm] pos: " << forklift.getLiftPosition().to_string() << std::endl;
+            std::cout << "[pallet]   pos: " << pallet.getPosition().to_string() << std::endl;
         }
 
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed = end - start;
         double sleep_time = simulation_timestep - elapsed.count();
-
         if (sleep_time > 0) {
             std::this_thread::sleep_for(std::chrono::duration<double>(sleep_time));
         }
@@ -81,7 +81,6 @@ int main(int argc, const char* argv[])
 
     std::thread sim_thread(simulation_thread, world, std::ref(running_flag), std::ref(data_mutex));
 
-    // viewer_thread に model/data を渡す
     viewer_thread(world->getModel(), world->getData(), std::ref(running_flag), std::ref(data_mutex));
 
     running_flag = false;
