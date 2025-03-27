@@ -40,7 +40,7 @@ namespace hako::robots::physics
         virtual hako::robots::types::BodyAngularVelocity GetBodyAngularVelocity() = 0;
 
         virtual void SetTorque(const std::string& joint_name, double torque) = 0;
-        virtual void SetForce(const std::string& body_name, const hako::robots::types::Vector3& force) = 0;
+        virtual void SetForce(const hako::robots::types::Vector3& force) = 0;
 
     };
 }
