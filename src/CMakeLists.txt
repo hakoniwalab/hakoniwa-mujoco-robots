@@ -18,7 +18,7 @@ set(PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}/..")
 set(ROS2PDU_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-ros2pdu")
 set(MUJOCO_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/mujoco/include")
 set(HAKO_CORE_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-cpp-client/src")
-set(HAKONIWA_PUBLIC_LIB_DIR ${CMAKE_SOURCE_DIR}/../library)
+set(HAKONIWA_PUBLIC_LIB_DIR "/usr/local/lib/hakoniwa")
 
 option(USE_MUJOCO "Enable MuJoCo support" ON)
 if(USE_MUJOCO)
@@ -28,7 +28,7 @@ if(USE_MUJOCO)
     if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
         #TODO
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        link_directories(${HAKONIWA_PUBLIC_LIB_DIR}/Darwin/arm64)
+        link_directories(${HAKONIWA_PUBLIC_LIB_DIR})
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         #TODO
     endif()
@@ -39,9 +39,12 @@ endif()
 
 set(HAKO_CORE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-cpp-client")
 
+find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)
+
 add_subdirectory(
     ${HAKO_CORE_DIR}
     ${CMAKE_BINARY_DIR}/thirdparty/hakoniwa-core-cpp-client
     )
 
-#add_subdirectory(main_for_sample)
+add_subdirectory(main_for_sample/forklift)

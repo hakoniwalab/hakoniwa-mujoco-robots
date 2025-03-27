@@ -3,7 +3,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
-
+set(GLFW_DIR "/opt/homebrew/Cellar/glfw/3.4/include/")
 
 if (MSVC)
 add_compile_options(/wd4309 /wd4514 /wd4201 /wd4100 /wd4255 /wd5999 /wd4242 /wd26451)
