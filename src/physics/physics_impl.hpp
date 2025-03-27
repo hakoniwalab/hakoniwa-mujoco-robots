@@ -68,9 +68,10 @@ namespace hako::robots::physics::impl
         hako::robots::types::Velocity GetVelocity() override
         {
             hako::robots::types::Velocity vel;
-            vel.x = data->cvel[6 * body_id];
-            vel.y = data->cvel[6 * body_id + 1];
-            vel.z = data->cvel[6 * body_id + 2];
+            int dof_start = model->body_dofadr[body_id];
+            vel.x = data->qvel[dof_start + 0];
+            vel.y = data->qvel[dof_start + 1];
+            vel.z = data->qvel[dof_start + 2];
             return vel;
         }
         hako::robots::types::EulerRate GetEulerRate() override
