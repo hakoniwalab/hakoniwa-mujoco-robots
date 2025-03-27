@@ -1,6 +1,7 @@
 #pragma once
 
 #include "primitive_types.hpp"
+#include "actuator.hpp"
 #include <memory>
 #include <string>
 
@@ -43,6 +44,7 @@ namespace hako::robots::physics
         virtual void loadModel(const std::string& model_file) = 0;
         virtual void advanceTimeStep() = 0;
         virtual std::shared_ptr<IRigidBody> getRigidBody(const std::string& model_name) = 0;
+        virtual std::shared_ptr<actuator::ITorqueActuator> getTorqueActuator(const std::string& name) = 0;
     };
 
 }

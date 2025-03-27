@@ -1,6 +1,7 @@
 #pragma once
 
 #include "physics.hpp"
+#include "actuator/actuator_impl.hpp"
 
 namespace hako::robots::physics::impl
 {
@@ -129,5 +130,9 @@ namespace hako::robots::physics::impl
         {
             return std::make_shared<RigidBodyImpl>(model, data, model_name);
         }
+        std::shared_ptr<actuator::ITorqueActuator> getTorqueActuator(const std::string& name) override {
+            return std::make_shared<actuator::impl::TorqueActuatorImpl>(model, data, name);
+        }
+        
     };
 }

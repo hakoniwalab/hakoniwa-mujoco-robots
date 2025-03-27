@@ -22,9 +22,9 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world,
     auto pallet   = world->getRigidBody("pallet");
     auto forklift = world->getRigidBody("forklift_base");
     auto lift     = world->getRigidBody("lift_arm");
-    auto left_motor  = std::make_shared<hako::robots::actuator::impl::TorqueActuatorImpl>(world->getModel(), world->getData(), "left_motor");
-    auto right_motor = std::make_shared<hako::robots::actuator::impl::TorqueActuatorImpl>(world->getModel(), world->getData(), "right_motor");
-    auto lift_motor  = std::make_shared<hako::robots::actuator::impl::TorqueActuatorImpl>(world->getModel(), world->getData(), "lift_motor");
+    auto left_motor  = world->getTorqueActuator("left_motor");
+    auto right_motor = world->getTorqueActuator("right_motor");
+    auto lift_motor  = world->getTorqueActuator("lift_motor");
         
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
