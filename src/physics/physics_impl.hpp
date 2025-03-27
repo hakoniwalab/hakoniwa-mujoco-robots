@@ -4,28 +4,7 @@
 
 namespace hako::robots::physics::impl
 {
-    class WorldImpl : public IWorld
-    {
-    public:
-        WorldImpl() {}
-        virtual ~WorldImpl() {}
-        void loadModel(const std::string& model_file) override
-        {
-            model = mj_loadXML(model_file.c_str(), nullptr, nullptr, 0);
-            if (!model) {
-                throw std::runtime_error("Model loading failed");
-            }
-            data = mj_makeData(model);
-        }
-        void advanceTimeStep() override
-        {
-            mj_step(model, data);
-        }
-        std::shared_ptr<IRigidBody> getRigidBody(const std::string& model_name) override
-        {
-            return std::make_shared<RigidBodyImpl>(model, data, model_name);
-        }
-    };
+
     class RigidBodyImpl : public IRigidBody
     {
     private:
@@ -68,6 +47,8 @@ namespace hako::robots::physics::impl
                 throw std::runtime_error("Body not found: " + model_name);
             }
         }
+        virtual ~RigidBodyImpl() override {}
+
         hako::robots::types::Position GetPosition() override
         {
             hako::robots::types::Position pos;
@@ -125,6 +106,28 @@ namespace hako::robots::physics::impl
             data->xfrc_applied[6 * body_id] = force.x;
             data->xfrc_applied[6 * body_id + 1] = force.y;
             data->xfrc_applied[6 * body_id + 2] = force.z;
+        }
+    };
+    class WorldImpl : public IWorld
+    {
+    public:
+        WorldImpl() {}
+        virtual ~WorldImpl() {}
+        void loadModel(const std::string& model_file) override
+        {
+            model = mj_loadXML(model_file.c_str(), nullptr, nullptr, 0);
+            if (!model) {
+                throw std::runtime_error("Model loading failed");
+            }
+            data = mj_makeData(model);
+        }
+        void advanceTimeStep() override
+        {
+            mj_step(model, data);
+        }
+        std::shared_ptr<IRigidBody> getRigidBody(const std::string& model_name) override
+        {
+            return std::make_shared<RigidBodyImpl>(model, data, model_name);
         }
     };
 }

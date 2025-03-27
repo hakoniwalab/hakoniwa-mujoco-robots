@@ -37,6 +37,7 @@ static void mouse_button_callback(GLFWwindow* window, int button, int action, in
 
 // マウス移動のコールバック
 static void mouse_move_callback(GLFWwindow* window, double xpos, double ypos) {
+    (void)window;
     if (!mouse_button_left && !mouse_button_right) return;
 
     double dx = xpos - last_x;
@@ -61,12 +62,16 @@ static void mouse_move_callback(GLFWwindow* window, double xpos, double ypos) {
 
 // マウスホイールのコールバック（ズーム）
 static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    (void)window;
+    (void)xoffset;
     mjv_moveCamera(mujoco_model, mjMOUSE_ZOOM, 0, 0.05 * yoffset, &scn, &cam);
 }
 
 
 // キーボードコールバック
 static void keyboard(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    (void)scancode;
+    (void)mods;
     if (action == GLFW_PRESS) {
         if (key == GLFW_KEY_ESCAPE) {
             glfwSetWindowShouldClose(window, GLFW_TRUE);  // ESCでウィンドウを閉じる
@@ -76,6 +81,7 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
 
 // 3Dビューアとシミュレーションを統合
 void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex& mutex) {
+    (void)running_flag;
     if (!glfwInit()) {
         std::cerr << "[ERROR] GLFW Initialization failed!" << std::endl;
         return;

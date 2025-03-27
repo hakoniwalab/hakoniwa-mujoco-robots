@@ -6,7 +6,21 @@
 
 namespace hako::robots::physics
 {
+    class IRigidBody
+    {
+    public:
+        virtual ~IRigidBody() {}
+        virtual hako::robots::types::Position GetPosition() = 0;
+        virtual hako::robots::types::Euler GetEuler() = 0;
+        virtual hako::robots::types::Velocity GetVelocity() = 0;
+        virtual hako::robots::types::EulerRate GetEulerRate() = 0;
+        virtual hako::robots::types::BodyVelocity GetBodyVelocity() = 0;
+        virtual hako::robots::types::BodyAngularVelocity GetBodyAngularVelocity() = 0;
 
+        virtual void SetTorque(const std::string& joint_name, double torque) = 0;
+        virtual void SetForce(const hako::robots::types::Vector3& force) = 0;
+
+    };
     class IWorld
     {
     protected:
@@ -24,23 +38,11 @@ namespace hako::robots::physics
                 model = nullptr;
             }
         }
+        virtual mjModel *getModel() const { return model; }
+        virtual mjData *getData() const { return data; }
         virtual void loadModel(const std::string& model_file) = 0;
         virtual void advanceTimeStep() = 0;
         virtual std::shared_ptr<IRigidBody> getRigidBody(const std::string& model_name) = 0;
     };
 
-    class IRigidBody
-    {
-    public:
-        virtual hako::robots::types::Position GetPosition() = 0;
-        virtual hako::robots::types::Euler GetEuler() = 0;
-        virtual hako::robots::types::Velocity GetVelocity() = 0;
-        virtual hako::robots::types::EulerRate GetEulerRate() = 0;
-        virtual hako::robots::types::BodyVelocity GetBodyVelocity() = 0;
-        virtual hako::robots::types::BodyAngularVelocity GetBodyAngularVelocity() = 0;
-
-        virtual void SetTorque(const std::string& joint_name, double torque) = 0;
-        virtual void SetForce(const hako::robots::types::Vector3& force) = 0;
-
-    };
 }

@@ -12,6 +12,8 @@ add_executable(
 target_include_directories(forklift_sim 
     PRIVATE ${MUJOCO_SOURCE_DIR}
     PRIVATE ${PROJECT_ROOT_DIR}/src/mujoco-common
+    PRIVATE ${PROJECT_ROOT_DIR}/src
+    PRIVATE ${PROJECT_ROOT_DIR}/include
     PRIVATE ${GLFW_DIR})
 
 # MuJoCoライブラリをリンク
