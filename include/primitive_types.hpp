@@ -26,7 +26,12 @@ namespace hako::robots::types
             oss << x << ", " << y << ", " << z;
             return oss.str();
         }
-        
+        Vector3(const double& x, const double& y, const double& z)
+        {
+            this->x = x;
+            this->y = y;
+            this->z = z;
+        }
         //copy constructor
         Vector3(const Vector3& v)
         {
@@ -96,6 +101,9 @@ namespace hako::robots::types
     class Position: public Vector3
     {
         public:
+            Position(const double& x, const double& y, const double& z): Vector3(x, y, z)
+            {
+            }
             Position(const Vector3& v)
             {
                 x = v.x;
@@ -117,6 +125,9 @@ namespace hako::robots::types
     class Euler: public Vector3
     {
         public:
+            Euler(const double& x, const double& y, const double& z): Vector3(x, y, z)
+            {
+            }
             Euler(const Vector3& v)
             {
                 x = v.x;
@@ -140,6 +151,9 @@ namespace hako::robots::types
     class Velocity: public Vector3
     {
         public:
+            Velocity(const double& x, const double& y, const double& z): Vector3(x, y, z)
+            {
+            }
             Velocity(const Vector3& v)
             {
                 x = v.x;
@@ -163,6 +177,9 @@ namespace hako::robots::types
     class BodyVelocity: public Vector3
     {
         public:
+            BodyVelocity(const double& x, const double& y, const double& z): Vector3(x, y, z)
+            {
+            }
             BodyVelocity(const Vector3& v)
             {
                 x = v.x;
@@ -186,6 +203,9 @@ namespace hako::robots::types
     class EulerRate: public Vector3
     {
         public:
+            EulerRate(const double& x, const double& y, const double& z): Vector3(x, y, z)
+            {
+            }
             EulerRate(const Vector3& v)
             {
                 x = v.x;
@@ -209,6 +229,9 @@ namespace hako::robots::types
     class BodyAngularVelocity: public Vector3
     {
         public:
+            BodyAngularVelocity(const double& x, const double& y, const double& z): Vector3(x, y, z)
+            {
+            }
             BodyAngularVelocity(const Vector3& v)
             {
                 x = v.x;
