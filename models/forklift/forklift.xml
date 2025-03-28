@@ -88,10 +88,8 @@
 
       <!-- 後輪 -->
       <body name="back_castor" pos="-0.25 0 -0.4" childclass="black">
-        <joint name="castor_yaw" type="hinge" axis="0 0 1" damping="0.1"/>
-        <joint name="castor_pitch" type="hinge" axis="0 1 0" damping="0.1"/>
-        <joint name="castor_roll" type="hinge" axis="1 0 0" damping="0.1"/>
-        <geom name="castor" type="sphere" size="0.1" density="500" friction="0.5"/>
+        <joint name="castor_joint" type="ball" damping="0.01"/>
+        <geom name="castor" type="sphere" size="0.1" density="500" friction="0.01"/>
       </body>
 
     </body>

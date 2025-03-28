@@ -28,31 +28,29 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world,
     hako::robots::controller::SliderController lift_ctrl(3.0, 1.5, 1.0); // kp, ki, kd
 
     double tread = forklift.getTreadWidth();
-    hako::robots::controller::DifferentialDriveController drive_ctrl(1.5, 0.0, 0.0, tread); // kp, ki, kd, tread_width
+    hako::robots::controller::DifferentialDriveController drive_ctrl(1.5, 0.0, 0.1, tread); // kp, ki, kd, tread_width
     double target_lift_pos = 0.2; // m
+    double target_v = 0.2;
+    double target_w = 0.0;
 
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         double sim_time = world->getData()->time;
         {
             std::lock_guard<std::mutex> lock(mutex);
-
-            double target_v = 0.2;
-            double target_yaw = 0.0;
             double left_motor_torque = 0.0;
             double right_motor_torque = 0.0;
-            drive_ctrl.update(target_v, target_yaw,
+            drive_ctrl.update(target_v, target_w,
                               forklift.getBodyVelocity().x, forklift.getBodyAngularVelocity().z,
                               simulation_timestep,
                               left_motor_torque, right_motor_torque);
             forklift.drive_motor(left_motor_torque, right_motor_torque);
-            //forklift.drive_motor(0.2, 0.2);            
             auto lift_pos = forklift.getLiftPosition();
             if (sim_time > 10.0) {
+                target_w = 0.3;
                 double torque = lift_ctrl.update(lift_pos, target_lift_pos, simulation_timestep);
                 std::cout << "[INFO] lift_ctrl: " << torque << std::endl;
                 forklift.drive_lift(torque);
-                //forklift.drive_lift(0.23);
             } else {
                 forklift.drive_lift(0.0);
             }
