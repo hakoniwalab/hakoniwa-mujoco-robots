@@ -14,6 +14,8 @@
 #include "controller/differential_drive_controller.hpp"
 #include "controller/forklift_controller.hpp"
 
+#include "hakoniwa/pdu/gamepad.hpp"
+
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift.xml";
 

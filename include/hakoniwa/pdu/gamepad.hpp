@@ -1,8 +1,7 @@
 #pragma once
 
 #include "hakoniwa/pdu/pdu.hpp"
-#include "pdu/types/hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
-#include "include/hako_asset.h"
+#include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
 
 namespace hako::robots::pdu {
     class GamePad: public PDU {
@@ -26,6 +25,17 @@ namespace hako::robots::pdu {
                 else {
                     std::cerr << "Failed to load PDU data: robotName=" << robot_name << " channelId=" << channel_id << " pduSize=" << pduSize << std::endl;
                 }
+            }
+            virtual bool flush() {
+                char* pdu_msg;
+                int pdu_size = hako_convert_cpp2pdu_GameControllerOperation(cppData, (Hako_GameControllerOperation**)&pdu_msg);
+                if (pdu_size < 0) {
+                    std::cerr << "Failed to convert PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
+                    return false;
+                }
+                auto ret = PDU::flush(pdu_msg, pdu_size);
+                hako_destroy_pdu(pdu_msg); 
+                return ret;
             }
 
             virtual ~GamePad() {}
