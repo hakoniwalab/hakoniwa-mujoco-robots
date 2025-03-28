@@ -52,8 +52,6 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     hako::robots::pdu::GamePad pad(robot_name, 0);
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
-        double sim_time = world->getData()->time;
-
         {
             std::lock_guard<std::mutex> lock(data_mutex);
             if (pad.load()) {
@@ -61,12 +59,14 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 auto command = adapter.convert(pad);
                 controller.setLiftTarget(command.lift_position);
                 controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
+#if false
                 std::cout << "[INFO] Forklift command: "
                     << "linear_velocity=" << command.linear_velocity
                     << ", yaw_rate=" << command.yaw_rate
                     << ", lift_position=" << command.lift_position
                     << ", emergency_stop=" << command.emergency_stop
                     << std::endl;
+#endif
                 if (command.emergency_stop) {
                     std::cout << "[INFO] Emergency stop triggered!" << std::endl;
                 }
@@ -74,19 +74,6 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             controller.update();
             world->advanceTimeStep();
 
-#if false
-            if (sim_time > 10.0) {
-                controller.setLiftTarget(0.2);
-                controller.setVelocityCommand(0.2, 0.3);
-            }
-            const auto& forklift = controller.getForklift();
-            std::cout << "[forklift] pos:  " << forklift.getPosition().to_string()
-                << ", vel: " << forklift.getVelocity().to_string()
-                << ", euler: " << forklift.getEuler().to_string() << std::endl;
-
-            std::cout << "[lift_arm] pos: " << forklift.getLiftPosition().to_string() << std::endl;
-            std::cout << "[pallet]   pos: " << pallet.getPosition().to_string() << std::endl;
-#endif
         }
 
         auto end = std::chrono::steady_clock::now();

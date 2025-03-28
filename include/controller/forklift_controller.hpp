@@ -20,8 +20,8 @@ namespace hako::robots::controller {
     public:
         ForkliftController(std::shared_ptr<physics::IWorld> world)
             : forklift(world),
-                lift_ctrl(3.0, 1.5, 1.0),
-                drive_ctrl(1.5, 0.0, 0.0, forklift.getTreadWidth()),
+                lift_ctrl(1.0, 0.0, 0.5),
+                drive_ctrl(6.5, 0.0, 0.1, forklift.getTreadWidth()),
                 target_lift_z(0.0), target_linear_vel(0.0), target_yaw_rate(0.0)
         {
             dt = world->getModel()->opt.timestep;

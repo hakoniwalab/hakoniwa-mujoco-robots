@@ -12,25 +12,27 @@ namespace hako::robots::pdu {
                 : PDU(robot_name, channel_id)
             {
                 int heap_size = 0;
-                pduData = (char*)hako_create_empty_pdu_GameControllerOperation(heap_size);
-                if (pduData == nullptr) {
+                base_ptr = (char*)hako_create_empty_pdu_GameControllerOperation(heap_size);
+                if (base_ptr == nullptr) {
                     std::cerr << "Failed to create PDU data: robotName=" << robot_name << " channelId=" << channel_id << std::endl;
                 }
-                else 
-                {
-                    this->load();
+                top_ptr = hako_get_top_ptr_pdu(base_ptr);
+                if (top_ptr == nullptr) {
+                    std::cerr << "Failed to get top pointer of PDU data: robotName=" << robot_name << " channelId=" << channel_id << std::endl;
                 }
+                //std::cout << "pduData: " << std::hex << (uintptr_t)pduData << std::dec << std::endl;
             }
             virtual bool load() override {
                 if (PDU::load())
                 {
-                    if (hako_convert_pdu2cpp_GameControllerOperation(*(Hako_GameControllerOperation*)pduData, cppData) != 0) {
-                        std::cerr << "Failed to convert PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
+                    if (hako_convert_pdu2cpp_GameControllerOperation(*(Hako_GameControllerOperation*)base_ptr, cppData) != 0) {
+                        //std::cerr << "Failed to convert PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
                         return false;
                     }
+                    //std::cout << "successfully load PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
                 }
                 else {
-                    std::cerr << "Failed to load PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
+                    //std::cerr << "Failed to load PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
                     return false;
                 }
                 return true;

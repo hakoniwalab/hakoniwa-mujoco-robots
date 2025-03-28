@@ -11,16 +11,17 @@ namespace hako::robots::pdu {
             std::string robotName;
             int channelId;
             int pduSize = -1;
-            char* pduData;
+            void* top_ptr;
+            char* base_ptr;
             virtual bool load() 
             {
-                if (pduData == nullptr) {
+                if (top_ptr == nullptr) {
                     return false;
                 }
                 if (pduSize < 0) {
                     setPDUSize();
                 }
-                if (hako_asset_pdu_read(robotName.c_str(), channelId, (char*)pduData, static_cast<size_t>(pduSize)) != 0) {
+                if (hako_asset_pdu_read(robotName.c_str(), channelId, (char*)top_ptr, static_cast<size_t>(pduSize)) != 0) {
                     std::cerr << "Failed to read PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
                     return false;
                 }
@@ -28,9 +29,6 @@ namespace hako::robots::pdu {
             }
             bool flush(char* pdu_msg, int pdu_size)
             {
-                if (pduData == nullptr) {
-                    return false;
-                }
                 if (hako_asset_pdu_write(robotName.c_str(), channelId, (char*)pdu_msg, static_cast<size_t>(pdu_size)) != 0) {
                     std::cerr << "Failed to write PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pdu_size << std::endl;
                     return false;
@@ -41,19 +39,20 @@ namespace hako::robots::pdu {
             PDU(std::string& robot_name, int channel_id)
                 : robotName(robot_name), channelId(channel_id)
             {
-                pduData = nullptr;
+                top_ptr = nullptr;
+                base_ptr = nullptr;
             }
             void setPDUSize() 
             {
-                if (pduData != nullptr) {
-                    pduSize = hako_get_pdu_meta_data(pduData)->total_size;
+                if (base_ptr != nullptr) {
+                    pduSize = hako_get_pdu_meta_data(base_ptr)->total_size;
                 }
             }
 
             virtual ~PDU() 
             {
-                if (pduData != nullptr) {
-                    hako_destroy_pdu(pduData);
+                if (base_ptr != nullptr) {
+                    hako_destroy_pdu(base_ptr);
                 }
             }
     };
