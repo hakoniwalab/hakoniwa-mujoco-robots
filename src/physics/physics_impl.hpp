@@ -122,6 +122,7 @@ namespace hako::robots::physics::impl
                 throw std::runtime_error("Model loading failed");
             }
             data = mj_makeData(model);
+            mj_forward(model, data);
         }
         void advanceTimeStep() override
         {

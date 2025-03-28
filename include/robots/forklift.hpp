@@ -10,6 +10,8 @@ namespace hako::robots {
         std::shared_ptr<hako::robots::actuator::ITorqueActuator> left_motor;
         std::shared_ptr<hako::robots::actuator::ITorqueActuator> right_motor;
         std::shared_ptr<hako::robots::actuator::ITorqueActuator> lift_motor;
+        std::shared_ptr<hako::robots::physics::IRigidBody> left_wheel;
+        std::shared_ptr<hako::robots::physics::IRigidBody> right_wheel;
     
     public:
         Forklift(std::shared_ptr<hako::robots::physics::IWorld> world) 
@@ -19,6 +21,8 @@ namespace hako::robots {
             left_motor  = world->getTorqueActuator("left_motor");
             right_motor = world->getTorqueActuator("right_motor");
             lift_motor  = world->getTorqueActuator("lift_motor");
+            left_wheel  = world->getRigidBody("left_wheel");
+            right_wheel = world->getRigidBody("right_wheel");
         }
     
         void drive_motor(double left, double right) {
@@ -32,5 +36,12 @@ namespace hako::robots {
         hako::robots::types::Position getLiftPosition() const {
             return lift->GetPosition();
         }
+        double getTreadWidth() const {
+            double left_y  = left_wheel->GetPosition().y;
+            double right_y = right_wheel->GetPosition().y;
+            std::cout << "left_y: " << left_y << ", right_y: " << right_y << std::endl;
+            return std::abs(left_y - right_y);
+        }
+        
     };
 }
