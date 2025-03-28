@@ -95,6 +95,19 @@ namespace hako::robots::types
      */
     class Position: public Vector3
     {
+        public:
+            Position(const Vector3& v)
+            {
+                x = v.x;
+                y = v.y;
+                z = v.z;
+            }
+            Position()
+            {
+                x = 0;
+                y = 0;
+                z = 0;
+            }
     };
     /*
      * Attitude class
@@ -103,6 +116,19 @@ namespace hako::robots::types
      */
     class Euler: public Vector3
     {
+        public:
+            Euler(const Vector3& v)
+            {
+                x = v.x;
+                y = v.y;
+                z = v.z;
+            }
+            Euler()
+            {
+                x = 0;
+                y = 0;
+                z = 0;
+            }
     };
 
     /*
@@ -113,6 +139,19 @@ namespace hako::robots::types
      */
     class Velocity: public Vector3
     {
+        public:
+            Velocity(const Vector3& v)
+            {
+                x = v.x;
+                y = v.y;
+                z = v.z;
+            }
+            Velocity()
+            {
+                x = 0;
+                y = 0;
+                z = 0;
+            }
     };
 
     /*
@@ -123,6 +162,19 @@ namespace hako::robots::types
      */
     class BodyVelocity: public Vector3
     {
+        public:
+            BodyVelocity(const Vector3& v)
+            {
+                x = v.x;
+                y = v.y;
+                z = v.z;
+            }
+            BodyVelocity()
+            {
+                x = 0;
+                y = 0;
+                z = 0;
+            }
     };
 
     /*
@@ -133,6 +185,19 @@ namespace hako::robots::types
      */
     class EulerRate: public Vector3
     {
+        public:
+            EulerRate(const Vector3& v)
+            {
+                x = v.x;
+                y = v.y;
+                z = v.z;
+            }
+            EulerRate()
+            {
+                x = 0;
+                y = 0;
+                z = 0;
+            }
     };
 
     /*
@@ -143,5 +208,18 @@ namespace hako::robots::types
      */
     class BodyAngularVelocity: public Vector3
     {
+        public:
+            BodyAngularVelocity(const Vector3& v)
+            {
+                x = v.x;
+                y = v.y;
+                z = v.z;
+            }
+            BodyAngularVelocity()
+            {
+                x = 0;
+                y = 0;
+                z = 0;
+            }
     };
 }

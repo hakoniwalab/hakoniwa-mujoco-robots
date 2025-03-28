@@ -4,7 +4,7 @@
 
 namespace hako::robots {
     class PhysicsObject {
-    private:
+    protected:
         std::shared_ptr<hako::robots::physics::IRigidBody> base;        
     public:
         PhysicsObject(std::shared_ptr<hako::robots::physics::IWorld> world, const std::string& model_name) {
