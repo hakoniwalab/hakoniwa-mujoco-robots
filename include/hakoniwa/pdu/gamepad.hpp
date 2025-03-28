@@ -45,17 +45,5 @@ namespace hako::robots::pdu {
             const HakoCpp_GameControllerOperation& getData() const {
                 return cppData;
             }
-            void setAxis(const std::array<Hako_float64, 6>& axis) {
-                cppData.axis = axis;
-            }
-            const std::array<Hako_float64, 6>& getAxis() const {
-                return cppData.axis;
-            }
-            void setButton(const std::array<Hako_bool, 15>& button) {
-                cppData.button = button;
-            }
-            const std::array<Hako_bool, 15>& getButton() const {
-                return cppData.button;
-            }
     };
 }
