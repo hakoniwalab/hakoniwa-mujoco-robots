@@ -12,7 +12,7 @@ namespace hako::robots::pdu {
             int channelId;
             int pduSize = -1;
             char* pduData;
-            bool load() 
+            virtual bool load() 
             {
                 if (pduData == nullptr) {
                     return false;

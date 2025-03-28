@@ -21,7 +21,7 @@ namespace hako::robots::pdu {
                     this->load();
                 }
             }
-            virtual bool load() {
+            virtual bool load() override {
                 if (PDU::load())
                 {
                     if (hako_convert_pdu2cpp_GameControllerOperation(*(Hako_GameControllerOperation*)pduData, cppData) != 0) {
@@ -37,7 +37,7 @@ namespace hako::robots::pdu {
             }
             
             virtual bool flush() {
-                char* pdu_msg;
+                char* pdu_msg = nullptr;;
                 int pdu_size = hako_convert_cpp2pdu_GameControllerOperation(cppData, (Hako_GameControllerOperation**)&pdu_msg);
                 if (pdu_size < 0) {
                     std::cerr << "Failed to convert PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
