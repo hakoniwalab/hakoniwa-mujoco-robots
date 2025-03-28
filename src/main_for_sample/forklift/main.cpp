@@ -13,16 +13,31 @@
 #include "controller/slider_controller.hpp"
 #include "controller/differential_drive_controller.hpp"
 #include "controller/forklift_controller.hpp"
-
+#include "include/hako_asset.h"
+#include "include/hako_conductor.h"
 #include "hakoniwa/pdu/gamepad.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift.xml";
+static const char* config_path = "config/custom.json";
+static std::mutex data_mutex;
+static bool running_flag = true;
 
-void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world,
-    bool& running_flag,
-    std::mutex& mutex)
+static int my_on_initialize(hako_asset_context_t* context)
 {
+    (void)context;
+    return 0;
+}
+static int my_on_reset(hako_asset_context_t* context)
+{
+    (void)context;
+    return 0;
+}
+
+static int my_manual_timing_control(hako_asset_context_t* context)
+{
+    (void)context;
+
     double simulation_timestep = world->getModel()->opt.timestep;
     std::cout << "[INFO] Simulation timestep: " << simulation_timestep << " sec" << std::endl;
 
@@ -36,7 +51,7 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world,
         auto start = std::chrono::steady_clock::now();
         double sim_time = world->getData()->time;
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard<std::mutex> lock(data_mutex);
             if (sim_time > 10.0) {
                 controller.setLiftTarget(0.2);
                 controller.setVelocityCommand(0.2, 0.3);
@@ -57,8 +72,36 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world,
         std::chrono::duration<double> elapsed = end - start;
         double sleep_time = simulation_timestep - elapsed.count();
         if (sleep_time > 0) {
+            hako_asset_usleep(static_cast<hako_time_t>(sleep_time * 1e6));
             std::this_thread::sleep_for(std::chrono::duration<double>(sleep_time));
         }
+    }
+    
+    return 0;
+}
+static hako_asset_callbacks_t my_callback = {
+    .on_initialize = my_on_initialize,
+    .on_manual_timing_control = my_manual_timing_control,
+    .on_simulation_step = nullptr,
+    .on_reset = my_on_reset
+};
+void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
+{
+    const char* asset_name = "forklift";
+    hako_time_t delta_time_usec = 20000;
+    hako_conductor_start(delta_time_usec, 100000);
+    int ret = hako_asset_register(asset_name, config_path, &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);
+    if (ret != 0) {
+        std::cerr << "ERROR: hako_asset_register() returns " << ret << std::endl;
+        return;
+    }
+    double simulation_timestep = world->getModel()->opt.timestep;
+    std::cout << "[INFO] Simulation timestep: " << simulation_timestep << " sec" << std::endl;
+
+    ret = hako_asset_start();
+    if (ret != 0) {
+        std::cerr << "ERROR: hako_asset_start() returns " << ret << std::endl;
+        return;
     }
 }
 
@@ -76,11 +119,7 @@ int main(int argc, const char* argv[])
         std::cerr << "[ERROR] Failed to load model: " << e.what() << std::endl;
         return 1;
     }
-
-    std::mutex data_mutex;
-    bool running_flag = true;
-
-    std::thread sim_thread(simulation_thread, world, std::ref(running_flag), std::ref(data_mutex));
+    std::thread sim_thread(simulation_thread, world);
 
     viewer_thread(world->getModel(), world->getData(), std::ref(running_flag), std::ref(data_mutex));
 

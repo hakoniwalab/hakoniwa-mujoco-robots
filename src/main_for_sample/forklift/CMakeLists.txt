@@ -24,5 +24,7 @@ target_link_libraries(forklift_sim
     ${LIBMUJOCO}
    glfw
     ${OPENGL_gl_LIBRARY}
+    assets
+    conductor
     "-framework OpenGL"
 )
