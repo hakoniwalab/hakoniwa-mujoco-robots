@@ -50,9 +50,8 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     controller.setLiftTarget(0.0);
     std::string robot_name = "forklift";
     double delta_pos = simulation_timestep * 0.1;;
-    double target_lift_z = 0;
-    double target_lift_z_max = 1.0;
-    double target_lift_z_min = 0.0;
+    controller.set_delta_pos(delta_pos);
+
     hako::robots::pdu::GamePad pad(robot_name, 0);
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
@@ -61,18 +60,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             if (pad.load()) {
                 hako::robots::pdu::adapter::ForkliftOperationCommand adapter;
                 auto command = adapter.convert(pad);
-                if (command.lift_position > 0) {
-                    target_lift_z += delta_pos;
-                    if (target_lift_z > target_lift_z_max) {
-                        target_lift_z = target_lift_z_max;
-                    }
-                } else if (command.lift_position < 0) {
-                    target_lift_z -= delta_pos;
-                    if (target_lift_z < target_lift_z_min) {
-                        target_lift_z = target_lift_z_min;
-                    }
-                }
-                controller.setLiftTarget(target_lift_z);
+                controller.update_target_lift_z(command.lift_position);
                 controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
 #if false
                 std::cout << "[INFO] Forklift command: "

@@ -65,7 +65,7 @@
 
       <!-- フォークリフト機構 -->
       <body name="lift_arm" pos="0.41 0 -0.35" euler="0 0 0">
-        <joint name="lift_joint" type="slide" axis="0 0 1" range="-0.1 0.3" damping="0.1" stiffness="1" />
+        <joint name="lift_joint" type="slide" axis="0 0 1" range="-0.2 0.3" damping="0.1" stiffness="1" />
         <geom name="lift_frame" type="box" size="0.03 0.3 0.01" rgba="0.6 0.6 0.6 1"/>
 
         <!-- フォーク部分 -->

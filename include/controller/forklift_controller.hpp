@@ -17,6 +17,9 @@ namespace hako::robots::controller {
         double target_linear_vel;
         double target_yaw_rate;
     
+        double target_lift_z_max = 1.0;
+        double target_lift_z_min = -0.05;
+        double delta_pos = 0.01;
     public:
         ForkliftController(std::shared_ptr<physics::IWorld> world)
             : forklift(world),
@@ -27,12 +30,29 @@ namespace hako::robots::controller {
             dt = world->getModel()->opt.timestep;
         }
         Forklift& getForklift() { return forklift; }
+        void set_delta_pos(double delta) { delta_pos = delta; }
+        void update_target_lift_z(double ctrl_value) 
+        {
+            if (ctrl_value > 0) {
+                target_lift_z += delta_pos;
+                if (target_lift_z > target_lift_z_max) {
+                    target_lift_z = target_lift_z_max;
+                }
+            } else if (ctrl_value < 0) {
+                target_lift_z -= delta_pos;
+                if (target_lift_z < target_lift_z_min) {
+                    target_lift_z = target_lift_z_min;
+                }
+            }
+            else {
+                // do nothing
+            }
+        }
         void setLiftTarget(double z) { target_lift_z = z; }
         void setVelocityCommand(double v, double yaw_rate) {
             target_linear_vel = v;
             target_yaw_rate = yaw_rate;
         }
-    
         void update() {
             double left_torque = 0.0;
             double right_torque = 0.0;
@@ -50,7 +70,8 @@ namespace hako::robots::controller {
             std::cout << "body velocity: " << forklift.getBodyVelocity().to_string() << std::endl;
             std::cout << "left_torque: " << left_torque << ", right_torque: " << right_torque << std::endl;
 #endif
-            forklift.drive_motor(left_torque, right_torque);    
+            forklift.drive_motor(left_torque, right_torque);
+            //std::cout << "lift position: " << forklift.getLiftPosition().z << std::endl;
             double lift_torque = lift_ctrl.update(forklift.getLiftPosition().z, target_lift_z, dt);
             forklift.drive_lift(lift_torque);
         }

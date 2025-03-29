@@ -34,7 +34,10 @@ namespace hako::robots {
             lift_motor->SetTorque(torque);
         }
         hako::robots::types::Position getLiftPosition() const {
-            return lift->GetPosition();
+            //std::cout << "lift position: " << lift->GetPosition().z << std::endl;
+            //std::cout << "left wheel position: " << left_wheel->GetPosition().to_string() << std::endl;
+            //std::cout << "right wheel position: " << right_wheel->GetPosition().to_string() << std::endl;
+            return lift->GetPosition() - left_wheel->GetPosition();
         }
         hako::robots::types::BodyVelocity getLiftBodyVelocity() const {
             return lift->GetBodyVelocity();
@@ -42,7 +45,7 @@ namespace hako::robots {
         double getTreadWidth() const {
             double left_y  = left_wheel->GetPosition().y;
             double right_y = right_wheel->GetPosition().y;
-            std::cout << "left_y: " << left_y << ", right_y: " << right_y << std::endl;
+            //std::cout << "left_y: " << left_y << ", right_y: " << right_y << std::endl;
             return std::abs(left_y - right_y);
         }
         
