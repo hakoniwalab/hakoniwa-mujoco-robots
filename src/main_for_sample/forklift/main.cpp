@@ -23,7 +23,6 @@ static const std::string model_path = "models/forklift/forklift.xml";
 static const char* config_path = "config/custom.json";
 static std::mutex data_mutex;
 static bool running_flag = true;
-static hako_time_t delta_time_usec = 20000;
 
 static int my_on_initialize(hako_asset_context_t* context)
 {
@@ -41,6 +40,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     (void)context;
 
     double simulation_timestep = world->getModel()->opt.timestep;
+    hako_time_t delta_time_usec = static_cast<hako_time_t>(simulation_timestep * 1e6);
     std::cout << "[INFO] Simulation timestep: " << simulation_timestep << " sec" << std::endl;
 
     hako::robots::controller::ForkliftController controller(world);
@@ -49,7 +49,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     controller.setVelocityCommand(0.0, 0.0);
     controller.setLiftTarget(0.0);
     std::string robot_name = "forklift";
-    double delta_pos = 0.002;
+    double delta_pos = simulation_timestep * 0.1;;
     double target_lift_z = 0;
     double target_lift_z_max = 1.0;
     double target_lift_z_min = 0.0;
@@ -111,14 +111,14 @@ static hako_asset_callbacks_t my_callback = {
 void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
 {
     const char* asset_name = "forklift";
+    double simulation_timestep = world->getModel()->opt.timestep;
+    hako_time_t delta_time_usec = static_cast<hako_time_t>(simulation_timestep * 1e6);
     hako_conductor_start(delta_time_usec, 100000);
     int ret = hako_asset_register(asset_name, config_path, &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);
     if (ret != 0) {
         std::cerr << "ERROR: hako_asset_register() returns " << ret << std::endl;
         return;
     }
-    double simulation_timestep = world->getModel()->opt.timestep;
-    std::cout << "[INFO] Simulation timestep: " << simulation_timestep << " sec" << std::endl;
 
     ret = hako_asset_start();
     if (ret != 0) {

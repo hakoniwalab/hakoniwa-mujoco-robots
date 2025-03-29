@@ -1,5 +1,5 @@
 <mujoco>
-  <option timestep="0.02" density="1.204" viscosity="1.8e-5" integrator="implicit"/>
+  <option timestep="0.001" density="1.204" viscosity="1.8e-5" integrator="implicit"/>
   <option gravity="0 0 -9.81"/>
   <visual>
     <global elevation="-10"/>
@@ -56,7 +56,7 @@
     </body>
 
     <!-- 本体（ベース） -->
-    <body name="forklift_base" pos="0 0 0.5" childclass="yellow">
+    <body name="forklift_base" pos="0 0 0.5" euler="0 0 0" childclass="yellow">
       <freejoint/>
       <geom name="base" type="box" size="0.25 0.25 0.3" mass="80.0"/>
       <body name="body_guard" pos="0.4 0 -0.25" euler="0 0 0">

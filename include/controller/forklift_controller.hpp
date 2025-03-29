@@ -44,7 +44,12 @@ namespace hako::robots::controller {
                 dt,
                 left_torque, right_torque
             );
-
+#if false
+            std::cout << "euler: " << forklift.getEuler().to_string() << std::endl;
+            std::cout << "world velocity: " << forklift.getVelocity().to_string() << std::endl;
+            std::cout << "body velocity: " << forklift.getBodyVelocity().to_string() << std::endl;
+            std::cout << "left_torque: " << left_torque << ", right_torque: " << right_torque << std::endl;
+#endif
             forklift.drive_motor(left_torque, right_torque);    
             double lift_torque = lift_ctrl.update(forklift.getLiftPosition().z, target_lift_z, dt);
             forklift.drive_lift(lift_torque);
