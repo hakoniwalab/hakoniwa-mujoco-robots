@@ -13,11 +13,11 @@ public:
     SliderController(double kp, double ki, double kd)
         : pid(kp, ki, kd) {}
 
-    double update(const hako::robots::types::Position& current_position,
-                  const double target_z,
+    double update(const double current_pos,
+                  const double target_pos,
                   const double dt)
     {
-        return pid.update(target_z, current_position.z, dt);
+        return pid.update(target_pos, current_pos, dt);
     }
 
     void reset() {

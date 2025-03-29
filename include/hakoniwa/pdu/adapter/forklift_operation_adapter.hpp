@@ -34,8 +34,8 @@ namespace hako::robots::pdu::adapter {
 
     public:
         // Constructor with optional parameter tuning
-        ForkliftOperationCommand(double max_v = 0.4,
-                                 double max_w = 0.5,
+        ForkliftOperationCommand(double max_v = 1.0,
+                                 double max_w = 1.0,
                                  double max_l = 0.4,
                                  double deadzone = 0.1)
             : max_linear_vel(max_v),
@@ -60,7 +60,6 @@ namespace hako::robots::pdu::adapter {
                 // Immediately stop motion when emergency is triggered
                 cmd.linear_velocity = 0.0;
                 cmd.yaw_rate = 0.0;
-                cmd.lift_position = 0.0;
             }
 
             return cmd;

@@ -44,10 +44,9 @@ namespace hako::robots::controller {
                 dt,
                 left_torque, right_torque
             );
-            forklift.drive_motor(left_torque, right_torque);
-    
-            hako::robots::types::Position target_lift_pos(0, 0, forklift.getLiftPosition().z);
-            double lift_torque = lift_ctrl.update(target_lift_pos, target_lift_z, dt);
+
+            forklift.drive_motor(left_torque, right_torque);    
+            double lift_torque = lift_ctrl.update(forklift.getLiftPosition().z, target_lift_z, dt);
             forklift.drive_lift(lift_torque);
         }
     

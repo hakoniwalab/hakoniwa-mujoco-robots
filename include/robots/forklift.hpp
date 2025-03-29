@@ -36,6 +36,9 @@ namespace hako::robots {
         hako::robots::types::Position getLiftPosition() const {
             return lift->GetPosition();
         }
+        hako::robots::types::BodyVelocity getLiftBodyVelocity() const {
+            return lift->GetBodyVelocity();
+        }
         double getTreadWidth() const {
             double left_y  = left_wheel->GetPosition().y;
             double right_y = right_wheel->GetPosition().y;
