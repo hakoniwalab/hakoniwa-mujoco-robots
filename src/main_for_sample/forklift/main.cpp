@@ -17,6 +17,7 @@
 #include "include/hako_conductor.h"
 #include "hakoniwa/pdu/gamepad.hpp"
 #include "hakoniwa/pdu/adapter/forklift_operation_adapter.hpp"
+#include "hakoniwa/pdu/msgs/geometry_msgs/Twist.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift.xml";
@@ -53,6 +54,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     controller.set_delta_pos(delta_pos);
 
     hako::robots::pdu::GamePad pad(robot_name, 0);
+    hako::pdu::msgs::geometry_msgs::Twist pos(robot_name, 1);
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         {
@@ -62,21 +64,16 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 auto command = adapter.convert(pad);
                 controller.update_target_lift_z(command.lift_position);
                 controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
-#if false
-                std::cout << "[INFO] Forklift command: "
-                    << "linear_velocity=" << command.linear_velocity
-                    << ", yaw_rate=" << command.yaw_rate
-                    << ", lift_position=" << command.lift_position
-                    << ", emergency_stop=" << command.emergency_stop
-                    << std::endl;
-#endif
-                if (command.emergency_stop) {
-                    std::cout << "[INFO] Emergency stop triggered!" << std::endl;
-                }
             }
             controller.update();
             world->advanceTimeStep();
 
+            //flush pos of forklift
+            HakoCpp_Twist& pos_data = pos.getData();
+            pos_data.linear.x = controller.getForklift().getPosition().x;
+            pos_data.linear.y = controller.getForklift().getPosition().y;
+            pos_data.linear.z = controller.getForklift().getPosition().z;
+            pos.flush();
         }
 
         auto end = std::chrono::steady_clock::now();
