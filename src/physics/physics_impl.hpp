@@ -45,8 +45,8 @@ namespace hako::robots::physics::impl
         }
         
         
-        static hako::robots::types::BodyVelocity transformWorldToBody(
-            const hako::robots::types::Velocity& vel,
+        static hako::robots::types::Vector3 transformWorldToBody(
+            const hako::robots::types::Vector3& vel,
             const hako::robots::types::Euler& angle)
         {
             using std::cos; using std::sin;
