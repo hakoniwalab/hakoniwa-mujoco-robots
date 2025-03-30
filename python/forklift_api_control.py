@@ -23,17 +23,16 @@ def main():
     forklift = ForkliftAPI(pdu_manager)
     print("[INFO] Forklift API initialized.")
 
-    forklift.lift_move(0.3)  # Example usage: move lift to height 0.5m
-    forklift.lift_move(-0.05)  # Example usage: move forward 0.5m
 
-
-    pos = forklift.get_position()
-    #set 90 degree
-    target_yaw_degree = -90
-    current_yaw_degree = forklift.get_yaw_degree()
-    relative_yaw_degree = target_yaw_degree - current_yaw_degree
-    forklift.turn(relative_yaw_degree)  # Example usage: turn 90 degrees
-
+    forklift.lift_move(-0.05)
+    forklift.move(1.0)
+    forklift.lift_move(0.3)
+    forklift.move(-1.0)
+    forklift.turn(-80)
+    forklift.move_forward(1.0)
+    forklift.lift_move(-0.05)
+    forklift.move(-1.0)
+    forklift.turn(80)
     # info position
     pos = forklift.get_position()
     print(f"[INFO] Forklift position: {pos}")
