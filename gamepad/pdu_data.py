@@ -2,7 +2,7 @@ import hakopy
 import hako_pdu
 import os
 
-class GamepadPDU:
+class PduData:
     def __init__(self, pdu_manager, robotName, channelId):
         self.robotName = robotName
         self.channelId = channelId
