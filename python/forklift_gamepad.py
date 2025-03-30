@@ -7,7 +7,7 @@ import time
 import os
 import hako_pdu
 import hakopy
-from pdu_data import PduData
+from pdu.pdu_data import PduData
 
 DEFAULT_CONFIG_PATH = "rc_config/ps4-control.json"
 AXIS_COUNT = 6
