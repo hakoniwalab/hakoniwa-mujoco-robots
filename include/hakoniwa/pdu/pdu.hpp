@@ -27,9 +27,9 @@ namespace hako::robots::pdu {
                 }
                 return true;
             }
-            bool flush(char* pdu_msg, int pdu_size)
+            bool flush(void* pdu_top_ptr, int pdu_size)
             {
-                if (hako_asset_pdu_write(robotName.c_str(), channelId, (char*)pdu_msg, static_cast<size_t>(pdu_size)) != 0) {
+                if (hako_asset_pdu_write(robotName.c_str(), channelId, (char*)pdu_top_ptr, static_cast<size_t>(pdu_size)) != 0) {
                     std::cerr << "Failed to write PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pdu_size << std::endl;
                     return false;
                 }

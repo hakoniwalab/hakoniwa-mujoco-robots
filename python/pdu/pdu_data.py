@@ -8,11 +8,11 @@ class PduData:
         self.channelId = channelId
         self.pdu_manager = pdu_manager
 
-    def write(self, pdu_data):
-        game_pdu = self.pdu_manager.get_pdu(self.robotName, self.channelId)
-        game_pdu.obj = pdu_data
-        game_pdu.write()
+    def write(self, pdu_data_obj):
+        pdu_data = self.pdu_manager.get_pdu(self.robotName, self.channelId)
+        pdu_data.obj = pdu_data_obj
+        pdu_data.write()
 
     def read(self):
-        game_pdu = self.pdu_manager.get_pdu(self.robotName, self.channelId)
-        return game_pdu.read()
+        pdu_data = self.pdu_manager.get_pdu(self.robotName, self.channelId)
+        return pdu_data.read()

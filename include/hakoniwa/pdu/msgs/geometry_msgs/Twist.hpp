@@ -45,7 +45,7 @@ namespace hako::pdu::msgs::geometry_msgs {
                     std::cerr << "Failed to convert PDU data: robotName=" << robotName << " channelId=" << channelId << " pduSize=" << pduSize << std::endl;
                     return false;
                 }
-                auto ret = PDU::flush(pdu_msg, pdu_size);
+                auto ret = PDU::flush(hako_get_top_ptr_pdu((void*)pdu_msg), pdu_size);
                 hako_destroy_pdu(pdu_msg); 
                 return ret;
             }
