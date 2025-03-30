@@ -37,6 +37,13 @@ class ForkliftAPI:
         self.forklift_gamepad.write(gamepad_data)
         time.sleep(self.SLEEP_INTERVAL)
 
+    def calc_yaw_degree_error(self, target_yaw_degree):
+        current_yaw = self.get_yaw_degree()
+        error = target_yaw_degree - current_yaw
+        # 誤差を -180～180 に正規化
+        error = (error + 180) % 360 - 180
+        return error
+
     def _turn_to_yaw_degree(self, target_yaw_degree):
         target_yaw_degree = self._normalize_angle(target_yaw_degree)
 
@@ -49,12 +56,7 @@ class ForkliftAPI:
         dt = 0.001  # 制御周期（秒）
 
         while True:
-            current_yaw = self._normalize_angle(self.get_yaw_degree())
-            error = target_yaw_degree - current_yaw
-
-            # 誤差を -180～180 に正規化
-            error = (error + 180) % 360 - 180
-
+            error = self.calc_yaw_degree_error(target_yaw_degree)
             if abs(error) < 0.25:
                 self.stop()
                 break
@@ -82,14 +84,12 @@ class ForkliftAPI:
 
     def set_yaw_degree(self, target_yaw_degree):
         print(f"[INFO] Forklift turn {target_yaw_degree} [deg].")
-        target_yaw = target_yaw_degree
         while True:
-            curr_yaw = self.get_yaw_degree()
-            error = target_yaw - curr_yaw
-            #print(f"[INFO] Current yaw degree: {curr_yaw}")
-            #print(f"[INFO] Yaw error: {error}")
+            error = self.calc_yaw_degree_error(target_yaw_degree)
+            print(f"[INFO] Current yaw: {self.get_yaw_degree()}, Target yaw: {target_yaw_degree}")
+            print(f"[INFO] Yaw error: {error}")
             if abs(error) <= 0.5:
-                #print("[INFO] Target angle reached.")
+                print("[INFO] Target angle reached.")
                 break
             # 誤差分だけ回転させる
             self.relative_turn(error)

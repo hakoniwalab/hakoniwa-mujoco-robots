@@ -47,16 +47,44 @@
 
   <worldbody>
     <geom name="ground" type="plane" size="5 5 .05" pos="0 0 0" material="grid" friction="1.0"/>
-    <body name="pallet" pos="1.5 0 0.1">
+    <!-- ピンクの荷物 -->
+    <body name="cargo1" pos="0 0.22 0.465">
+      <freejoint/>
+      <geom name="cargo_box1" type="box" size="0.2 0.2 0.2" 
+            rgba="1.0 0.4 0.7 1" mass="1.0" friction="1 0.005 0.0001"/>
+    </body>
+
+    <!-- グリーンの荷物 -->
+    <body name="cargo2" pos="0 -0.22 0.465">
+      <freejoint/>
+      <geom name="cargo_box2" type="box" size="0.2 0.2 0.2" 
+            rgba="0.2 0.8 0.4 1" mass="1.0" friction="1 0.005 0.0001"/>
+    </body>
+
+    <body name="pallet" pos="0 0 0.1">
       <freejoint/>
       <geom name="pallet_geom_top" type="box" size="0.25 0.4 0.015" pos="0 0 0.0" mass="0.1" rgba="0.6 0.4 0.2 1" friction="2 0.1 0.1"/>
       <geom name="support_center" type="box" size="0.2 0.05 0.025" pos="0 0 -0.05" mass="0.1" rgba="0 0 0 1"/>
       <geom name="support_left" type="box" size="0.25 0.025 0.05" pos="0 0.4 -0.05" mass="0.1" rgba="0 0 0 1"/>
       <geom name="support_right" type="box" size="0.25 0.025 0.05" pos="0 -0.4 -0.05" mass="0.01" rgba="0 0 0 1"/>
     </body>
+    <body name="shelf" pos="3.5 2 0" euler="0 0 90">
+      <freejoint/>
+      <!-- 支柱（4本） -->
+      <geom type="box" size="0.025 0.025 1.0" pos="-0.5 -2.25 1.0" rgba="0.3 0.3 0.3 1"/>
+      <geom type="box" size="0.025 0.025 1.0" pos="-0.5  2.25 1.0" rgba="0.3 0.3 0.3 1"/>
+      <geom type="box" size="0.025 0.025 1.0" pos=" 0.5 -2.25 1.0" rgba="0.3 0.3 0.3 1"/>
+      <geom type="box" size="0.025 0.025 1.0" pos=" 0.5  2.25 1.0" rgba="0.3 0.3 0.3 1"/>
+
+      <!-- 棚板（3段） -->
+      <geom type="box" size="0.5 2.25 0.01" pos="0 0 0.1" rgba="0.5 0.3 0.1 1"/>  <!-- 1段目 -->
+      <geom type="box" size="0.5 2.25 0.01" pos="0 0 0.8" rgba="0.5 0.3 0.1 1"/>  <!-- 2段目 -->
+      <geom type="box" size="0.5 2.25 0.01" pos="0 0 1.5" rgba="0.5 0.3 0.1 1"/>  <!-- 3段目 -->
+    </body>
+
 
     <!-- 本体（ベース） -->
-    <body name="forklift_base" pos="0 0 0.5" euler="0 0 0" childclass="yellow">
+    <body name="forklift_base" pos="2 0 0.5" euler="0 0 0" childclass="yellow">
       <freejoint/>
       <geom name="base" type="box" size="0.25 0.25 0.3" mass="80.0"/>
       <body name="body_guard" pos="0.4 0 -0.25" euler="0 0 0">
