@@ -100,6 +100,39 @@ def forklift_demo(forklift):
     print("[INFO] Forklift lifting down 0.05 m.")
     forklift.lift_move(0.05)
     time.sleep(1)
+
+    move_distance = 1.95
+    print("[INFO] Forklift move back  {move_distance} m.")
+    forklift.move(-move_distance)
+    time.sleep(2)
+
+    forklift.set_yaw_degree(-180)
+
+    move_distance = 1.1
+    forklift.lift_move(-0.05)
+    print(f"[INFO] Forklift move forward {move_distance} m.")
+    forklift.move(move_distance)
+    time.sleep(2)
+
+    print("[INFO] Forklift lifting up 0.2m.")
+    forklift.lift_move(0.2)
+    time.sleep(2)
+    move_distance = 2.1
+    print("[INFO] Forklift move back  {move_distance} m.")
+    forklift.move(-move_distance)
+    time.sleep(2)
+
+    forklift.set_yaw_degree(-270)
+
+    move_distance = 1.95
+    print(f"[INFO] Forklift move forward {move_distance} m.")
+    forklift.move(move_distance)
+    time.sleep(1)
+    print("[INFO] Forklift lifting down 0.05 m.")
+    forklift.lift_move(0.05)
+    time.sleep(1)
+
+    move_distance = 1.0
     print("[INFO] Forklift move back  {move_distance} m.")
     forklift.move(-move_distance)
     time.sleep(2)
