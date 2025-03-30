@@ -5,6 +5,7 @@ import sys
 import pygame
 import time
 import os
+import hako_pdu
 import hakopy
 from gamepad_pdu import GamepadPDU
 
@@ -15,7 +16,10 @@ DEADZONE = 0.05
 
 def joystick_control(config_path, robot_name, channel_id):
     try:
-        gamepad_pdu = GamepadPDU(config_path, robot_name, channel_id)
+        hako_binary_path = os.getenv('HAKO_BINARY_PATH', '/usr/local/lib/hakoniwa/hako_binary/offset')
+        pdu_manager = hako_pdu.HakoPduManager(hako_binary_path, config_path)
+
+        gamepad_pdu = GamepadPDU(pdu_manager, robot_name, channel_id)
 
         while True:
             gamepad_data = gamepad_pdu.read()
