@@ -5,12 +5,18 @@
 namespace hako::robots {
     class PhysicsObject {
     protected:
-        std::shared_ptr<hako::robots::physics::IRigidBody> base;        
+        std::shared_ptr<hako::robots::physics::IRigidBody> base;
+        std::string model_name;
     public:
-        PhysicsObject(std::shared_ptr<hako::robots::physics::IWorld> world, const std::string& model_name) {
+        PhysicsObject(std::shared_ptr<hako::robots::physics::IWorld> world, const std::string& model_name) 
+            : model_name(model_name)
+        {
             base   = world->getRigidBody(model_name);
         }
         virtual ~PhysicsObject() = default;
+        std::string& getModelName() {
+            return model_name;
+        }
 
         hako::robots::types::Position getPosition() const {
             return base->GetPosition();

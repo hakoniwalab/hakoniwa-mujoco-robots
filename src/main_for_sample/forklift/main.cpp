@@ -54,7 +54,10 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     controller.set_delta_pos(delta_pos);
 
     hako::robots::pdu::GamePad pad(robot_name, 0);
-    hako::pdu::msgs::geometry_msgs::Twist pos(robot_name, 1);
+    hako::pdu::msgs::geometry_msgs::Twist forklift_pos(robot_name, 1);
+    hako::pdu::msgs::geometry_msgs::Twist pallet_pos(pallet.getModelName(), 0);
+    HakoCpp_Twist& forklift_pos_data = forklift_pos.getData();
+    HakoCpp_Twist& pallet_pos_data = pallet_pos.getData();
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         {
@@ -69,11 +72,16 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             world->advanceTimeStep();
 
             //flush pos of forklift
-            HakoCpp_Twist& pos_data = pos.getData();
-            pos_data.linear.x = controller.getForklift().getPosition().x;
-            pos_data.linear.y = controller.getForklift().getPosition().y;
-            pos_data.linear.z = controller.getForklift().getPosition().z;
-            pos.flush();
+            forklift_pos_data.linear.x = controller.getForklift().getPosition().x;
+            forklift_pos_data.linear.y = controller.getForklift().getPosition().y;
+            forklift_pos_data.linear.z = controller.getForklift().getPosition().z;
+            forklift_pos.flush();
+
+            //flush pos of pallet
+            pallet_pos_data.linear.x = pallet.getPosition().x;
+            pallet_pos_data.linear.y = pallet.getPosition().y;
+            pallet_pos_data.linear.z = pallet.getPosition().z;
+            pallet_pos.flush();
         }
 
         auto end = std::chrono::steady_clock::now();

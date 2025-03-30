@@ -27,6 +27,25 @@
                 }
 
             ]
+        },
+        {
+            "name": "pallet",
+            "rpc_pdu_readers": [],
+            "rpc_pdu_writers": [],
+            "shm_pdu_readers": [
+            ],
+            "shm_pdu_writers": [
+                {
+                    "type": "geometry_msgs/Twist",
+                    "org_name": "pos",
+                    "name": "pallet_pos",
+                    "channel_id": 0,
+                    "pdu_size": 72,
+                    "write_cycle": 0,
+                    "method_type": "SHM"
+                }
+
+            ]
         }    
     ]
 }
