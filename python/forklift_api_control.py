@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 import hakopy
 import hako_pdu
 from api.forklift_api import ForkliftAPI
@@ -24,15 +25,34 @@ def main():
     print("[INFO] Forklift API initialized.")
 
 
+    print("[INFO] Forklift API test started.")
+    # move forward
     forklift.lift_move(-0.05)
+    time.sleep(2)
+    print("[INFO] Forklift moving forward 1m.")
     forklift.move(1.0)
+    time.sleep(2)
+    print("[INFO] Forklift lifting up 0.3m.")
     forklift.lift_move(0.3)
+    time.sleep(2)
+    print("[INFO] Forklift move back 1m.")
     forklift.move(-1.0)
-    forklift.turn(-80)
-    forklift.move_forward(1.0)
+    time.sleep(5)
+    print("[INFO] Forklift turn -90deg.")
+    forklift.set_yaw_degree(-90)
+
+    print("[INFO] Forklift move forward 1m.")
+    forklift.move(1.0)
+    time.sleep(2)
+    print("[INFO] Forklift lift down.")
     forklift.lift_move(-0.05)
+    time.sleep(2)
+    print("[INFO] Forklift move back 1m.")
     forklift.move(-1.0)
-    forklift.turn(80)
+    time.sleep(2)
+    print("[INFO] Forklift turn 90deg.")
+    forklift.set_yaw_degree(0)
+    time.sleep(2)
     # info position
     pos = forklift.get_position()
     print(f"[INFO] Forklift position: {pos}")

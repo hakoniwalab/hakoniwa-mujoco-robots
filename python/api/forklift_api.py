@@ -36,22 +36,64 @@ class ForkliftAPI:
         gamepad_data['button'][self.BUTTON_ESTOP] = False
         self.forklift_gamepad.write(gamepad_data)
         time.sleep(self.SLEEP_INTERVAL)
-    
+
     def _turn_to_yaw_degree(self, target_yaw_degree):
         target_yaw_degree = self._normalize_angle(target_yaw_degree)
+
+        Kp = 0.5  # 比例ゲイン（P）
+        Ki = 0.2  # 積分ゲイン（I）←追加
+        Kd = 1.0   # 微分ゲイン（D）
+
+        prev_error = 0
+        integral = 0
+        dt = 0.001  # 制御周期（秒）
+
         while True:
             current_yaw = self._normalize_angle(self.get_yaw_degree())
-            print(f"[INFO] Current yaw degree: {current_yaw:.2f}, Target yaw degree: {target_yaw_degree:.2f}")
             error = target_yaw_degree - current_yaw
-            if abs(error) < 0.1:
+
+            # 誤差を -180～180 に正規化
+            error = (error + 180) % 360 - 180
+
+            if abs(error) < 0.25:
                 self.stop()
-                print(f"[INFO] Reached target yaw degree: {target_yaw_degree:.2f}")
                 break
+
+            # 積分項の計算
+            integral += error * dt
+
+            # 微分項の計算
+            derivative = (error - prev_error) / dt
+            prev_error = error
+
+            # PID出力
+            control = Kp * error + Ki * integral + Kd * derivative
+
+            # 飽和（-1.0～1.0にクランプ）
+            control = -max(min(control, 1.0), -1.0)
+
+            # 書き込み
             gamepad_data = self.forklift_gamepad.read()
             gamepad_data['axis'] = list(gamepad_data['axis'])
-            gamepad_data['axis'][self.AXIS_YAW] = -1.0 if error > 0 else 1.0
+            gamepad_data['axis'][self.AXIS_YAW] = control
             self.forklift_gamepad.write(gamepad_data)
-            time.sleep(self.SLEEP_INTERVAL)
+
+            time.sleep(dt)
+
+    def set_yaw_degree(self, target_yaw_degree):
+        print(f"[INFO] Forklift turn {target_yaw_degree} [deg].")
+        target_yaw = target_yaw_degree
+        while True:
+            curr_yaw = self.get_yaw_degree()
+            error = target_yaw - curr_yaw
+            #print(f"[INFO] Current yaw degree: {curr_yaw}")
+            #print(f"[INFO] Yaw error: {error}")
+            if abs(error) <= 0.5:
+                #print("[INFO] Target angle reached.")
+                break
+            # 誤差分だけ回転させる
+            self.relative_turn(error)
+            time.sleep(0.5)
 
     def _normalize_angle(self, degree):
         # -180〜180 に正規化
@@ -64,11 +106,11 @@ class ForkliftAPI:
     def lift_move(self, target_height):
         while True:
             current_height = self.get_height()
-            print(f"[INFO] Current height: {current_height:.2f}, Target height: {target_height:.2f}")
+            #print(f"[INFO] Current height: {current_height:.2f}, Target height: {target_height:.2f}")
             error = target_height - current_height
             if abs(current_height - target_height) < 0.01:
                 self.stop()
-                print(f"[INFO] Reached target height: {current_height:.2f}")
+                #print(f"[INFO] Reached target height: {current_height:.2f}")
                 break
             # Move the lift
             gamepad_data = self.forklift_gamepad.read()
@@ -83,11 +125,11 @@ class ForkliftAPI:
         while True:
             current_pos =  (self.get_position()['linear']['x'], self.get_position()['linear']['y'])
             move_distance = ((current_pos[0] - initial_pos[0]) ** 2 + (current_pos[1] - initial_pos[1]) ** 2) ** 0.5
-            print(f"[INFO] Current position: {current_pos}, Target distance: {distance}")
+            #print(f"[INFO] Current position: {current_pos}, Target distance: {distance}")
             error = distance - move_distance
             if abs(error) < 0.01:
                 self.stop()
-                print(f"[INFO] Reached target distance: {distance}")
+                #print(f"[INFO] Reached target distance: {distance}")
                 break
             # Move the forklift forward
             gamepad_data = self.forklift_gamepad.read()
@@ -102,11 +144,11 @@ class ForkliftAPI:
         while True:
             current_pos =  (self.get_position()['linear']['x'], self.get_position()['linear']['y'])
             move_distance = ((current_pos[0] - initial_pos[0]) ** 2 + (current_pos[1] - initial_pos[1]) ** 2) ** 0.5
-            print(f"[INFO] Current position: {current_pos}, Target distance: {distance}")
+            #print(f"[INFO] Current position: {current_pos}, Target distance: {distance}")
             error = distance - move_distance
             if abs(error) < 0.01:
                 self.stop()
-                print(f"[INFO] Reached target distance: {distance}")
+                #print(f"[INFO] Reached target distance: {distance}")
                 break
             # Move the forklift forward
             gamepad_data = self.forklift_gamepad.read()
@@ -121,7 +163,7 @@ class ForkliftAPI:
         else:
             self.move_backward(-distance)
 
-    def turn(self, relative_degree):
+    def relative_turn(self, relative_degree):
         # Convert degrees to radians for the gamepad axis
         yaw_degree = self.get_yaw_degree()
         self._turn_to_yaw_degree(yaw_degree + relative_degree)
