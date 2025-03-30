@@ -18,6 +18,7 @@
 #include "hakoniwa/pdu/gamepad.hpp"
 #include "hakoniwa/pdu/adapter/forklift_operation_adapter.hpp"
 #include "hakoniwa/pdu/msgs/geometry_msgs/Twist.hpp"
+#include "hakoniwa/pdu/msgs/std_msgs/Float64.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift.xml";
@@ -55,8 +56,10 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
     hako::robots::pdu::GamePad pad(robot_name, 0);
     hako::pdu::msgs::geometry_msgs::Twist forklift_pos(robot_name, 1);
+    hako::pdu::msgs::std_msgs::Float64 lift_pos(robot_name, 2);
     hako::pdu::msgs::geometry_msgs::Twist pallet_pos(pallet.getModelName(), 0);
     HakoCpp_Twist& forklift_pos_data = forklift_pos.getData();
+    HakoCpp_Float64& lift_pos_data = lift_pos.getData();
     HakoCpp_Twist& pallet_pos_data = pallet_pos.getData();
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
@@ -75,12 +78,22 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             forklift_pos_data.linear.x = controller.getForklift().getPosition().x;
             forklift_pos_data.linear.y = controller.getForklift().getPosition().y;
             forklift_pos_data.linear.z = controller.getForklift().getPosition().z;
+            forklift_pos_data.angular.x = controller.getForklift().getEuler().x;
+            forklift_pos_data.angular.y = controller.getForklift().getEuler().y;
+            forklift_pos_data.angular.z = controller.getForklift().getEuler().z;
             forklift_pos.flush();
+
+            //flush pos of lift
+            lift_pos_data.data = controller.getForklift().getLiftPosition().z;
+            lift_pos.flush();
 
             //flush pos of pallet
             pallet_pos_data.linear.x = pallet.getPosition().x;
             pallet_pos_data.linear.y = pallet.getPosition().y;
             pallet_pos_data.linear.z = pallet.getPosition().z;
+            pallet_pos_data.angular.x = pallet.getEuler().x;
+            pallet_pos_data.angular.y = pallet.getEuler().y;
+            pallet_pos_data.angular.z = pallet.getEuler().z;
             pallet_pos.flush();
         }
 

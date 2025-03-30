@@ -24,8 +24,16 @@
                     "pdu_size": 72,
                     "write_cycle": 1,
                     "method_type": "SHM"
+                },
+                {
+                    "type": "std_msgs/Float64",
+                    "org_name": "height",
+                    "name": "forklift_height",
+                    "channel_id": 2,
+                    "pdu_size": 32,
+                    "write_cycle": 1,
+                    "method_type": "SHM"
                 }
-
             ]
         },
         {
