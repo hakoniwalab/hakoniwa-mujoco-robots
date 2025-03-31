@@ -36,6 +36,27 @@ static int my_on_reset(hako_asset_context_t* context)
     (void)context;
     return 0;
 }
+class HakoObject {
+private:
+    hako::robots::PhysicsObject obj;
+public:
+    HakoObject(const std::string& name, std::shared_ptr<hako::robots::physics::IWorld> world)
+        : obj(world, name)
+        {
+        }
+
+    void flush() {
+        auto pos = hako::pdu::msgs::geometry_msgs::Twist(obj.getModelName(), 0);
+        HakoCpp_Twist& pos_data = pos.getData();
+        pos_data.linear.x = obj.getPosition().x;
+        pos_data.linear.y = obj.getPosition().y;
+        pos_data.linear.z = obj.getPosition().z;
+        pos_data.angular.x = obj.getEuler().x;
+        pos_data.angular.y = obj.getEuler().y;
+        pos_data.angular.z = obj.getEuler().z;
+        pos.flush();
+    }
+};
 
 static int my_manual_timing_control(hako_asset_context_t* context)
 {
@@ -46,8 +67,13 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     std::cout << "[INFO] Simulation timestep: " << simulation_timestep << " sec" << std::endl;
 
     hako::robots::controller::ForkliftController controller(world);
-    hako::robots::PhysicsObject pallet(world, "pallet");
-
+    HakoObject pallet1("pallet1", world);
+    HakoObject pallet2("pallet2", world);
+    HakoObject shelf("shelf", world);
+    HakoObject cargo1("cargo1", world);
+    HakoObject cargo2("cargo2", world);
+    HakoObject cargo3("cargo3", world);
+    HakoObject cargo4("cargo4", world);
     controller.setVelocityCommand(0.0, 0.0);
     controller.setLiftTarget(0.0);
     std::string robot_name = "forklift";
@@ -57,10 +83,8 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     hako::robots::pdu::GamePad pad(robot_name, 0);
     hako::pdu::msgs::geometry_msgs::Twist forklift_pos(robot_name, 1);
     hako::pdu::msgs::std_msgs::Float64 lift_pos(robot_name, 2);
-    hako::pdu::msgs::geometry_msgs::Twist pallet_pos(pallet.getModelName(), 0);
     HakoCpp_Twist& forklift_pos_data = forklift_pos.getData();
     HakoCpp_Float64& lift_pos_data = lift_pos.getData();
-    HakoCpp_Twist& pallet_pos_data = pallet_pos.getData();
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         {
@@ -88,13 +112,13 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             lift_pos.flush();
 
             //flush pos of pallet
-            pallet_pos_data.linear.x = pallet.getPosition().x;
-            pallet_pos_data.linear.y = pallet.getPosition().y;
-            pallet_pos_data.linear.z = pallet.getPosition().z;
-            pallet_pos_data.angular.x = pallet.getEuler().x;
-            pallet_pos_data.angular.y = pallet.getEuler().y;
-            pallet_pos_data.angular.z = pallet.getEuler().z;
-            pallet_pos.flush();
+            pallet1.flush();
+            pallet2.flush();
+            shelf.flush();
+            cargo1.flush();
+            cargo2.flush();
+            cargo3.flush();
+            cargo4.flush();
         }
 
         auto end = std::chrono::steady_clock::now();

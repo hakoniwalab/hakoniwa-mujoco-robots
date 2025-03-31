@@ -61,7 +61,7 @@
             rgba="0.2 0.8 0.4 1" mass="1.0" friction="1 0.005 0.0001"/>
     </body>
 
-    <body name="pallet" pos="0 0 0.1">
+    <body name="pallet1" pos="0 0 0.1">
       <freejoint/>
       <geom name="pallet_geom_top" type="box" size="0.25 0.4 0.015" pos="0 0 0.0" mass="0.1" rgba="0.6 0.4 0.2 1" friction="2 0.1 0.1"/>
       <geom name="support_center" type="box" size="0.2 0.05 0.025" pos="0 0 -0.05" mass="0.1" rgba="0 0 0 1"/>

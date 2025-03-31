@@ -37,7 +37,7 @@
             ]
         },
         {
-            "name": "pallet",
+            "name": "cargo1",
             "rpc_pdu_readers": [],
             "rpc_pdu_writers": [],
             "shm_pdu_readers": [
@@ -46,7 +46,7 @@
                 {
                     "type": "geometry_msgs/Twist",
                     "org_name": "pos",
-                    "name": "pallet_pos",
+                    "name": "cargo1_pos",
                     "channel_id": 0,
                     "pdu_size": 72,
                     "write_cycle": 0,
@@ -54,6 +54,121 @@
                 }
 
             ]
-        }    
+        },        
+        {
+            "name": "cargo2",
+            "rpc_pdu_readers": [],
+            "rpc_pdu_writers": [],
+            "shm_pdu_readers": [
+            ],
+            "shm_pdu_writers": [
+                {
+                    "type": "geometry_msgs/Twist",
+                    "org_name": "pos",
+                    "name": "cargo2_pos",
+                    "channel_id": 0,
+                    "pdu_size": 72,
+                    "write_cycle": 0,
+                    "method_type": "SHM"
+                }
+
+            ]
+        },
+        {
+            "name": "cargo3",
+            "rpc_pdu_readers": [],
+            "rpc_pdu_writers": [],
+            "shm_pdu_readers": [
+            ],
+            "shm_pdu_writers": [
+                {
+                    "type": "geometry_msgs/Twist",
+                    "org_name": "pos",
+                    "name": "cargo3_pos",
+                    "channel_id": 0,
+                    "pdu_size": 72,
+                    "write_cycle": 0,
+                    "method_type": "SHM"
+                }
+
+            ]
+        },        
+        {
+            "name": "cargo4",
+            "rpc_pdu_readers": [],
+            "rpc_pdu_writers": [],
+            "shm_pdu_readers": [
+            ],
+            "shm_pdu_writers": [
+                {
+                    "type": "geometry_msgs/Twist",
+                    "org_name": "pos",
+                    "name": "cargo4_pos",
+                    "channel_id": 0,
+                    "pdu_size": 72,
+                    "write_cycle": 0,
+                    "method_type": "SHM"
+                }
+
+            ]
+        },
+        {
+            "name": "pallet1",
+            "rpc_pdu_readers": [],
+            "rpc_pdu_writers": [],
+            "shm_pdu_readers": [
+            ],
+            "shm_pdu_writers": [
+                {
+                    "type": "geometry_msgs/Twist",
+                    "org_name": "pos",
+                    "name": "pallet1_pos",
+                    "channel_id": 0,
+                    "pdu_size": 72,
+                    "write_cycle": 0,
+                    "method_type": "SHM"
+                }
+
+            ]
+        },
+        {
+            "name": "pallet2",
+            "rpc_pdu_readers": [],
+            "rpc_pdu_writers": [],
+            "shm_pdu_readers": [
+            ],
+            "shm_pdu_writers": [
+                {
+                    "type": "geometry_msgs/Twist",
+                    "org_name": "pos",
+                    "name": "pallet2_pos",
+                    "channel_id": 0,
+                    "pdu_size": 72,
+                    "write_cycle": 0,
+                    "method_type": "SHM"
+                }
+
+            ]
+        },
+        {
+            "name": "shelf",
+            "rpc_pdu_readers": [],
+            "rpc_pdu_writers": [],
+            "shm_pdu_readers": [
+            ],
+            "shm_pdu_writers": [
+                {
+                    "type": "geometry_msgs/Twist",
+                    "org_name": "pos",
+                    "name": "shelf_pos",
+                    "channel_id": 0,
+                    "pdu_size": 72,
+                    "write_cycle": 0,
+                    "method_type": "SHM"
+                }
+
+            ]
+        }
+
     ]
 }
