@@ -34,10 +34,13 @@ namespace hako::robots {
             lift_motor->SetTorque(torque);
         }
         hako::robots::types::Position getLiftPosition() const {
-            //std::cout << "lift position: " << lift->GetPosition().z << std::endl;
-            //std::cout << "left wheel position: " << left_wheel->GetPosition().to_string() << std::endl;
-            //std::cout << "right wheel position: " << right_wheel->GetPosition().to_string() << std::endl;
             return lift->GetPosition() - left_wheel->GetPosition();
+        }
+        hako::robots::types::Position getLiftWorldPosition() const {
+            return lift->GetPosition();
+        }
+        hako::robots::types::Position getLiftEuler() const {
+            return lift->GetEuler();
         }
         hako::robots::types::BodyVelocity getLiftBodyVelocity() const {
             return lift->GetBodyVelocity();

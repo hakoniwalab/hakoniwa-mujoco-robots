@@ -22,7 +22,7 @@
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift.xml";
-static const char* config_path = "config/custom.json";
+static const char* config_path = "../../oss/hakoniwa-unity-drone/simulation/safety-forklift-pdu.json";
 static std::mutex data_mutex;
 static bool running_flag = true;
 
@@ -82,8 +82,11 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
     hako::robots::pdu::GamePad pad(robot_name, 0);
     hako::pdu::msgs::geometry_msgs::Twist forklift_pos(robot_name, 1);
+    std::string robot_name2 = "forklift_fork";
+    hako::pdu::msgs::geometry_msgs::Twist forklift_fork_pos(robot_name2, 0);
     hako::pdu::msgs::std_msgs::Float64 lift_pos(robot_name, 2);
     HakoCpp_Twist& forklift_pos_data = forklift_pos.getData();
+    HakoCpp_Twist& forklift_fork_pos_data = forklift_fork_pos.getData();
     HakoCpp_Float64& lift_pos_data = lift_pos.getData();
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
@@ -110,6 +113,15 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             //flush pos of lift
             lift_pos_data.data = controller.getForklift().getLiftPosition().z;
             lift_pos.flush();
+
+            //flush pos of fork
+            forklift_fork_pos_data.linear.x = controller.getForklift().getLiftWorldPosition().x;
+            forklift_fork_pos_data.linear.y = controller.getForklift().getLiftWorldPosition().y;
+            forklift_fork_pos_data.linear.z = controller.getForklift().getLiftWorldPosition().z;
+            forklift_fork_pos_data.angular.x = controller.getForklift().getLiftEuler().x;
+            forklift_fork_pos_data.angular.y = controller.getForklift().getLiftEuler().y;
+            forklift_fork_pos_data.angular.z = controller.getForklift().getLiftEuler().z;
+            forklift_fork_pos.flush();
 
             //flush pos of pallet
             pallet1.flush();
