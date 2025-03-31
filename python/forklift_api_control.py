@@ -60,82 +60,80 @@ def forklift_turn_test(forklift, yaw_degree):
     yaw = forklift.get_yaw_degree()
     print(f"[INFO] Forklift yaw degree: {yaw}")
 
-def forklift_demo(forklift):
-    # info position
-    pos = forklift.get_position()
-    print(f"[INFO] Forklift position: {pos}")
-    # info yaw
-    yaw = forklift.get_yaw_degree()
-    print(f"[INFO] Forklift yaw degree: {yaw}")
 
-    forklift.set_yaw_degree(-180)
+class ForkliftController:
+    def __init__(self, forklift):
+        self.forklift = forklift
+    
+    def rotate_to_pickup_pos(self):
+        self.forklift.set_yaw_degree(-180)
 
-    # info position
-    pos = forklift.get_position()
-    print(f"[INFO] Forklift position: {pos}")
-    # info yaw
-    yaw = forklift.get_yaw_degree()
-    print(f"[INFO] Forklift yaw degree: {yaw}")
+    def rotate_to_shelf_pos(self):
+        self.forklift.set_yaw_degree(-270)
 
-    move_distance = 1.65
-    print(f"[INFO] Forklift move forward {move_distance} m.")
-    forklift.move(move_distance)
-    forklift.lift_move(-0.05)
-    time.sleep(2)
+    def grab_cargo(self):
+        print("[INFO] Forklift lifting up 0.2m.")
+        self.forklift.lift_move(0.2)
 
-    print("[INFO] Forklift lifting up 0.2m.")
-    forklift.lift_move(0.2)
-    time.sleep(2)
-    move_distance = 1.0
-    print("[INFO] Forklift move back  {move_distance} m.")
-    forklift.move(-move_distance)
-    time.sleep(2)
+    def release_cargo(self):
+        print("[INFO] Forklift lifting down 0.05m.")
+        self.forklift.lift_move(0.05)
 
-    forklift.set_yaw_degree(-270)
+    def lift_down(self):
+        print("[INFO] Forklift lifting down.")
+        self.forklift.lift_move(-0.05)
+        time.sleep(1)
+    
+    def approach_target(self, distance):
+        print(f"[INFO] Forklift move forward {distance} m.")
+        self.forklift.move(distance)
+        time.sleep(2)
 
-    move_distance = 1.1
-    print(f"[INFO] Forklift move forward {move_distance} m.")
-    forklift.move(move_distance)
-    time.sleep(1)
-    print("[INFO] Forklift lifting down 0.05 m.")
-    forklift.lift_move(0.05)
-    time.sleep(1)
+    def retreat(self, distance):
+        print(f"[INFO] Forklift move back {distance} m.")
+        self.forklift.move(-distance)
+        time.sleep(2)
 
-    move_distance = 1.95
-    print("[INFO] Forklift move back  {move_distance} m.")
-    forklift.move(-move_distance)
-    time.sleep(2)
+    def rotate_to(self, yaw_degree):
+        print(f"[INFO] Forklift turning to {yaw_degree} deg.")
+        self.forklift.set_yaw_degree(yaw_degree)
 
-    forklift.set_yaw_degree(-180)
 
-    move_distance = 1.1
-    forklift.lift_move(-0.05)
-    print(f"[INFO] Forklift move forward {move_distance} m.")
-    forklift.move(move_distance)
-    time.sleep(2)
+    def pickup_sequence(self, approach_dist, back_dist):
+        self.lift_down()
+        self.approach_target(approach_dist)
+        self.grab_cargo()
+        self.retreat(back_dist)
 
-    print("[INFO] Forklift lifting up 0.2m.")
-    forklift.lift_move(0.2)
-    time.sleep(2)
-    move_distance = 2.1
-    print("[INFO] Forklift move back  {move_distance} m.")
-    forklift.move(-move_distance)
-    time.sleep(2)
+    def dropoff_sequence(self, approach_dist, back_dist):
+        self.approach_target(approach_dist)
+        self.release_cargo()
+        self.retreat(back_dist)
 
-    forklift.set_yaw_degree(-270)
+    def mission(self, pickup_x, dropoff_x, dropoff_y, next_pickup_y):
+        print(f"[INFO] Starting pickup sequence.")
+        self.rotate_to_pickup_pos()
+        self.pickup_sequence(pickup_x, dropoff_x)
+        self.rotate_to_shelf_pos()
+        print(f"[INFO] Moving to dropoff point.")
+        self.dropoff_sequence(dropoff_y, next_pickup_y)
 
-    move_distance = 1.95
-    print(f"[INFO] Forklift move forward {move_distance} m.")
-    forklift.move(move_distance)
-    time.sleep(1)
-    print("[INFO] Forklift lifting down 0.05 m.")
-    forklift.lift_move(0.05)
-    time.sleep(1)
 
-    move_distance = 1.0
-    print("[INFO] Forklift move back  {move_distance} m.")
-    forklift.move(-move_distance)
-    time.sleep(2)
+    def full_mission(self):
+        print(f"[INFO] Starting 1st mission")
+        self.mission(
+            pickup_x=1.65,
+            dropoff_x=1.0,
+            dropoff_y=1.1,
+            next_pickup_y=1.95
+        )
+        print(f"[INFO] Starting 2nd mission")
+        self.mission(
+            pickup_x=1.1,
+            dropoff_x=2.1,
+            dropoff_y=2.2,
+            next_pickup_y=1.0
+        )
 
 def main():
     if len(sys.argv) != 2:
@@ -155,7 +153,8 @@ def main():
 
     forklift = ForkliftAPI(pdu_manager)
     print("[INFO] Forklift API test started.")
-    forklift_demo(forklift)
+    controller = ForkliftController(forklift)
+    controller.full_mission()
     print("[INFO] Forklift API test completed.")
 
     return 0
