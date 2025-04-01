@@ -1,0 +1,99 @@
+<mujoco>
+  <option timestep="0.001" density="1.204" viscosity="1.8e-5" integrator="implicit"/>
+  <option gravity="0 0 -9.81"/>
+  <visual>
+    <global elevation="-10"/>
+  </visual>
+  <default>
+    <tendon limited="true" width="0.003" rgba="1 1 1 1"/>
+    <geom friction=".2"/>
+    <default class="weight">
+      <geom rgba=".8 .4 .8 1"/>
+      <site rgba=".8 .4 .8 1"/>
+    </default>
+    <default class="balloon">
+      <geom density="0.167" fluidshape="ellipsoid"/>
+      <default class="pink">
+        <geom rgba="1 .6 .7 1"/>
+        <site rgba="1 .6 .7 1"/>
+      </default>
+      <default class="blue">
+        <geom rgba=".3 .7 .9 1"/>
+        <site rgba=".3 .7 .9 1"/>
+      </default>
+      <default class="green">
+        <geom rgba=".4 .9 .5 1"/>
+        <site rgba=".4 .9 .5 1"/>
+      </default>
+      <default class="orange">
+        <geom rgba="1 .4 0 1"/>
+        <site rgba="1 .4 0 1"/>
+      </default>
+      <default class="black">
+        <geom rgba="0 0 0 1"/>
+        <site rgba="0 0 0 1"/>
+      </default>
+      <default class="yellow">
+        <geom rgba="1 1 0 1"/>
+        <site rgba="1 1 0 1"/>
+      </default>
+
+    </default>
+  </default>
+  <asset>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb2="0 0 0" rgb1="1 1 1"/>
+    <material name="grid" texture="grid" texrepeat="2 2" texuniform="true" reflectance=".6"/>
+  </asset>
+
+  <worldbody>
+    <geom name="ground" type="plane" size="5 5 .05" pos="0 0 -0.5" material="grid" friction="1.0"/>
+
+    <!-- 本体（ベース） -->
+    <body name="forklift_base" pos="2 0 0.5" euler="0 0 0" childclass="yellow">
+      <freejoint/>
+      <geom name="base" type="box" size="0.25 0.25 0.3" mass="80.0"/>
+      <body name="body_guard" pos="0.4 0 -0.25" euler="0 0 0">
+        <geom name="body_guard_frame" type="box" size="0.01 0.35 0.2" rgba="0.6 0.6 0.6 1"/>
+      </body>
+
+      <!-- フォークリフト機構 -->
+      <body name="lift_arm" pos="0.41 0 -0.35" euler="0 0 0">
+        <joint name="lift_joint" type="slide" axis="0 0 1" range="-0.2 0.3" damping="0.1" stiffness="1" />
+        <geom name="lift_frame" type="box" size="0.03 0.3 0.01" rgba="0.6 0.6 0.6 1"/>
+
+        <!-- フォーク部分 -->
+        <body name="forks" pos="0.3 0 0.0" euler="0 90 0">
+          <geom name="left_fork"  type="box" size="0.01 0.04 0.3" pos="0 0.15 0" rgba="0.4 0.4 0.2 1" mass="1.0" friction="3 0.2 0.1"/>
+          <geom name="right_fork" type="box" size="0.01 0.04 0.3" pos="0 -0.15 0" rgba="0.4 0.4 0.2 1" mass="1.0" friction="3 0.2 0.1"/>
+        </body>
+      </body>
+
+      <!-- 前輪 -->
+      <body name="left_wheel" pos="0.25 0.3 -0.4" euler="90 0 0" childclass="black">
+        <joint name="left_wheel_hinge" type="hinge" axis="0 0 -1" damping="0.1"/>
+        <geom name="left_wheel_geom" type="cylinder" size="0.1 0.02" density="800" friction="1.0"/>
+      </body>
+
+      <body name="right_wheel" pos="0.25 -0.3 -0.4" euler="90 0 0" childclass="black">
+        <joint name="right_wheel_hinge" type="hinge" axis="0 0 -1" damping="0.1"/>
+        <geom name="right_wheel_geom" type="cylinder" size="0.1 0.02" density="800" friction="1.0"/>
+      </body>
+
+      <!-- 後輪 -->
+      <body name="back_castor" pos="-0.25 0 -0.4" childclass="black">
+        <joint name="castor_joint" type="ball" damping="0.01"/>
+        <geom name="castor" type="sphere" size="0.1" density="500" friction="1.01"/>
+      </body>
+
+    </body>
+  </worldbody>
+  <actuator>
+    <!-- 左モーター（初期値5.0で回転） -->
+    <motor name="left_motor" joint="left_wheel_hinge" ctrllimited="true" ctrlrange="-10 10"  gear = "1.0"/>
+
+    <!-- 右モーター（初期値5.0で回転） -->
+    <motor name="right_motor" joint="right_wheel_hinge" ctrllimited="true" ctrlrange="-10 10"  gear = "1.0"/>
+
+    <motor name="lift_motor" joint="lift_joint" ctrllimited="true" ctrlrange="-0.1 0.5" gear="100.0"/>
+  </actuator>
+</mujoco>

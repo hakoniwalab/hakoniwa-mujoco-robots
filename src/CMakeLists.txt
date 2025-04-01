@@ -48,3 +48,4 @@ add_subdirectory(
     )
 
 add_subdirectory(main_for_sample/forklift)
+add_subdirectory(main_for_sample/rover)
