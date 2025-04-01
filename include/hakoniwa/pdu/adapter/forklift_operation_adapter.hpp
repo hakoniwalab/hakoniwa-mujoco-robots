@@ -22,10 +22,9 @@ namespace hako::robots::pdu::adapter {
         double deadzone_threshold;
 
         // Axis and button index mapping
-        static constexpr int AXIS_YAW       = 2;  // Left stick LR (yaw control)
+        int AXIS_YAW       = 2;  // Left stick LR (yaw control)
         static constexpr int AXIS_LIFT      = 1;  // Left stick UD (lift control)
         static constexpr int AXIS_FORWARD   = 3;  // Right stick UD (move forward/backward)
-        static constexpr int BUTTON_ESTOP   = 0;  // Cross button (emergency stop)
 
         // Deadzone filter
         double applyDeadzone(const Hako_float64& input) const {
@@ -43,18 +42,19 @@ namespace hako::robots::pdu::adapter {
               max_lift(max_l),
               deadzone_threshold(deadzone)
         {}
+        void setAxisYawIndex(int index) {
+            AXIS_YAW = index;
+        }
 
         // Convert raw GamePad input into forklift command
         ForkliftCommand convert(const hako::robots::pdu::GamePad& pad) const {
             const HakoCpp_GameControllerOperation& data = pad.getData();
             const auto& axis = data.axis;
-            const auto& button = data.button;
             
             ForkliftCommand cmd;
             cmd.linear_velocity = - applyDeadzone(axis[AXIS_FORWARD]) * max_linear_vel;
             cmd.yaw_rate        = - applyDeadzone(axis[AXIS_YAW])     * max_yaw_rate;
             cmd.lift_position   = - applyDeadzone(axis[AXIS_LIFT])    * max_lift;
-            cmd.emergency_stop  = button[BUTTON_ESTOP];
 
             if (cmd.emergency_stop) {
                 // Immediately stop motion when emergency is triggered

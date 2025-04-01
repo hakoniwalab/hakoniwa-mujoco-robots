@@ -84,6 +84,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             std::lock_guard<std::mutex> lock(data_mutex);
             if (pad.load()) {
                 hako::robots::pdu::adapter::ForkliftOperationCommand adapter;
+                adapter.setAxisYawIndex(0);
                 auto command = adapter.convert(pad);
                 controller.update_target_lift_z(command.lift_position);
                 controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
