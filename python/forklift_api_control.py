@@ -4,6 +4,8 @@ import time
 import hakopy
 import hako_pdu
 from api.forklift_api import ForkliftAPI
+from api.monitor_camera import MonitorCameraManager
+
 
 def forklift_test1(forklift):
     # move forward
@@ -60,10 +62,20 @@ def forklift_turn_test(forklift, yaw_degree):
     yaw = forklift.get_yaw_degree()
     print(f"[INFO] Forklift yaw degree: {yaw}")
 
+SAVE_DIR_PATH="./images"
+def saveMonitorCameraImage(monitor: MonitorCameraManager, log_id:str):
+    global SAVE_DIR_PATH
+    for camera_name in monitor.get_camera_names():
+        png_image = monitor.get_image(camera_name)
+        if png_image:
+            with open(f"{SAVE_DIR_PATH}/SIM_{camera_name}_{log_id}.png", "wb") as f:
+                f.write(png_image)
 
 class ForkliftController:
-    def __init__(self, forklift):
+    def __init__(self, forklift, monitor_camera_manager=None):
+        self.monitor_camera_manager = monitor_camera_manager
         self.forklift = forklift
+        self.mission_id = 0
     
     def rotate_to_pickup_pos(self):
         self.forklift.set_yaw_degree(-180)
@@ -101,22 +113,34 @@ class ForkliftController:
 
     def pickup_sequence(self, approach_dist, back_dist):
         self.lift_down()
+        saveMonitorCameraImage(self.monitor_camera_manager, f"{self.mission_id}_pickup_liftdown")
         self.approach_target(approach_dist)
+        saveMonitorCameraImage(self.monitor_camera_manager, f"{self.mission_id}_pickup_approach")
         self.grab_cargo()
+        saveMonitorCameraImage(self.monitor_camera_manager, f"{self.mission_id}_pickup_grab")
         self.retreat(back_dist)
+        saveMonitorCameraImage(self.monitor_camera_manager, f"{self.mission_id}_pickup_retreat")
 
     def dropoff_sequence(self, approach_dist, back_dist):
         self.approach_target(approach_dist)
+        saveMonitorCameraImage(self.monitor_camera_manager, f"{self.mission_id}_drop_approach")
         self.release_cargo()
+        saveMonitorCameraImage(self.monitor_camera_manager, f"{self.mission_id}_drop_release")
         self.retreat(back_dist)
+        saveMonitorCameraImage(self.monitor_camera_manager, f"{self.mission_id}_drop_retreat")
 
     def mission(self, pickup_x, dropoff_x, dropoff_y, next_pickup_y):
         print(f"[INFO] Starting pickup sequence.")
         self.rotate_to_pickup_pos()
+
         self.pickup_sequence(pickup_x, dropoff_x)
+
         self.rotate_to_shelf_pos()
+
         print(f"[INFO] Moving to dropoff point.")
         self.dropoff_sequence(dropoff_y, next_pickup_y)
+
+        self.mission_id += 1
 
 
     def full_mission(self):
@@ -136,13 +160,18 @@ class ForkliftController:
         )
 
 def main():
-    if len(sys.argv) != 2:
-        print(f"Usage: {sys.argv[0]} <config_path>")
+    if len(sys.argv) != 3:
+        print(f"Usage: {sys.argv[0]} <config_path> <monitor_config_path>")
         return 1
 
     config_path = sys.argv[1]
     if not os.path.exists(config_path):
         print(f"[ERROR] Config file not found at '{config_path}'")
+        return 1
+
+    monitor_config_path = sys.argv[2]
+    if not os.path.exists(monitor_config_path):
+        print(f"[ERROR] Monitor config file not found at '{monitor_config_path}'")
         return 1
 
     if not hakopy.init_for_external():
@@ -151,9 +180,12 @@ def main():
     hako_binary_path = os.getenv('HAKO_BINARY_PATH', '/usr/local/lib/hakoniwa/hako_binary/offset')
     pdu_manager = hako_pdu.HakoPduManager(hako_binary_path, config_path)
 
+    monitor = MonitorCameraManager(monitor_config_path)
+    print(f"[INFO] Monitor camera config loaded from '{monitor_config_path}'")
+
     forklift = ForkliftAPI(pdu_manager)
     print("[INFO] Forklift API test started.")
-    controller = ForkliftController(forklift)
+    controller = ForkliftController(forklift, monitor)
     controller.full_mission()
     print("[INFO] Forklift API test completed.")
 

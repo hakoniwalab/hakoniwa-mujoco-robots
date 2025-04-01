@@ -185,8 +185,14 @@ int main(int argc, const char* argv[])
     }
     std::thread sim_thread(simulation_thread, world);
 
+#if false
     viewer_thread(world->getModel(), world->getData(), std::ref(running_flag), std::ref(data_mutex));
-
+#else
+    while (running_flag) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    std::cout << "[INFO] Simulation thread finished." << std::endl;
+#endif
     running_flag = false;
     sim_thread.join();
 
