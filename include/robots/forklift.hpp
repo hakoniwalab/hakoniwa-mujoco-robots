@@ -46,11 +46,14 @@ namespace hako::robots {
             return lift->GetBodyVelocity();
         }
         double getTreadWidth() const {
-            double left_y  = left_wheel->GetPosition().y;
-            double right_y = right_wheel->GetPosition().y;
-            //std::cout << "left_y: " << left_y << ", right_y: " << right_y << std::endl;
-            return std::abs(left_y - right_y);
+            auto left_pos  = left_wheel->GetPosition();
+            auto right_pos = right_wheel->GetPosition();
+            double dx = left_pos.x - right_pos.x;
+            double dy = left_pos.y - right_pos.y;
+            double dz = left_pos.z - right_pos.z;
+            return std::sqrt(dx * dx + dy * dy + dz * dz);
         }
+        
         
     };
 }
