@@ -12,15 +12,66 @@ MuJoCoベースのロボットアセット集です。フォークリフトを�
 - `src/` … C++によるシミュレーション実装およびサンプルプログラム
 - `python/` … フォークリフト操作用APIやゲームパッド制御スクリプト
 
-## ビルド方法
+## セットアップとビルド
+
+本プロジェクトをビルドするには、C++コンパイラ、CMake、Gitがインストールされている必要があります。
+
+### 1. リポジトリのクローンとサブモジュールの初期化
+
+まず、リポジトリをクローンし、依存するサブモジュールを初期化します。
 
 ```bash
-./build.bash            # CMakeによるビルドを実行
-./build.bash clean      # ビルド生成物の削除
+git clone https://github.com/toppers/hakoniwa-mujoco-robots.git # (ご自身のフォークしたリポジトリURLに置き換えてください)
+cd hakoniwa-mujoco-robots
+git submodule update --init --recursive
 ```
 
-ビルドが成功すると `src/cmake-build/` 以下にサンプル実行ファイル
-`forklift_sim` 及び `rover_sim` が生成されます。
+### 2. OSごとのビルド手順
+
+#### Linux / Windows
+
+LinuxおよびWindowsでは、ビルドに必要なMuJoCoライブラリが自動的にダウンロードされます。
+以下のコマンドを実行してビルドしてください。
+
+```bash
+./build.bash
+```
+
+#### macOS
+
+macOSでは、事前に手動でMuJoCoライブラリをセットアップする必要があります。
+
+1.  **MuJoCoのダウンロード**
+    [MuJoCoのGitHubリリースページ](https://github.com/google-deepmind/mujoco/releases)から、お使いのMacのアーキテクチャに合った最新のDMGファイル（例: `mujoco-3.3.6-macos-universal2.dmg`）をダウンロードします。
+
+2.  **ライブラリの配置**
+    プロジェクトのルートディレクトリに`vendor/mujoco`ディレクトリを作成し、ダウンロードしたDMGファイルに含まれる`include`と`lib`フォルダをコピーします。
+
+    ```
+    hakoniwa-mujoco-robots/
+    └── vendor/
+        └── mujoco/
+            ├── include/mujoco/
+            └── lib/
+    ```
+
+3.  **ビルドの実行**
+    ライブラリの配置後、以下のコマンドを実行してビルドします。
+
+    ```bash
+    ./build.bash
+    ```
+
+### 3. ビルド成果物
+
+ビルドが成功すると `src/cmake-build/` 以下にサンプル実行ファイル `forklift_sim` 及び `rover_sim` が生成されます。
+
+### ビルドのクリーン
+
+ビルド生成物を削除する場合は、`clean`オプションを使用します。
+```bash
+./build.bash clean
+```
 
 ## サンプルの実行
 
