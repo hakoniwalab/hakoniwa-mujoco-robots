@@ -16,6 +16,19 @@ MuJoCoベースのロボットアセット集です。フォークリフトを�
 
 本プロジェクトをビルドするには、C++コンパイラ、CMake、Gitがインストールされている必要があります。
 
+### Prerequisites
+
+This project requires the following libraries to be installed.
+
+- **glfw3**: A library for creating windows with OpenGL contexts.
+
+On Debian/Ubuntu-based systems, you can install it with the following command:
+
+```bash
+sudo apt-get install -y libglfw3-dev
+```
+
+
 ### 1. リポジトリのクローンとサブモジュールの初期化
 
 まず、リポジトリをクローンし、依存するサブモジュールを初期化します。

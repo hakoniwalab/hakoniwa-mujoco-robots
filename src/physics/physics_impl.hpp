@@ -2,6 +2,7 @@
 
 #include "physics.hpp"
 #include "actuator/actuator_impl.hpp"
+#include <unordered_map>
 
 namespace hako::robots::physics::impl
 {

@@ -119,14 +119,14 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     
     return 0;
 }
-static hako_asset_callbacks_t my_callback = {
-    .on_initialize = my_on_initialize,
-    .on_manual_timing_control = my_manual_timing_control,
-    .on_simulation_step = nullptr,
-    .on_reset = my_on_reset
-};
+static hako_asset_callbacks_t my_callback;
 void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
 {
+     my_callback.on_initialize = my_on_initialize;
+     my_callback.on_simulation_step = nullptr;
+     my_callback.on_manual_timing_control = my_manual_timing_control;
+     my_callback.on_reset = my_on_reset;
+     
     const char* asset_name = "forklift";
     double simulation_timestep = world->getModel()->opt.timestep;
     hako_time_t delta_time_usec = static_cast<hako_time_t>(simulation_timestep * 1e6);
