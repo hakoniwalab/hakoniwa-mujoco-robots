@@ -7,6 +7,3 @@
 [submodule "thirdparty/hakoniwa-core-cpp-client"]
 	path = thirdparty/hakoniwa-core-cpp-client
 	url = https://github.com/toppers/hakoniwa-core-cpp-client.git
-[submodule "thirdparty/mujoco"]
-	path = thirdparty/mujoco
-	url = https://github.com/google-deepmind/mujoco.git
