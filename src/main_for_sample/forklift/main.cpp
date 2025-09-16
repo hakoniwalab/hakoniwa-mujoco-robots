@@ -186,7 +186,7 @@ int main(int argc, const char* argv[])
     }
     std::thread sim_thread(simulation_thread, world);
 
-#if false
+#if USE_VIEWER
     viewer_thread(world->getModel(), world->getData(), std::ref(running_flag), std::ref(data_mutex));
 #else
     while (running_flag) {

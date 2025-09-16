@@ -82,8 +82,23 @@ endif()
 
 set(HAKO_CORE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-cpp-client")
 
-find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
+option(USE_VIEWER "Enable MuJoCo viewer" ON)
+
+if(USE_VIEWER)
+    find_package(OpenGL REQUIRED)
+    find_package(glfw3 REQUIRED)
+    add_library(mujoco-common STATIC mujoco-common/mujoco_viewer.cpp mujoco-common/mujoco_debug.cpp)
+    target_include_directories(mujoco-common PUBLIC mujoco-common)
+    if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        target_link_libraries(mujoco-common PUBLIC ${OpenGL_LIBRARIES} glfw)
+    else()
+        target_link_libraries(mujoco-common PUBLIC OpenGL::GL glfw)
+    endif()
+else()
+    add_library(mujoco-common STATIC mujoco-common/mujoco_debug.cpp)
+    target_include_directories(mujoco-common PUBLIC mujoco-common)
+endif()
+
 
 add_subdirectory(
     ${HAKO_CORE_DIR}

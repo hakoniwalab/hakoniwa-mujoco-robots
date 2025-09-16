@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 add_executable(
     rover_sim 
     main.cpp
-    ${PROJECT_ROOT_DIR}/src/mujoco-common/mujoco_debug.cpp
-    ${PROJECT_ROOT_DIR}/src/mujoco-common/mujoco_viewer.cpp
 )
 
 #MESSAGE(STATUS "CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
@@ -22,9 +20,7 @@ target_include_directories(rover_sim
 # MuJoCoライブラリをリンク
 target_link_libraries(rover_sim 
     ${LIBMUJOCO}
-   glfw
-    ${OPENGL_gl_LIBRARY}
-    GL
+    mujoco-common
     assets
     conductor
 )
