@@ -28,6 +28,17 @@ On Debian/Ubuntu-based systems, you can install it with the following command:
 sudo apt-get install -y libglfw3-dev
 ```
 
+### WSL2 Ubuntu (22.04 / 24.04)
+
+WSL2 環境で OpenGL を利用する場合、以下の追加パッケージが必要です。
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils
+```
+
+WSL2 だと ユーザー空間の OpenGL/GLX/Mesa（libGL, DRI, GLX）が欠けていると、コンテキストは作れても描画が真っ黒になりがちです。
+
 
 ### 1. リポジトリのクローンとサブモジュールの初期化
 
@@ -88,15 +99,17 @@ macOSでは、事前に手動でMuJoCoライブラリをセットアップする
 
 ## サンプルの実行
 
+
+フォークリフトのシミュレーション起動
+
 ```bash
-# フォークリフトのシミュレーション起動
-./src/cmake-build/forklift_sim
+./src/cmake-build/main_for_sample/forklift/forklift_sim
 ```
 
 ゲームパッドを利用して操作する場合は Python スクリプトを実行します。
 
 ```bash
-python3 python/forklift_gamepad.py config/custom.json
+python -m python.forklift_gamepad config/custom.json
 ```
 
 ## サンプルコード
