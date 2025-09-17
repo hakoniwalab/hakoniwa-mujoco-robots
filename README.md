@@ -8,39 +8,56 @@ MuJoCoベースのロボットアセット集です。フォークリフトを�
 ## ディレクトリ構成
 
 - `models/` … MuJoCo 用のXMLモデルファイル
-- `config/custom.json` … 各ロボットのPDU(入出力データ)設定
+- `config/` … 各ロボットのPDU(入出力データ)設定
 - `src/` … C++によるシミュレーション実装およびサンプルプログラム
 - `python/` … フォークリフト操作用APIやゲームパッド制御スクリプト
 
-## セットアップとビルド
+## セットアップ
 
 本プロジェクトをビルドするには、C++コンパイラ、CMake、Gitがインストールされている必要があります。
 
-### Prerequisites
+### WSL2 Ubuntu (22.04 / 24.04)の場合
 
-This project requires the following libraries to be installed.
-
-- **glfw3**: A library for creating windows with OpenGL contexts.
-
-On Debian/Ubuntu-based systems, you can install it with the following command:
-
-```bash
-sudo apt-get install -y libglfw3-dev
-```
-
-### WSL2 Ubuntu (22.04 / 24.04)
-
-WSL2 環境で OpenGL を利用する場合、以下の追加パッケージが必要です。
+OpenGL/GLX/Mesa関連のライブラリをインストールします。
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils
+sudo apt-get install -y libglfw3-dev
 ```
 
-WSL2 だと ユーザー空間の OpenGL/GLX/Mesa（libGL, DRI, GLX）が欠けていると、コンテキストは作れても描画が真っ黒になりがちです。
+### macOSの場合
+
+macOSでは、依存ライブラリとMuJoCoを手動でセットアップする必要があります。
+
+**1. GLFWのインストール**
+
+[Homebrew](https://brew.sh/index_ja) を使用して、描画に必要なライブラリ `glfw` をインストールします。
+
+```bash
+brew install glfw
+```
+
+**2. MuJoCoライブラリの配置**
+
+[MuJoCoのGitHubリリースページ](https://github.com/google-deepmind/mujoco/releases)から、お使いのMacのアーキテクチャに合ったDMGファイルをダウンロードします。
+
+次に、プロジェクトのルートに`vendor/mujoco`ディレクトリを作成し、DMGに含まれる`include`と`lib`フォルダをその中にコピーしてください。最終的なディレクトリ構成は以下のようになります。
+
+```
+hakoniwa-mujoco-robots/
+└── vendor/
+    └── mujoco/
+        ├── include/mujoco/
+        └── lib/
+```
+
+### Windowsの場合
+
+TODO
 
 
-### 1. リポジトリのクローンとサブモジュールの初期化
+## リポジトリのクローンとサブモジュールの初期化
 
 まず、リポジトリをクローンし、依存するサブモジュールを初期化します。
 
@@ -50,45 +67,21 @@ cd hakoniwa-mujoco-robots
 git submodule update --init --recursive
 ```
 
-### 2. OSごとのビルド手順
+> 補足：`src/CMakeLists.txt` 内で、`MUJOCO_VERSION` 変数を変更することで、使用する MuJoCo のバージョンを指定できます。
 
-#### Linux / Windows
+## ビルド手順
 
-LinuxおよびWindowsでは、ビルドに必要なMuJoCoライブラリが自動的にダウンロードされます。
-以下のコマンドを実行してビルドしてください。
+各OSのセットアップが完了したら、以下のコマンドでプロジェクトをビルドします。
 
 ```bash
 ./build.bash
 ```
 
-#### macOS
-
-macOSでは、事前に手動でMuJoCoライブラリをセットアップする必要があります。
-
-1.  **MuJoCoのダウンロード**
-    [MuJoCoのGitHubリリースページ](https://github.com/google-deepmind/mujoco/releases)から、お使いのMacのアーキテクチャに合った最新のDMGファイル（例: `mujoco-3.3.6-macos-universal2.dmg`）をダウンロードします。
-
-2.  **ライブラリの配置**
-    プロジェクトのルートディレクトリに`vendor/mujoco`ディレクトリを作成し、ダウンロードしたDMGファイルに含まれる`include`と`lib`フォルダをコピーします。
-
-    ```
-    hakoniwa-mujoco-robots/
-    └── vendor/
-        └── mujoco/
-            ├── include/mujoco/
-            └── lib/
-    ```
-
-3.  **ビルドの実行**
-    ライブラリの配置後、以下のコマンドを実行してビルドします。
-
-    ```bash
-    ./build.bash
-    ```
+> **Note:** Linux/WSL2ではMuJoCoライブラリが自動でダウンロードされますが、macOSではセットアップ手順に従って手動で配置する必要があります。
 
 ### 3. ビルド成果物
 
-ビルドが成功すると `src/cmake-build/` 以下にサンプル実行ファイル `forklift_sim` 及び `rover_sim` が生成されます。
+ビルドが成功すると `src/cmake-build/` 以下にサンプル実行ファイル `forklift_sim` が生成されます。
 
 ### ビルドのクリーン
 
@@ -99,18 +92,54 @@ macOSでは、事前に手動でMuJoCoライブラリをセットアップする
 
 ## サンプルの実行
 
+本サンプルは、**C++製のシミュレータ**と**Python製のコントローラ**を連携させて動作させます。それぞれを別のターミナルで起動する必要があります。
 
-フォークリフトのシミュレーション起動
+### 前提条件
 
+1.  **Hakoniwaコアのセットアップ**
+    シミュレーションの中核を担うHakoniwaコアライブラリのセットアップが必須です。
+    詳細は **[thirdparty/hakoniwa-core-pro のREADME](./thirdparty/hakoniwa-core-pro/README.md)** を参照してインストールを完了してください。これにより、Pythonの `hakopy` ライブラリも同時にセットアップされます。
+
+2.  **Python追加ライブラリのインストール**
+    ゲームパッド操作には `pygame` が必要です。`pip`でインストールしてください。
+    ```bash
+    pip install pygame
+    ```
+
+3.  **ゲームパッドの接続**
+    手動操作を試す場合は、事前にPCにゲームパッドを接続しておいてください。
+
+### 実行手順
+
+2つのターミナル（以降、**ターミナル1**, **ターミナル2**と呼びます）を用意してください。
+
+**1. シミュレータの起動 (ターミナル1)**
+
+まず、C++でビルドされたシミュレータを起動します。
 ```bash
 ./src/cmake-build/main_for_sample/forklift/forklift_sim
 ```
+実行後、MuJoCoのシミュレーションGUIウィンドウが立ち上がり、フォークリフトが表示されます。この時点ではまだ動きません。
 
-ゲームパッドを利用して操作する場合は Python スクリプトを実行します。
+**2. コントローラの起動 (ターミナル2)**
 
+次に、Python製のコントローラを起動してフォークリフトを動かします。操作方法に応じて2種類のスクリプトが用意されています。
+
+#### 方法A: ゲームパッドで手動操作する
+
+ゲームパッドを使ってリアルタイムにフォークリフトを操作します。
 ```bash
 python -m python.forklift_gamepad config/custom.json
 ```
+このコマンドを実行すると、ゲームパッドの入力がシミュレータに送られ、フォークリフトを自由に動かせるようになります。
+
+#### 方法B: APIで自動制御する
+
+`ForkliftAPI`を利用して、あらかじめプログラムされた動作を自動で実行します。このサンプルは、荷物をピックアップして棚に運ぶまでの一連の動作を行います。
+```bash
+python -m python.forklift_api_control config/safety-forklift-pdu.json config/monitor_camera_config.json
+```
+実行すると、フォークリフトが定義されたミッションを自動で開始します。
 
 ## サンプルコード
 
@@ -124,25 +153,58 @@ python -m python.forklift_gamepad config/custom.json
 
 ## Python API の利用方法
 
-`python/api/` にはゲームパッド操作を抽象化した `ForkliftAPI` を用意しています。
-以下は基本的な使い方の一例です。
+`python/api/`には、シミュレーション上のフォークリフトを簡単に操作するための`ForkliftAPI`が用意されています。
+以下に、現在のAPI仕様に合わせた基本的な使い方を示します。このコードは、フォークリフトを1m前進させた後、90度旋回させる簡単なサンプルです。
 
 ```python
+import sys
+import time
 import hakopy
-import hako_pdu
+from hakoniwa_pdu.pdu_manager import PduManager
+from hakoniwa_pdu.impl.shm_communication_service import ShmCommunicationService
 from api.forklift_api import ForkliftAPI
 
-if not hakopy.init_for_external():
-    raise RuntimeError("failed to init hakopy")
+def main():
+    # C++シミュレータ側と合わせたPDU設定ファイルのパス
+    # このファイルで、どのロボットがどのデータをやり取りするかが定義されます
+    config_path = "config/safety-forklift-pdu.json"
 
-pdu_manager = hako_pdu.HakoPduManager('/usr/local/lib/hakoniwa/hako_binary/offset', 'config/custom.json')
-forklift = ForkliftAPI(pdu_manager)
-forklift.move(1.0)          # 前方へ1m移動
-forklift.set_yaw_degree(90) # 90度旋回
+    # PDUマネージャーを初期化し、通信を開始します
+    pdu_manager = PduManager()
+    pdu_manager.initialize(config_path=config_path, comm_service=ShmCommunicationService())
+    pdu_manager.start_service_nowait()
+
+    # Hakoniwaに外部コントローラとして接続します
+    if not hakopy.init_for_external():
+        raise RuntimeError("Failed to initialize hakopy")
+
+    # ForkliftAPIのインスタンスを作成します
+    forklift = ForkliftAPI(pdu_manager)
+
+    try:
+        print("フォークリフトを1m前進させます...")
+        forklift.move(1.0)
+        time.sleep(1) # 動作完了を待つ
+
+        print("フォークリフトを90度旋回させます...")
+        forklift.set_yaw_degree(90)
+        time.sleep(1) # 動作完了を待つ
+
+        print("処理が完了しました。")
+
+    except KeyboardInterrupt:
+        print("プログラムを終了します。")
+    finally:
+        # 終了処理
+        forklift.stop()
+        pdu_manager.stop_service()
+        hakopy.fin()
+
+if __name__ == "__main__":
+    main()
 ```
 
-この API を利用することで、外部アプリケーションから容易にフォークリフトを
-制御できます。
+このAPIを利用することで、より複雑な自動制御アプリケーションをPythonで開発できます。
 
 ## ライセンス
 

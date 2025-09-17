@@ -24,7 +24,7 @@
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/rover.xml";
-static const char* config_path = "../../oss/hakoniwa-unity-drone/simulation/rover.json";
+static const char* config_path = "config/rover.json";
 static std::mutex data_mutex;
 static bool running_flag = true;
 
