@@ -25,20 +25,32 @@ class ForkliftAPI:
     def get_gamepad(self) -> GameControllerOperation:
         self.pdu_manager.run_nowait()  # Ensure PDU data is updated
         raw_data = self.pdu_manager.read_pdu_raw_data(self.robot_name, "hako_cmd_game")
-        return pdu_to_py_GameControllerOperation(raw_data)
-    
+        try:
+            return pdu_to_py_GameControllerOperation(raw_data)
+        except Exception as e:
+            value = GameControllerOperation()
+            value.axis = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            value.button = [False] * 16
+            return value  # Return empty data on error
+            
     def put_gamepad(self, data: GameControllerOperation):
         return self.pdu_manager.flush_pdu_raw_data_nowait(self.robot_name, "hako_cmd_game", py_to_pdu_GameControllerOperation(data))
 
     def get_position(self) -> Twist:
         self.pdu_manager.run_nowait()  # Ensure PDU data is updated
         raw_data = self.pdu_manager.read_pdu_raw_data(self.robot_name, "pos")
-        return pdu_to_py_Twist(raw_data)
+        try :
+            return pdu_to_py_Twist(raw_data)
+        except Exception as e:
+            return Twist()  # Return empty data on error
 
-    def get_height(self) -> Float64:
-        self.pdu_manager.run_nowait()  # Ensure PDU data is updated
+    def get_height(self) -> float:
+        self.pdu_manager.run_nowait()  # Ensure PDU data is updated        
         raw_data = self.pdu_manager.read_pdu_raw_data(self.robot_name, "height")
-        return pdu_to_py_Float64(raw_data)
+        try:
+            return pdu_to_py_Float64(raw_data).data
+        except Exception as e:
+            return 0  # Return empty data on error
 
     def get_yaw_degree(self):
         # Convert radians to degrees for the gamepad axis
@@ -54,8 +66,8 @@ class ForkliftAPI:
         gamepad_data.axis[self.AXIS_YAW] = 0.0
         gamepad_data.axis[self.AXIS_LIFT] = 0.0
         gamepad_data.axis[self.AXIS_FORWARD] = 0.0
-        gamepad_data.buttons = list(gamepad_data.buttons)
-        gamepad_data.buttons[self.BUTTON_ESTOP] = False
+        gamepad_data.button = list(gamepad_data.button)
+        gamepad_data.button[self.BUTTON_ESTOP] = False
         self.put_gamepad(gamepad_data)
         time.sleep(self.SLEEP_INTERVAL)
 

@@ -68,10 +68,13 @@ SAVE_DIR_PATH="./images"
 def saveMonitorCameraImage(monitor: MonitorCameraManager, log_id:str):
     global SAVE_DIR_PATH
     for camera_name in monitor.get_camera_names():
-        png_image = monitor.get_image(camera_name)
-        if png_image:
-            with open(f"{SAVE_DIR_PATH}/SIM_{camera_name}_{log_id}.png", "wb") as f:
-                f.write(png_image)
+        try:
+            png_image = monitor.get_image(camera_name)
+            if png_image:
+                with open(f"{SAVE_DIR_PATH}/SIM_{camera_name}_{log_id}.png", "wb") as f:
+                    f.write(png_image)
+        except Exception as e:
+            pass
 
 class ForkliftController:
     def __init__(self, forklift, monitor_camera_manager=None):
@@ -135,6 +138,7 @@ class ForkliftController:
         print(f"[INFO] Starting pickup sequence.")
         self.rotate_to_pickup_pos()
 
+        print(f"[INFO] Moving to pickup point.")
         self.pickup_sequence(pickup_x, dropoff_x)
 
         self.rotate_to_shelf_pos()
