@@ -16,15 +16,11 @@
 #include "include/hako_asset.h"
 #include "include/hako_conductor.h"
 #include "hakoniwa/pdu/adapter/forklift_operation_adapter.hpp"
-#include "hakoniwa/pdu/pdu.hpp"
+#include "pdu.hpp"
 #include "geometry_msgs/pdu_cpptype_conv_Twist.hpp"
 #include "std_msgs/pdu_cpptype_conv_Float64.hpp"
 #include "hako_msgs/pdu_ctype_GameControllerOperation.h"
 #include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
-
-//#include "hakoniwa/pdu/gamepad.hpp"
-//#include "hakoniwa/pdu/msgs/geometry_msgs/Twist.hpp"
-//#include "hakoniwa/pdu/msgs/std_msgs/Float64.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift.xml";
@@ -47,7 +43,7 @@ class HakoObject {
 private:
     hako::robots::PhysicsObject obj;
 
-    using PduT = hako::robots::pdu::PDU<
+    using PduT = hako::pdu::PDU<
         Hako_Twist, HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist>;
 
     // ★ 非constの実体をメンバで持つ（初期化順に注意：posより前に宣言）
@@ -91,13 +87,13 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         std::string pdu_pos_name = "pos";
         std::string pdu_height_name = "height";
         //forklift::hako_cmd_game
-        DECLARE_PDU_INSTANCE(hako::pdu::msgs::hako_msgs, GameControllerOperation, pad, robot_name, pdu_pad_name);
+        HAKO_PDU_TYPE(hako::pdu::msgs::hako_msgs, GameControllerOperation) pad(robot_name, pdu_pad_name);
         //forklift::pos
-        DECLARE_PDU_INSTANCE(hako::pdu::msgs::geometry_msgs, Twist, forklift_pos, robot_name, pdu_pos_name);
+        HAKO_PDU_TYPE(hako::pdu::msgs::geometry_msgs, Twist) forklift_pos(robot_name, pdu_pos_name);
         //forklift::height
-        DECLARE_PDU_INSTANCE(hako::pdu::msgs::std_msgs, Float64, lift_pos, robot_name, pdu_height_name);
+        HAKO_PDU_TYPE(hako::pdu::msgs::std_msgs, Float64) lift_pos(robot_name, pdu_height_name);
         //forklift_fork::pos
-        DECLARE_PDU_INSTANCE(hako::pdu::msgs::geometry_msgs, Twist, forklift_fork_pos, robot_name2, pdu_pos_name);
+        HAKO_PDU_TYPE(hako::pdu::msgs::geometry_msgs, Twist) forklift_fork_pos(robot_name2, pdu_pos_name);
 
         hako::robots::controller::ForkliftController controller(world);
         HakoObject pallet1("pallet1", world);
