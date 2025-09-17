@@ -9,8 +9,8 @@
             "shm_pdu_writers": [
                 {
                     "type": "hako_msgs/GameControllerOperation",
-                    "org_name": "game_controller",
-                    "name": "forklift_game_controller",
+                    "org_name": "hako_cmd_game",
+                    "name": "forklift_hako_cmd_game",
                     "channel_id": 0,
                     "pdu_size": 136,
                     "write_cycle": 1,

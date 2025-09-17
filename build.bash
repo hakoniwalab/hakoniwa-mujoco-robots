@@ -6,5 +6,5 @@ if [ $# -eq 1 -a $1 == "clean" ]; then
 fi
 
 cd src/cmake-build
-cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ..
+cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DUSE_VIEWER=ON ..
 make

@@ -24,3 +24,4 @@ target_link_libraries(forklift_sim
     assets
     conductor
 )
+target_compile_definitions(forklift_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)

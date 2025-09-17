@@ -5,9 +5,8 @@ import sys
 import pygame
 import time
 import os
-import hako_pdu
-import hakopy
-from pdu.pdu_data import PduData
+import hakoniwa_pdu.apps.drone.hakosim as hakosim
+from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_pytype_GameControllerOperation import GameControllerOperation
 
 DEFAULT_CONFIG_PATH = "rc_config/ps4-control.json"
 AXIS_COUNT = 6
@@ -16,19 +15,20 @@ DEADZONE = 0.05
 
 def joystick_control(config_path, robot_name, channel_id):
     try:
-        hako_binary_path = os.getenv('HAKO_BINARY_PATH', '/usr/local/lib/hakoniwa/hako_binary/offset')
-        pdu_manager = hako_pdu.HakoPduManager(hako_binary_path, config_path)
-
-        gamepad_pdu = PduData(pdu_manager, robot_name, channel_id)
+        client = hakosim.MultirotorClient(config_path, default_drone_name='forklift')
+        client.confirmConnection()
+        client.enableApiControl(True)
+        client.armDisarm(True)
 
         while True:
-            gamepad_data = gamepad_pdu.read()
-            if gamepad_data is None:
-                print("[ERROR] Failed to read gamepad data.")
+            data = client.getGameJoystickData()
+            if data is None:
+                print("[ERROR] Failed to get gamepad data from PDU.")
                 break
+            data.axis = list(data.axis)
+            data.button = list(data.button)
+            client.run_nowait()
             pygame.event.pump()
-            gamepad_data['axis'] = list(gamepad_data['axis']) 
-            gamepad_data['button'] = list(gamepad_data['button'])
             for event in pygame.event.get():
                 if event.type == pygame.JOYAXISMOTION:
                     axis_id = event.axis
@@ -36,7 +36,8 @@ def joystick_control(config_path, robot_name, channel_id):
                         value = event.value
                         if abs(value) < DEADZONE:
                             value = 0.0
-                        gamepad_data['axis'][axis_id] = value
+                        #print(f'[DEBUG] Axis {axis_id}: {value:.2f}')
+                        data.axis[axis_id] = value
                         #if value != 0.0:
                         #    print(f'[INFO] Axis {axis_id}: {value:.2f}')
                     else:
@@ -45,13 +46,13 @@ def joystick_control(config_path, robot_name, channel_id):
                     button_id = event.button
                     if button_id < BUTTON_COUNT:
                         is_pressed = (event.type == pygame.JOYBUTTONDOWN)
-                        gamepad_data['button'][button_id] = is_pressed
+                        data.button[button_id] = is_pressed
                         if is_pressed:
                             print(f'[INFO] Button {button_id} pressed')
                     else:
                         print(f'[WARN] Unsupported button index: {button_id}')
 
-            gamepad_pdu.write(gamepad_data)
+            client.putGameJoystickData(data)
             time.sleep(0.01)
 
     except KeyboardInterrupt:
@@ -75,8 +76,6 @@ def main():
     #    print(f"[ERROR] RC config file not found at '{rc_config_path}'")
     #    return 1
 
-    if not hakopy.init_for_external():
-        raise RuntimeError("ERROR: hakopy.init_for_external() failed.")
 
     pygame.init()
     pygame.joystick.init()

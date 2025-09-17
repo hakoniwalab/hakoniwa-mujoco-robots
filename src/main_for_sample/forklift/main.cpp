@@ -187,6 +187,7 @@ int main(int argc, const char* argv[])
     std::thread sim_thread(simulation_thread, world);
 
 #if USE_VIEWER
+    std::cout << "[INFO] Starting viewer..." << std::endl;
     viewer_thread(world->getModel(), world->getData(), std::ref(running_flag), std::ref(data_mutex));
 #else
     while (running_flag) {

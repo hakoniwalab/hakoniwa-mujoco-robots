@@ -24,3 +24,4 @@ target_link_libraries(rover_sim
     assets
     conductor
 )
+target_compile_definitions(rover_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)
