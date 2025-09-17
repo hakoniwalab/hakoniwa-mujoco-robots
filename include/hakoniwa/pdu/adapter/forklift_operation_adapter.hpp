@@ -49,13 +49,14 @@ namespace hako::robots::pdu::adapter {
         // Convert raw GamePad input into forklift command
         ForkliftCommand convert(const HakoCpp_GameControllerOperation& data) const {
             
-            ForkliftCommand cmd;
+            ForkliftCommand cmd = {};
             cmd.linear_velocity = - applyDeadzone(data.axis[AXIS_FORWARD]) * max_linear_vel;
             cmd.yaw_rate        = - applyDeadzone(data.axis[AXIS_YAW])     * max_yaw_rate;
             cmd.lift_position   = - applyDeadzone(data.axis[AXIS_LIFT])    * max_lift;
 
             if (cmd.emergency_stop) {
                 // Immediately stop motion when emergency is triggered
+                std::cout << "[WARN] Emergency Stop Activated!" << std::endl;
                 cmd.linear_velocity = 0.0;
                 cmd.yaw_rate = 0.0;
             }

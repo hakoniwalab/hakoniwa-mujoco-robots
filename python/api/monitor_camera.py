@@ -1,7 +1,7 @@
 import os
 import time
 from hakoniwa_pdu.pdu_manager import PduManager
-from camera.api.monitor_camera_config import MonitorCameraConfig
+from python.api.monitor_camera_config import MonitorCameraConfig
 from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_pytype_MonitorCameraCmd import MonitorCameraCmd
 from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_pytype_MonitorCameraData import MonitorCameraData
 from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_conv_MonitorCameraCmd import pdu_to_py_MonitorCameraCmd, py_to_pdu_MonitorCameraCmd

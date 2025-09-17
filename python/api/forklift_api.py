@@ -94,6 +94,8 @@ class ForkliftAPI:
             if abs(error) < 0.25:
                 self.stop()
                 break
+            
+            #print(f"[DEBUG] Current yaw: {self.get_yaw_degree()}, Target yaw: {target_yaw_degree}, Error: {error}")
 
             # 積分項の計算
             integral += error * dt
@@ -112,6 +114,7 @@ class ForkliftAPI:
             gamepad_data = self.get_gamepad()
             gamepad_data.axis = list(gamepad_data.axis)
             gamepad_data.axis[self.AXIS_YAW] = control
+            #print(f"[DEBUG] Control output: {control}")
             self.put_gamepad(gamepad_data)
 
             time.sleep(dt)
