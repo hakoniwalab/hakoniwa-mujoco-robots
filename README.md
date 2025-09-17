@@ -98,7 +98,7 @@ git submodule update --init --recursive
 
 1.  **Hakoniwaコアのセットアップ**
     シミュレーションの中核を担うHakoniwaコアライブラリのセットアップが必須です。
-    詳細は **[thirdparty/hakoniwa-core-pro のREADME](/thirdparty/hakoniwa-core-pro/README.md)** を参照してインストールを完了してください。これにより、Pythonの `hakopy` ライブラリも同時にセットアップされます。
+    詳細は **[thirdparty/hakoniwa-core-pro のREADME](https://github.com/hakoniwalab/hakoniwa-core-pro/blob/main/README.md)** を参照してインストールを完了してください。これにより、Pythonの `hakopy` ライブラリも同時にセットアップされます。
 
 2.  **Python追加ライブラリのインストール**
     ゲームパッド操作には `pygame` が必要です。`pip`でインストールしてください。
