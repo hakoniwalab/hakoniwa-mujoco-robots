@@ -1,8 +1,11 @@
-import hakopy
-import hako_pdu
 import os
 import time
+from hakoniwa_pdu.pdu_manager import PduManager
 from camera.api.monitor_camera_config import MonitorCameraConfig
+from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_pytype_MonitorCameraCmd import MonitorCameraCmd
+from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_pytype_MonitorCameraData import MonitorCameraData
+from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_conv_MonitorCameraCmd import pdu_to_py_MonitorCameraCmd, py_to_pdu_MonitorCameraCmd
+from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_conv_MonitorCameraData import pdu_to_py_MonitorCameraData, py_to_pdu_MonitorCameraData
 
 class MonitorCamera:
     def __init__(self, entry):
@@ -20,10 +23,9 @@ class MonitorCamera:
         return None, None, None  # 該当なしの場合
 
 class MonitorCameraManager:
-    def __init__(self, camera_config_path: str, monitor_camera_pattern = "Monitor_*"):
+    def __init__(self, pdu_manager: PduManager, camera_config_path: str, monitor_camera_pattern = "Monitor_*"):
         self.monitor_camera_config = MonitorCameraConfig(camera_config_path, monitor_camera_pattern)
-        hako_binary_path = os.getenv('HAKO_BINARY_PATH', '/usr/local/lib/hakoniwa/hako_binary/offset')
-        self.pdu_manager = hako_pdu.HakoPduManager(hako_binary_path, self.monitor_camera_config.data["pdu_path"])
+        self.pdu_manager = pdu_manager
 
         self.cameras = []
         for entry in self.monitor_camera_config.get_monitor_cameras():
@@ -45,14 +47,14 @@ class MonitorCameraManager:
 
     def get_image(self, camera_name, timeout=5.0):
         camera = self.get_camera(camera_name)
-        command, pdu_cmd = self._get_packet(camera.cmd_pdu_channel_id, camera.name)
-        pdu_cmd['request_id'] = camera.cmd_request_id
-        pdu_cmd['encode_type'] = 0
-        command.write()
+        pdu_cmd = self._get_packet()
+        pdu_cmd.request_id = camera.cmd_request_id
+        pdu_cmd.encode_type = 0
+        self.pdu_manager.flush_pdu_raw_data_nowait(camera.name, camera.cmd_pdu_name, py_to_pdu_MonitorCameraCmd(pdu_cmd))
         img = self._get_camera_data(camera, timeout)
-        pdu_cmd['header']['request'] = 0
-        pdu_cmd['header']['result'] = 0
-        command.write()
+        pdu_cmd.header.request = 0
+        pdu_cmd.header.result = 0
+        self.pdu_manager.flush_pdu_raw_data_nowait(camera.name, camera.cmd_pdu_name, py_to_pdu_MonitorCameraCmd(pdu_cmd))
         camera.cmd_request_id = camera.cmd_request_id + 1
         if img is None:
             return None
@@ -64,18 +66,17 @@ class MonitorCameraManager:
         start_time = time.time()
         while time.time() - start_time < timeout:
             #print(f"INFO: Waiting for camera data: {camera.name} channel_id: {camera.image_pdu_channel_id}")
-            command = self.pdu_manager.get_pdu(camera.name, camera.image_pdu_channel_id)
-            pdu_data = command.read()
-            if pdu_data['request_id'] == camera.cmd_request_id:
-                return pdu_data['image']['data']
+            raw = self.pdu_manager.read_pdu_raw_data(camera.name, camera.image_pdu_name)
+            pdu_data = pdu_to_py_MonitorCameraData(raw)
+            if pdu_data.request_id == camera.cmd_request_id:
+                return pdu_data.image.data
         print(f"WARNING: Timeout while waiting for camera data: {camera.name}")
         return None  # タイムアウト時は None を返す
 
-    def _get_packet(self, channel, camera_name):
-        command = self.pdu_manager.get_pdu(camera_name, channel)
-        cmd = command.get()
-        cmd['header']['request'] = 1
-        cmd['header']['result'] = 0
-        cmd['header']['result_code'] = 0
-        return command, cmd
+    def _get_packet(self) -> MonitorCameraCmd:
+        cmd = MonitorCameraCmd()
+        cmd.header.request = 1
+        cmd.header.result = 0
+        cmd.header.result_code = 0
+        return cmd
 

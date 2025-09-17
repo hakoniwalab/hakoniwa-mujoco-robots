@@ -1,0 +1,181 @@
+{
+    "pdu_path": "config/safety-forklift-pdu.json",
+    "monitor_cameras": [
+        {
+            "pdu_info": {
+                "robot_name": "Monitor_TL"
+            },
+            "coordinate_system": {
+                "type": "global",
+                "position": {
+                    "x": 1,
+                    "y": 0.0,
+                    "z": 2
+                },
+                "orientation": {
+                    "roll": 0,
+                    "pitch": 90,
+                    "yaw": 0
+                }
+            },
+            "fov": {
+                "horizontal": 60,
+                "vertical": 60
+            },
+            "resolution": {
+                "width": 640,
+                "height": 480
+            },
+            "camera_type": "RGB",
+            "encode_type": "png",
+            "trigger_type": "external"
+        },
+        {
+            "pdu_info": {
+                "robot_name": "Monitor_B"
+            },
+            "coordinate_system": {
+                "type": "global",
+                "position": {
+                    "x": 0.9,
+                    "y": -6.0,
+                    "z": 1.0
+                },
+                "orientation": {
+                    "roll": 0,
+                    "pitch": 20,
+                    "yaw": 90
+                }
+            },
+            "fov": {
+                "horizontal": 30,
+                "vertical": 60
+            },
+            "resolution": {
+                "width": 640,
+                "height": 480
+            },
+            "camera_type": "RGB",
+            "encode_type": "png",
+            "trigger_type": "external"
+        },        
+        {
+            "pdu_info": {
+                "robot_name": "Monitor_FR"
+            },
+            "coordinate_system": {
+                "type": "global",
+                "position": {
+                    "x": 3.5,
+                    "y": -5.5,
+                    "z": 1
+                },
+                "orientation": {
+                    "roll": 0,
+                    "pitch": 10,
+                    "yaw": 125
+                }
+            },
+            "fov": {
+                "horizontal": 30,
+                "vertical": 60
+            },
+            "resolution": {
+                "width": 640,
+                "height": 480
+            },
+            "camera_type": "RGB",
+            "encode_type": "png",
+            "trigger_type": "external"
+        },
+  
+        {
+            "pdu_info": {
+                "robot_name": "Monitor_F"
+            },
+            "coordinate_system": {
+                "type": "global",
+                "position": {
+                    "x": 0.9,
+                    "y": 2.0,
+                    "z": 0.0
+                },
+                "orientation": {
+                    "roll": 0,
+                    "pitch": 0,
+                    "yaw": -90
+                }
+            },
+            "fov": {
+                "horizontal": 30,
+                "vertical": 60
+            },
+            "resolution": {
+                "width": 640,
+                "height": 480
+            },
+            "camera_type": "RGB",
+            "encode_type": "png",
+            "trigger_type": "external"
+        },
+        {
+            "pdu_info": {
+                "robot_name": "Monitor_TR"
+            },
+            "coordinate_system": {
+                "type": "global",
+                "position": {
+                    "x": 1,
+                    "y": -3.5,
+                    "z": 3
+                },
+                "orientation": {
+                    "roll": 0,
+                    "pitch": 90,
+                    "yaw": 0
+                }
+            },
+            "fov": {
+                "horizontal": 30,
+                "vertical": 60
+            },
+            "resolution": {
+                "width": 640,
+                "height": 480
+            },
+            "camera_type": "RGB",
+            "encode_type": "png",
+            "trigger_type": "external"
+        },      
+        {
+            "pdu_info": {
+                "robot_name": "Monitor_Movable"
+            },
+            "coordinate_system": {
+                "type": "local",
+                "target": "DJIAvatar",
+                "position": {
+                    "x": 0.0,
+                    "y": -0.6,
+                    "z": 0.1
+                },
+                "orientation": {
+                    "roll": 0,
+                    "pitch": 10,
+                    "yaw": 90
+                }
+            },
+            "fov": {
+                "horizontal": 60,
+                "vertical": 60
+            },
+            "resolution": {
+                "width": 640,
+                "height": 480
+            },
+            "camera_type": "RGB",
+            "encode_type": "png",
+            "trigger_type": "external"
+        }
+    ]
+}

@@ -2,9 +2,11 @@ import sys
 import os
 import time
 import hakopy
-import hako_pdu
-from api.forklift_api import ForkliftAPI
-from api.monitor_camera import MonitorCameraManager
+from hakoniwa_pdu.pdu_manager import PduManager
+from hakoniwa_pdu.impl.shm_communication_service import ShmCommunicationService
+
+from python.api.forklift_api import ForkliftAPI
+from python.api.monitor_camera import MonitorCameraManager
 
 
 def forklift_test1(forklift):
@@ -174,13 +176,15 @@ def main():
         print(f"[ERROR] Monitor config file not found at '{monitor_config_path}'")
         return 1
 
-    if not hakopy.init_for_external():
-        raise RuntimeError("ERROR: hakopy.init_for_external() failed.")
+    pdu_manager = PduManager()
+    pdu_manager.initialize(config_path=config_path, comm_service=ShmCommunicationService())
+    pdu_manager.start_service_nowait()
+    ret = hakopy.init_for_external()
+    if ret == False:
+        print(f"ERROR: init_for_external() returns {ret}.")
+        return False
 
-    hako_binary_path = os.getenv('HAKO_BINARY_PATH', '/usr/local/lib/hakoniwa/hako_binary/offset')
-    pdu_manager = hako_pdu.HakoPduManager(hako_binary_path, config_path)
-
-    monitor = MonitorCameraManager(monitor_config_path)
+    monitor = MonitorCameraManager(pdu_manager, monitor_config_path)
     print(f"[INFO] Monitor camera config loaded from '{monitor_config_path}'")
 
     forklift = ForkliftAPI(pdu_manager)
