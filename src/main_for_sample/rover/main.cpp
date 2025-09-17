@@ -17,10 +17,10 @@
 #include "controller/forklift_controller.hpp"
 #include "include/hako_asset.h"
 #include "include/hako_conductor.h"
-#include "hakoniwa/pdu/gamepad.hpp"
+//#include "hakoniwa/pdu/gamepad.hpp"
 #include "hakoniwa/pdu/adapter/forklift_operation_adapter.hpp"
-#include "hakoniwa/pdu/msgs/geometry_msgs/Twist.hpp"
-#include "hakoniwa/pdu/msgs/std_msgs/Float64.hpp"
+//#include "hakoniwa/pdu/msgs/geometry_msgs/Twist.hpp"
+//#include "hakoniwa/pdu/msgs/std_msgs/Float64.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/rover.xml";
@@ -48,6 +48,7 @@ public:
         }
 
     void flush() {
+        #if 0 //TODO
         auto pos = hako::pdu::msgs::geometry_msgs::Twist(obj.getModelName(), 0);
         HakoCpp_Twist& pos_data = pos.getData();
         pos_data.linear.x = obj.getPosition().x;
@@ -57,6 +58,7 @@ public:
         pos_data.angular.y = obj.getEuler().y;
         pos_data.angular.z = obj.getEuler().z;
         pos.flush();
+        #endif
     }
 };
 
@@ -75,15 +77,19 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     double delta_pos = simulation_timestep * 0.1;;
     controller.set_delta_pos(delta_pos);
 
-    hako::robots::pdu::GamePad pad(robot_name, 0);
+    //hako::robots::pdu::GamePad pad(robot_name, 0);
+    //TODO
+    #if 0
     hako::pdu::msgs::geometry_msgs::Twist forklift_pos(robot_name, 1);
     hako::pdu::msgs::std_msgs::Float64 lift_pos(robot_name, 2);
     HakoCpp_Twist& forklift_pos_data = forklift_pos.getData();
     HakoCpp_Float64& lift_pos_data = lift_pos.getData();
+    #endif
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         {
             std::lock_guard<std::mutex> lock(data_mutex);
+            #if 0
             if (pad.load()) {
                 hako::robots::pdu::adapter::ForkliftOperationCommand adapter;
                 adapter.setAxisYawIndex(0);
@@ -91,9 +97,12 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 controller.update_target_lift_z(command.lift_position);
                 controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
             }
+            #endif
             controller.update();
             world->advanceTimeStep();
 
+            //TODO
+            #if 0
             //flush pos of forklift
             forklift_pos_data.linear.x = controller.getForklift().getPosition().x;
             forklift_pos_data.linear.y = controller.getForklift().getPosition().y;
@@ -106,6 +115,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             //flush pos of lift
             lift_pos_data.data = controller.getForklift().getLiftPosition().z;
             lift_pos.flush();
+            #endif
 
 
         }

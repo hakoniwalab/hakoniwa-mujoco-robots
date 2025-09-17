@@ -15,8 +15,8 @@ else()
 endif()
 
 set(PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}/..")
-set(ROS2PDU_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-ros2pdu")
-set(HAKO_CORE_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-cpp-client/src")
+set(ROS2PDU_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-pro/hakoniwa-ros2pdu")
+set(HAKO_CORE_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-pro")
 
 option(USE_MUJOCO "Enable MuJoCo support" ON)
 if(USE_MUJOCO)
@@ -80,7 +80,7 @@ else()
     message(STATUS "MuJoCo disabled: Using simple physics model")
 endif()
 
-set(HAKO_CORE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-cpp-client")
+set(HAKO_CORE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-pro")
 
 option(USE_VIEWER "Enable MuJoCo viewer" ON)
 MESSAGE(STATUS "USE_VIEWER=${USE_VIEWER}")
@@ -104,7 +104,7 @@ endif()
 
 add_subdirectory(
     ${HAKO_CORE_DIR}
-    ${CMAKE_BINARY_DIR}/thirdparty/hakoniwa-core-cpp-client
+    ${CMAKE_BINARY_DIR}/thirdparty/hakoniwa-core-pro/sources/core
     )
 
 add_subdirectory(main_for_sample/forklift)

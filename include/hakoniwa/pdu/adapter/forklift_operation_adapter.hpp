@@ -1,6 +1,6 @@
 #pragma once
 #include "primitive_types.hpp"
-#include "hakoniwa/pdu/gamepad.hpp"
+#include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
 #include <cmath>
 
 namespace hako::robots::pdu::adapter {
@@ -47,14 +47,12 @@ namespace hako::robots::pdu::adapter {
         }
 
         // Convert raw GamePad input into forklift command
-        ForkliftCommand convert(const hako::robots::pdu::GamePad& pad) const {
-            const HakoCpp_GameControllerOperation& data = pad.getData();
-            const auto& axis = data.axis;
+        ForkliftCommand convert(const HakoCpp_GameControllerOperation& data) const {
             
             ForkliftCommand cmd;
-            cmd.linear_velocity = - applyDeadzone(axis[AXIS_FORWARD]) * max_linear_vel;
-            cmd.yaw_rate        = - applyDeadzone(axis[AXIS_YAW])     * max_yaw_rate;
-            cmd.lift_position   = - applyDeadzone(axis[AXIS_LIFT])    * max_lift;
+            cmd.linear_velocity = - applyDeadzone(data.axis[AXIS_FORWARD]) * max_linear_vel;
+            cmd.yaw_rate        = - applyDeadzone(data.axis[AXIS_YAW])     * max_yaw_rate;
+            cmd.lift_position   = - applyDeadzone(data.axis[AXIS_LIFT])    * max_lift;
 
             if (cmd.emergency_stop) {
                 // Immediately stop motion when emergency is triggered
