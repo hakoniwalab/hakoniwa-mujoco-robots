@@ -117,6 +117,8 @@ bash build.bash
 ```bash
 python -m python.forklift_simple_auto config/custom.json
 ```
+※ Python側は当面 legacy 形式（`custom.json` / `forklift-unit.json` / `safety-forklift-pdu.json`）を使用してください。
+compact 形式（`*-compact.json`）は C++ シミュレータ側で使用します。
 
 `forklift_simple_auto.py` 向けの単体モデル版（荷物なし）:
 
@@ -201,6 +203,7 @@ HAKO_DOCKER_GUI=off bash docker/run.bash
 **2. コントローラの起動 (ターミナル2)**
 
 次に、Python製のコントローラを起動してフォークリフトを動かします。自動操縦（方法A）を推奨します。
+Pythonコントローラで指定する設定ファイルは、現時点では legacy 形式を使用してください。
 
 #### 方法A: APIで自動制御する（推奨）
 
@@ -214,6 +217,8 @@ python -m python.forklift_api_control config/safety-forklift-pdu.json config/mon
 ```bash
 python -m python.forklift_simple_auto config/custom.json
 ```
+注: `custom-compact.json` / `forklift-unit-compact.json` / `safety-forklift-pdu-compact.json` は C++ シミュレータ向けです。
+Python側で使用すると入力PDUが正しく処理されない場合があります。
 このサンプルは、前進・旋回・リフト上下の基本操作のみで構成されるため、最初の動作確認に向いています。
 移動距離を指定する例:
 ```bash
@@ -250,6 +255,10 @@ hako-cmd start
 - `forklift/main.cpp` … フォークリフトモデルを Hakoniwa と連携して動かす最小構成例
 - `forklift/main_unit.cpp` … 荷物なし単体モデル (`models/forklift/forklift-unit.xml`) 用サンプル
 - `rover/main.cpp` … ローバー型ロボットの制御例
+
+設定ファイルの使い分け:
+- C++シミュレータ (`forklift_sim` / `forklift_unit_sim`) は compact 形式（`*-compact.json`）を使用
+- Pythonコントローラ (`forklift_api_control` / `forklift_simple_auto` / `forklift_gamepad`) は legacy 形式（`*.json`）を使用
 
 ビルド後は `forklift_sim` などの実行ファイルが生成され、上記サンプルでは
 実際にシミュレーションを起動して Hakoniwa に登録する処理を確認できます。
