@@ -76,6 +76,42 @@ git submodule update --init --recursive
 ./build.bash clean
 ```
 
+## Docker (Ubuntu 24.04)
+
+`docker/` 配下に、本リポジトリ向けの Ubuntu 24.04 ベース実行環境を用意しています。
+
+### イメージ作成
+
+```bash
+bash docker/create-image.bash
+```
+
+### コンテナ起動
+
+```bash
+bash docker/run.bash
+```
+
+### コンテナ内ビルド
+
+```bash
+bash build.bash
+```
+
+### Docker内での最小自動操縦サンプル実行
+
+ターミナルを2つ用意して、同一コンテナ内で以下を実行します。
+
+1. ターミナル1（シミュレータ）:
+```bash
+./src/cmake-build/main_for_sample/forklift/forklift_sim
+```
+
+2. ターミナル2（Python自動操縦）:
+```bash
+python -m python.forklift_simple_auto config/custom.json
+```
+
 ## サンプルの実行
 
 本サンプルは、**C++製のシミュレータ**と**Python製のコントローラ**を連携させて動作させます。それぞれを別のターミナルで起動する必要があります。
@@ -86,13 +122,13 @@ git submodule update --init --recursive
     シミュレーションの中核を担うHakoniwaコアライブラリのセットアップが必須です。
     詳細は **[thirdparty/hakoniwa-core-pro のREADME](https://github.com/hakoniwalab/hakoniwa-core-pro/blob/main/README.md)** を参照してインストールを完了してください。これにより、Pythonの `hakopy` ライブラリも同時にセットアップされます。
 
-2.  **Python追加ライブラリのインストール**
-    ゲームパッド操作には `pygame` が必要です。`pip`でインストールしてください。
+2.  **Python追加ライブラリのインストール（ゲームパッド操作時のみ）**
+    ゲームパッド操作を使う場合のみ `pygame` が必要です。`pip`でインストールしてください。
     ```bash
     pip install pygame
     ```
 
-3.  **ゲームパッドの接続**
+3.  **ゲームパッドの接続（手動操作時のみ）**
     手動操作を試す場合は、事前にPCにゲームパッドを接続しておいてください。
 
 ### 実行手順
@@ -109,23 +145,29 @@ git submodule update --init --recursive
 
 **2. コントローラの起動 (ターミナル2)**
 
-次に、Python製のコントローラを起動してフォークリフトを動かします。操作方法に応じて2種類のスクリプトが用意されています。
+次に、Python製のコントローラを起動してフォークリフトを動かします。自動操縦（方法A）を推奨します。
 
-#### 方法A: ゲームパッドで手動操作する
-
-ゲームパッドを使ってリアルタイムにフォークリフトを操作します。
-```bash
-python -m python.forklift_gamepad config/custom.json
-```
-このコマンドを実行すると、ゲームパッドの入力がシミュレータに送られ、フォークリフトを自由に動かせるようになります。
-
-#### 方法B: APIで自動制御する
+#### 方法A: APIで自動制御する（推奨）
 
 `ForkliftAPI`を利用して、あらかじめプログラムされた動作を自動で実行します。このサンプルは、荷物をピックアップして棚に運ぶまでの一連の動作を行います。
 ```bash
 python -m python.forklift_api_control config/safety-forklift-pdu.json config/monitor_camera_config.json
 ```
 実行すると、フォークリフトが定義されたミッションを自動で開始します。
+
+最小構成の自動操縦サンプル（monitor camera不要）:
+```bash
+python -m python.forklift_simple_auto config/custom.json
+```
+このサンプルは、前進・旋回・リフト上下の基本操作のみで構成されるため、最初の動作確認に向いています。
+
+#### 方法B: ゲームパッドで手動操作する（任意）
+
+ゲームパッドを使ってリアルタイムにフォークリフトを操作します。
+```bash
+python -m python.forklift_gamepad config/custom.json
+```
+このコマンドを実行すると、ゲームパッドの入力がシミュレータに送られ、フォークリフトを自由に動かせるようになります。
 
 ## サンプルコード
 
