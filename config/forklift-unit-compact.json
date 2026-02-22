@@ -1,0 +1,22 @@
+{
+  "paths": [
+    {
+      "id": "forklift-main",
+      "path": "pdutypes_forklift_main.json"
+    },
+    {
+      "id": "pose-only",
+      "path": "pdutypes_pose_only.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "forklift",
+      "pdutypes_id": "forklift-main"
+    },
+    {
+      "name": "forklift_fork",
+      "pdutypes_id": "pose-only"
+    }
+  ]
+}

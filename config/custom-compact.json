@@ -1,0 +1,50 @@
+{
+  "paths": [
+    {
+      "id": "forklift-main",
+      "path": "pdutypes_forklift_main.json"
+    },
+    {
+      "id": "pose-only",
+      "path": "pdutypes_pose_only.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "forklift",
+      "pdutypes_id": "forklift-main"
+    },
+    {
+      "name": "forklift_fork",
+      "pdutypes_id": "pose-only"
+    },
+    {
+      "name": "cargo1",
+      "pdutypes_id": "pose-only"
+    },
+    {
+      "name": "cargo2",
+      "pdutypes_id": "pose-only"
+    },
+    {
+      "name": "cargo3",
+      "pdutypes_id": "pose-only"
+    },
+    {
+      "name": "cargo4",
+      "pdutypes_id": "pose-only"
+    },
+    {
+      "name": "pallet1",
+      "pdutypes_id": "pose-only"
+    },
+    {
+      "name": "pallet2",
+      "pdutypes_id": "pose-only"
+    },
+    {
+      "name": "shelf",
+      "pdutypes_id": "pose-only"
+    }
+  ]
+}
