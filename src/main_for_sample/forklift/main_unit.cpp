@@ -26,8 +26,8 @@
 #include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
-static const std::string model_path = "models/forklift/forklift.xml";
-static const char* config_path = "config/safety-forklift-pdu.json";
+static const std::string model_path = "models/forklift/forklift-unit.xml";
+static const char* config_path = "config/forklift-unit.json";
 static std::mutex data_mutex;
 static bool running_flag = true;
 
@@ -124,35 +124,12 @@ static int my_on_initialize(hako_asset_context_t* context)
     (void)context;
     return 0;
 }
+
 static int my_on_reset(hako_asset_context_t* context)
 {
     (void)context;
     return 0;
 }
-
-class HakoObject {
-private:
-    hako::robots::PhysicsObject obj;
-    PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> pos_;
-
-public:
-    HakoObject(const std::string& name, std::shared_ptr<hako::robots::physics::IWorld> world)
-        : obj(world, name)
-        , pos_(name, "pos")
-    {}
-
-    void flush() {
-        HakoCpp_Twist pos_data{};
-        pos_data.linear.x = obj.getPosition().x;
-        pos_data.linear.y = obj.getPosition().y;
-        pos_data.linear.z = obj.getPosition().z;
-        pos_data.angular.x = obj.getEuler().x;
-        pos_data.angular.y = obj.getEuler().y;
-        pos_data.angular.z = obj.getEuler().z;
-        (void)pos_.flush(pos_data);
-    }
-};
-
 
 static int my_manual_timing_control(hako_asset_context_t* context)
 {
@@ -161,34 +138,25 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         double simulation_timestep = world->getModel()->opt.timestep;
         hako_time_t delta_time_usec = static_cast<hako_time_t>(simulation_timestep * 1e6);
         std::cout << "[INFO] Simulation timestep: " << simulation_timestep << " sec" << std::endl;
+
         std::string robot_name = "forklift";
         std::string robot_name2 = "forklift_fork";
-        std::string pdu_pad_name = "hako_cmd_game";
-        std::string pdu_pos_name = "pos";
-        std::string pdu_height_name = "height";
-        PduChannel<HakoCpp_GameControllerOperation, hako::pdu::msgs::hako_msgs::GameControllerOperation> pad(robot_name, pdu_pad_name);
-        PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_pos(robot_name, pdu_pos_name);
-        PduChannel<HakoCpp_Float64, hako::pdu::msgs::std_msgs::Float64> lift_pos(robot_name, pdu_height_name);
-        PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_fork_pos(robot_name2, pdu_pos_name);
+
+        PduChannel<HakoCpp_GameControllerOperation, hako::pdu::msgs::hako_msgs::GameControllerOperation> pad(robot_name, "hako_cmd_game");
+        PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_pos(robot_name, "pos");
+        PduChannel<HakoCpp_Float64, hako::pdu::msgs::std_msgs::Float64> lift_pos(robot_name, "height");
+        PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_fork_pos(robot_name2, "pos");
 
         hako::robots::controller::ForkliftController controller(world);
-        HakoObject pallet1("pallet1", world);
-        HakoObject pallet2("pallet2", world);
-        HakoObject shelf("shelf", world);
-        HakoObject cargo1("cargo1", world);
-        HakoObject cargo2("cargo2", world);
-        HakoObject cargo3("cargo3", world);
-        HakoObject cargo4("cargo4", world);
         controller.setVelocityCommand(0.0, 0.0);
         controller.setLiftTarget(0.0);
-        double delta_pos = simulation_timestep * get_motion_gain();
-        controller.set_delta_pos(delta_pos);
-
+        controller.set_delta_pos(simulation_timestep * get_motion_gain());
 
         HakoCpp_Twist forklift_pos_data = {};
         HakoCpp_Twist forklift_fork_pos_data = {};
         HakoCpp_Float64 lift_pos_data = {};
         HakoCpp_GameControllerOperation pad_data = {};
+
         while (running_flag) {
             auto start = std::chrono::steady_clock::now();
             {
@@ -199,39 +167,28 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                     controller.update_target_lift_z(command.lift_position);
                     controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
                 }
+
                 controller.update();
                 world->advanceTimeStep();
 
-                //flush pos of forklift
                 forklift_pos_data.linear.x = controller.getForklift().getPosition().x;
                 forklift_pos_data.linear.y = controller.getForklift().getPosition().y;
                 forklift_pos_data.linear.z = controller.getForklift().getPosition().z;
                 forklift_pos_data.angular.x = controller.getForklift().getEuler().x;
                 forklift_pos_data.angular.y = controller.getForklift().getEuler().y;
                 forklift_pos_data.angular.z = controller.getForklift().getEuler().z;
-                forklift_pos.flush(forklift_pos_data);
+                (void)forklift_pos.flush(forklift_pos_data);
 
-                //flush pos of lift
                 lift_pos_data.data = controller.getForklift().getLiftPosition().z;
-                lift_pos.flush(lift_pos_data);
+                (void)lift_pos.flush(lift_pos_data);
 
-                //flush pos of fork
                 forklift_fork_pos_data.linear.x = controller.getForklift().getLiftWorldPosition().x;
                 forklift_fork_pos_data.linear.y = controller.getForklift().getLiftWorldPosition().y;
                 forklift_fork_pos_data.linear.z = controller.getForklift().getLiftWorldPosition().z;
                 forklift_fork_pos_data.angular.x = controller.getForklift().getLiftEuler().x;
                 forklift_fork_pos_data.angular.y = controller.getForklift().getLiftEuler().y;
                 forklift_fork_pos_data.angular.z = controller.getForklift().getLiftEuler().z;
-                forklift_fork_pos.flush(forklift_fork_pos_data);
-
-                //flush pos of pallet
-                pallet1.flush();
-                pallet2.flush();
-                shelf.flush();
-                cargo1.flush();
-                cargo2.flush();
-                cargo3.flush();
-                cargo4.flush();
+                (void)forklift_fork_pos.flush(forklift_fork_pos_data);
             }
 
             auto end = std::chrono::steady_clock::now();
@@ -248,18 +205,17 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         running_flag = false;
     }
 
-
-    
     return 0;
 }
+
 static hako_asset_callbacks_t my_callback;
+
 void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
 {
-     my_callback.on_initialize = my_on_initialize;
-     my_callback.on_simulation_step = nullptr;
-     my_callback.on_manual_timing_control = my_manual_timing_control;
-     my_callback.on_reset = my_on_reset;
-
+    my_callback.on_initialize = my_on_initialize;
+    my_callback.on_simulation_step = nullptr;
+    my_callback.on_manual_timing_control = my_manual_timing_control;
+    my_callback.on_reset = my_on_reset;
 
     const char* asset_name = "forklift";
     double simulation_timestep = world->getModel()->opt.timestep;
@@ -278,7 +234,6 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
     }
 }
 
-
 int main(int argc, const char* argv[])
 {
     (void)argc;
@@ -292,6 +247,7 @@ int main(int argc, const char* argv[])
         std::cerr << "[ERROR] Failed to load model: " << e.what() << std::endl;
         return 1;
     }
+
     std::thread sim_thread(simulation_thread, world);
 
 #if USE_VIEWER
@@ -303,9 +259,9 @@ int main(int argc, const char* argv[])
     }
     std::cout << "[INFO] Simulation thread finished." << std::endl;
 #endif
+
     running_flag = false;
     sim_thread.join();
-
     std::cout << "[INFO] Simulation completed successfully." << std::endl;
     return 0;
 }

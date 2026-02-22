@@ -45,6 +45,12 @@ def parse_args() -> argparse.Namespace:
         default=0.5,
         help="Pause time between actions in seconds (default: 0.5)",
     )
+    parser.add_argument(
+        "--move-speed",
+        type=float,
+        default=0.5,
+        help="Forward/backward speed in gamepad axis range (0.0, 1.0] (default: 0.5)",
+    )
     return parser.parse_args()
 
 
@@ -65,11 +71,13 @@ def run_simple_mission(
     turn_degree: float,
     start_height: float,
     pause_sec: float,
+    move_speed: float,
 ) -> None:
     print("[INFO] Mission start: simple auto control")
+    forklift.set_move_speed(move_speed)
     print(
         f"[INFO] Parameters: forward={forward_distance:.3f}m, backward={backward_distance:.3f}m, "
-        f"turn={turn_degree:.3f}deg, start_height={start_height:.3f}m"
+        f"turn={turn_degree:.3f}deg, start_height={start_height:.3f}m, move_speed={forklift.move_speed:.3f}"
     )
     print_status(forklift, "Initial state")
 
@@ -130,6 +138,7 @@ def main() -> int:
             turn_degree=args.turn_degree,
             start_height=args.start_height,
             pause_sec=pause_sec,
+            move_speed=args.move_speed,
         )
         return 0
     except KeyboardInterrupt:

@@ -106,7 +106,7 @@ bash build.bash
 
 ### Docker内での最小自動操縦サンプル実行
 
-ターミナルを2つ用意して、同一コンテナ内で以下を実行します。
+ターミナルを3つ用意して、同一コンテナ内で以下を実行します。
 
 1. ターミナル1（シミュレータ）:
 ```bash
@@ -116,6 +116,21 @@ bash build.bash
 2. ターミナル2（Python自動操縦）:
 ```bash
 python -m python.forklift_simple_auto config/custom.json
+```
+
+`forklift_simple_auto.py` 向けの単体モデル版（荷物なし）:
+
+```bash
+./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
+```
+
+```bash
+python -m python.forklift_simple_auto config/forklift-unit.json
+```
+
+3. ターミナル3（シミュレーション開始トリガ）:
+```bash
+hako-cmd start
 ```
 
 ### macOS + Docker の実行方針
@@ -173,7 +188,7 @@ HAKO_DOCKER_GUI=off bash docker/run.bash
 
 ### 実行手順
 
-2つのターミナル（以降、**ターミナル1**, **ターミナル2**と呼びます）を用意してください。
+3つのターミナル（以降、**ターミナル1**, **ターミナル2**, **ターミナル3**と呼びます）を用意してください。
 
 **1. シミュレータの起動 (ターミナル1)**
 
@@ -202,7 +217,15 @@ python -m python.forklift_simple_auto config/custom.json
 このサンプルは、前進・旋回・リフト上下の基本操作のみで構成されるため、最初の動作確認に向いています。
 移動距離を指定する例:
 ```bash
-python -m python.forklift_simple_auto config/custom.json --forward-distance 1.5 --backward-distance 1.5 --turn-degree -90
+python -m python.forklift_simple_auto config/forklift-unit.json --forward-distance 1.5 --backward-distance 1.5 --turn-degree -90
+```
+速度も指定する例:
+```bash
+python -m python.forklift_simple_auto config/forklift-unit.json --forward-distance 1.5 --backward-distance 1.5 --move-speed 0.7
+```
+さらに速くしたい場合（シミュレータ側ゲイン）:
+```bash
+HAKO_FORKLIFT_MOTION_GAIN=0.4 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
 #### 方法B: ゲームパッドで手動操作する（任意）
@@ -213,11 +236,19 @@ python -m python.forklift_gamepad config/custom.json
 ```
 このコマンドを実行すると、ゲームパッドの入力がシミュレータに送られ、フォークリフトを自由に動かせるようになります。
 
+**3. シミュレーション開始 (ターミナル3)**
+
+最後に、以下を実行してシミュレーションを開始します。
+```bash
+hako-cmd start
+```
+
 ## サンプルコード
 
 `src/main_for_sample/` 以下に C++ 製のサンプルプログラムを収録しています。
 
 - `forklift/main.cpp` … フォークリフトモデルを Hakoniwa と連携して動かす最小構成例
+- `forklift/main_unit.cpp` … 荷物なし単体モデル (`models/forklift/forklift-unit.xml`) 用サンプル
 - `rover/main.cpp` … ローバー型ロボットの制御例
 
 ビルド後は `forklift_sim` などの実行ファイルが生成され、上記サンプルでは

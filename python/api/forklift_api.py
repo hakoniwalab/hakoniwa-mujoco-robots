@@ -21,6 +21,16 @@ class ForkliftAPI:
     def __init__(self, pdu_manager, robot_name="forklift"):
         self.robot_name = robot_name
         self.pdu_manager = pdu_manager
+        self.move_speed = self.MOVE_SPEED
+
+    def set_move_speed(self, speed: float):
+        # Gamepad axis valid range is [-1.0, 1.0], so clamp to (0, 1].
+        value = abs(float(speed))
+        if value <= 0.0:
+            value = 0.1
+        if value > 1.0:
+            value = 1.0
+        self.move_speed = value
 
     def get_gamepad(self) -> GameControllerOperation:
         self.pdu_manager.run_nowait()  # Ensure PDU data is updated
@@ -173,7 +183,7 @@ class ForkliftAPI:
             # Move the forklift forward
             gamepad_data = self.get_gamepad()
             gamepad_data.axis = list(gamepad_data.axis)
-            gamepad_data.axis[self.AXIS_FORWARD] = -self.MOVE_SPEED if error > 0 else self.MOVE_SPEED
+            gamepad_data.axis[self.AXIS_FORWARD] = -self.move_speed if error > 0 else self.move_speed
             self.put_gamepad(gamepad_data)
             time.sleep(self.SLEEP_INTERVAL)
 
@@ -192,7 +202,7 @@ class ForkliftAPI:
             # Move the forklift forward
             gamepad_data = self.get_gamepad()
             gamepad_data.axis = list(gamepad_data.axis)
-            gamepad_data.axis[self.AXIS_FORWARD] = self.MOVE_SPEED if error > 0 else -self.MOVE_SPEED
+            gamepad_data.axis[self.AXIS_FORWARD] = self.move_speed if error > 0 else -self.move_speed
             self.put_gamepad(gamepad_data)
             time.sleep(self.SLEEP_INTERVAL)
 
