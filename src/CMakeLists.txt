@@ -21,61 +21,142 @@ set(HAKO_CORE_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-pro"
 option(USE_MUJOCO "Enable MuJoCo support" ON)
 if(USE_MUJOCO)
     add_definitions(-DMUJOCO_ENABLED)
-    set(MUJOCO_VERSION "3.3.6")
+    include(FetchContent)
+    set(MUJOCO_VERSION_FILE "${PROJECT_ROOT_DIR}/MUJOCO_VERSION.txt")
+    if(NOT EXISTS "${MUJOCO_VERSION_FILE}")
+        message(FATAL_ERROR "MUJOCO version file not found: ${MUJOCO_VERSION_FILE}")
+    endif()
+    file(READ "${MUJOCO_VERSION_FILE}" MUJOCO_VERSION)
+    string(STRIP "${MUJOCO_VERSION}" MUJOCO_VERSION)
+    if(MUJOCO_VERSION STREQUAL "")
+        message(FATAL_ERROR "MUJOCO_VERSION.txt is empty: ${MUJOCO_VERSION_FILE}")
+    endif()
+    set(MUJOCO_RELEASE_TAG "v${MUJOCO_VERSION}")
+    message(STATUS "MUJOCO_VERSION=${MUJOCO_VERSION}")
 
     if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        # For Linux and Windows, download automatically
-        message(STATUS "Linux/Windows detected. Attempting to download pre-compiled MuJoCo...")
-        include(FetchContent)
-
         if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
             set(MUJOCO_PLATFORM "linux")
             set(MUJOCO_EXT "tar.gz")
+            if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+                set(MUJOCO_ARCH "x86_64")
+            elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+                set(MUJOCO_ARCH "aarch64")
+            else()
+                message(FATAL_ERROR "Unsupported Linux architecture for MuJoCo: ${CMAKE_SYSTEM_PROCESSOR}")
+            endif()
         else()
             set(MUJOCO_PLATFORM "windows")
             set(MUJOCO_EXT "zip")
+            if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+                set(MUJOCO_ARCH "x86_64")
+            else()
+                message(FATAL_ERROR "Unsupported Windows architecture for MuJoCo: ${CMAKE_SYSTEM_PROCESSOR}")
+            endif()
         endif()
 
-        if(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
-            set(MUJOCO_ARCH "x86_64")
-        elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
-            set(MUJOCO_ARCH "aarch64")
-        endif()
+        set(MUJOCO_PACKAGE_PATH "mujoco-${MUJOCO_VERSION}-${MUJOCO_PLATFORM}-${MUJOCO_ARCH}.${MUJOCO_EXT}")
+        set(MUJOCO_PACKAGE_URL_VTAG "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_RELEASE_TAG}/${MUJOCO_PACKAGE_PATH}")
+        set(MUJOCO_PACKAGE_URL_PLAIN "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/${MUJOCO_PACKAGE_PATH}")
+        message(STATUS "Attempting to download MuJoCo package: ${MUJOCO_PACKAGE_URL_VTAG}")
 
         FetchContent_Declare(
             mujoco_precompiled
-            URL "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/mujoco-${MUJOCO_VERSION}-${MUJOCO_PLATFORM}-${MUJOCO_ARCH}.${MUJOCO_EXT}"
+            URL "${MUJOCO_PACKAGE_URL_VTAG}" "${MUJOCO_PACKAGE_URL_PLAIN}"
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         )
         FetchContent_MakeAvailable(mujoco_precompiled)
         FetchContent_GetProperties(mujoco_precompiled)
         if(NOT mujoco_precompiled_POPULATED)
             FetchContent_Populate(mujoco_precompiled)
         endif()
-
-        set(MUJOCO_SOURCE_DIR ${mujoco_precompiled_SOURCE_DIR}/include)
+        set(MUJOCO_SOURCE_DIR "${mujoco_precompiled_SOURCE_DIR}/include")
+        set(MUJOCO_LIB_DIR "${mujoco_precompiled_SOURCE_DIR}/lib")
         set(LIBMUJOCO "mujoco")
-        include_directories(${MUJOCO_SOURCE_DIR})
-        link_directories(${mujoco_precompiled_SOURCE_DIR}/lib)
-        message(STATUS "MuJoCo v${MUJOCO_VERSION} downloaded and configured.")
-
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        # For macOS, require manual installation into a project-local directory
-        message(STATUS "macOS detected. Looking for local MuJoCo library.")
-        set(MUJOCO_INSTALL_DIR "${PROJECT_SOURCE_DIR}/../vendor/mujoco" CACHE PATH "Path to pre-installed MuJoCo directory for macOS")
+        # macOS releases are published as DMG, so we download and copy include/lib.
+        set(MUJOCO_PACKAGE_PATH "mujoco-${MUJOCO_VERSION}-macos-universal2.dmg")
+        set(MUJOCO_PACKAGE_URL_VTAG "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_RELEASE_TAG}/${MUJOCO_PACKAGE_PATH}")
+        set(MUJOCO_PACKAGE_URL_PLAIN "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/${MUJOCO_PACKAGE_PATH}")
+        message(STATUS "Attempting to download MuJoCo package: ${MUJOCO_PACKAGE_URL_VTAG}")
 
-        set(MUJOCO_HEADER_FILE "${MUJOCO_INSTALL_DIR}/include/mujoco/mujoco.h")
-        set(MUJOCO_LIBRARY_FILE "${MUJOCO_INSTALL_DIR}/lib/libmujoco.${MUJOCO_VERSION}.dylib")
+        set(MUJOCO_DMG_PATH "${CMAKE_BINARY_DIR}/_deps/mujoco-${MUJOCO_VERSION}-macos-universal2.dmg")
+        set(MUJOCO_MOUNT_DIR "${CMAKE_BINARY_DIR}/_deps/mujoco_mount")
+        set(MUJOCO_SOURCE_ROOT_DIR "${CMAKE_BINARY_DIR}/_deps/mujoco_precompiled-src")
+        set(MUJOCO_SOURCE_DIR "${MUJOCO_SOURCE_ROOT_DIR}/include")
+        set(MUJOCO_LIB_DIR "${MUJOCO_SOURCE_ROOT_DIR}/lib")
+        set(MUJOCO_DYLIB_PATH "${MUJOCO_LIB_DIR}/libmujoco.${MUJOCO_VERSION}.dylib")
 
-        if(NOT EXISTS ${MUJOCO_HEADER_FILE} OR NOT EXISTS ${MUJOCO_LIBRARY_FILE})
-            message(FATAL_ERROR "\nMuJoCo not found in '${MUJOCO_INSTALL_DIR}'.\nOn macOS, please download the 'mujoco-*-macos-universal2.dmg' from https://github.com/google-deepmind/mujoco/releases.\nThen, create a 'vendor/mujoco' directory in your project root and copy the 'include' and 'lib' folders from the DMG into it.\nAlternatively, specify a custom path by setting -DMUJOCO_INSTALL_DIR=/path/to/your/mujoco_dir during cmake configuration.")
+        if(NOT EXISTS "${MUJOCO_SOURCE_DIR}/mujoco/mujoco.h" OR NOT EXISTS "${MUJOCO_DYLIB_PATH}")
+            set(MUJOCO_DOWNLOAD_CODE 1)
+            foreach(_url IN ITEMS "${MUJOCO_PACKAGE_URL_VTAG}" "${MUJOCO_PACKAGE_URL_PLAIN}")
+                file(DOWNLOAD "${_url}" "${MUJOCO_DMG_PATH}" SHOW_PROGRESS STATUS MUJOCO_DOWNLOAD_STATUS LOG MUJOCO_DOWNLOAD_LOG)
+                list(GET MUJOCO_DOWNLOAD_STATUS 0 MUJOCO_DOWNLOAD_CODE)
+                list(GET MUJOCO_DOWNLOAD_STATUS 1 MUJOCO_DOWNLOAD_MSG)
+                if(MUJOCO_DOWNLOAD_CODE EQUAL 0)
+                    break()
+                endif()
+            endforeach()
+            if(NOT MUJOCO_DOWNLOAD_CODE EQUAL 0)
+                message(FATAL_ERROR
+                    "Failed to download MuJoCo package.\n"
+                    "URLs tried:\n  - ${MUJOCO_PACKAGE_URL_VTAG}\n  - ${MUJOCO_PACKAGE_URL_PLAIN}\n"
+                    "status: ${MUJOCO_DOWNLOAD_CODE} (${MUJOCO_DOWNLOAD_MSG})\n"
+                    "If URL returns 404, the version in MUJOCO_VERSION.txt may not exist."
+                )
+            endif()
+
+            file(MAKE_DIRECTORY "${MUJOCO_MOUNT_DIR}")
+            execute_process(COMMAND hdiutil detach "${MUJOCO_MOUNT_DIR}" RESULT_VARIABLE _detach_before OUTPUT_QUIET ERROR_QUIET)
+            execute_process(
+                COMMAND hdiutil attach "${MUJOCO_DMG_PATH}" -readonly -nobrowse -mountpoint "${MUJOCO_MOUNT_DIR}"
+                RESULT_VARIABLE MUJOCO_ATTACH_RESULT
+                ERROR_VARIABLE MUJOCO_ATTACH_ERROR
+            )
+            if(NOT MUJOCO_ATTACH_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to mount MuJoCo dmg: ${MUJOCO_ATTACH_ERROR}")
+            endif()
+
+            file(MAKE_DIRECTORY "${MUJOCO_SOURCE_ROOT_DIR}")
+            if(EXISTS "${MUJOCO_MOUNT_DIR}/include" AND EXISTS "${MUJOCO_MOUNT_DIR}/lib")
+                execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory "${MUJOCO_MOUNT_DIR}/include" "${MUJOCO_SOURCE_DIR}")
+                execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory "${MUJOCO_MOUNT_DIR}/lib" "${MUJOCO_LIB_DIR}")
+            elseif(EXISTS "${MUJOCO_MOUNT_DIR}/mujoco.framework/Versions/A/Headers")
+                # MuJoCo 3.5.0 macOS DMG layout: headers and dylib are in mujoco.framework.
+                file(MAKE_DIRECTORY "${MUJOCO_SOURCE_DIR}/mujoco")
+                file(MAKE_DIRECTORY "${MUJOCO_LIB_DIR}")
+                execute_process(
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${MUJOCO_MOUNT_DIR}/mujoco.framework/Versions/A/Headers"
+                    "${MUJOCO_SOURCE_DIR}/mujoco"
+                )
+                execute_process(
+                    COMMAND ${CMAKE_COMMAND} -E copy
+                    "${MUJOCO_MOUNT_DIR}/mujoco.framework/Versions/A/libmujoco.${MUJOCO_VERSION}.dylib"
+                    "${MUJOCO_DYLIB_PATH}"
+                )
+            else()
+                execute_process(COMMAND hdiutil detach "${MUJOCO_MOUNT_DIR}" OUTPUT_QUIET ERROR_QUIET)
+                message(FATAL_ERROR
+                    "Unexpected MuJoCo dmg layout in ${MUJOCO_MOUNT_DIR}. "
+                    "Expected either include/lib or mujoco.framework/Versions/A."
+                )
+            endif()
+            execute_process(COMMAND hdiutil detach "${MUJOCO_MOUNT_DIR}" OUTPUT_QUIET ERROR_QUIET)
         endif()
 
-        message(STATUS "Found MuJoCo at: ${MUJOCO_INSTALL_DIR}")
-        set(MUJOCO_SOURCE_DIR ${MUJOCO_INSTALL_DIR}/include)
-        set(LIBMUJOCO ${MUJOCO_LIBRARY_FILE})
-        include_directories(${MUJOCO_SOURCE_DIR})
-        link_directories(${MUJOCO_INSTALL_DIR}/lib)
+        if(EXISTS "${MUJOCO_DYLIB_PATH}")
+            set(LIBMUJOCO "${MUJOCO_DYLIB_PATH}")
+        else()
+            set(LIBMUJOCO "mujoco")
+        endif()
+    else()
+        message(FATAL_ERROR "Unsupported OS for MuJoCo auto-download: ${CMAKE_SYSTEM_NAME}")
     endif()
+
+    include_directories("${MUJOCO_SOURCE_DIR}")
+    link_directories("${MUJOCO_LIB_DIR}")
+    message(STATUS "MuJoCo v${MUJOCO_VERSION} downloaded and configured.")
 else()
     message(STATUS "MuJoCo disabled: Using simple physics model")
 endif()

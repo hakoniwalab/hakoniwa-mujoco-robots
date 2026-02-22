@@ -28,7 +28,7 @@ sudo apt-get install -y libglfw3-dev
 
 ### macOSの場合
 
-macOSでは、依存ライブラリとMuJoCoを手動でセットアップする必要があります。
+macOSでは、描画に必要なライブラリ `glfw` をインストールしてください。MuJoCo本体はビルド時に自動ダウンロードされます。
 
 **1. GLFWのインストール**
 
@@ -36,20 +36,6 @@ macOSでは、依存ライブラリとMuJoCoを手動でセットアップする
 
 ```bash
 brew install glfw
-```
-
-**2. MuJoCoライブラリの配置**
-
-[MuJoCoのGitHubリリースページ](https://github.com/google-deepmind/mujoco/releases)から、お使いのMacのアーキテクチャに合ったDMGファイルをダウンロードします。
-
-次に、プロジェクトのルートに`vendor/mujoco`ディレクトリを作成し、DMGに含まれる`include`と`lib`フォルダをその中にコピーしてください。最終的なディレクトリ構成は以下のようになります。
-
-```
-hakoniwa-mujoco-robots/
-└── vendor/
-    └── mujoco/
-        ├── include/mujoco/
-        └── lib/
 ```
 
 ### Windowsの場合
@@ -67,7 +53,7 @@ cd hakoniwa-mujoco-robots
 git submodule update --init --recursive
 ```
 
-> 補足：`src/CMakeLists.txt` 内で、`MUJOCO_VERSION` 変数を変更することで、使用する MuJoCo のバージョンを指定できます。
+> 補足：`MUJOCO_VERSION.txt` を編集することで、使用する MuJoCo のバージョンを指定できます。
 
 ## ビルド手順
 
@@ -77,7 +63,7 @@ git submodule update --init --recursive
 ./build.bash
 ```
 
-> **Note:** Linux/WSL2ではMuJoCoライブラリが自動でダウンロードされますが、macOSではセットアップ手順に従って手動で配置する必要があります。
+> **Note:** MuJoCoライブラリは Linux / macOS / Windows でビルド時に自動ダウンロードされます。
 
 ### 3. ビルド成果物
 
@@ -209,4 +195,3 @@ if __name__ == "__main__":
 ## ライセンス
 
 本リポジトリのコードは MIT ライセンスで提供されます。
-
