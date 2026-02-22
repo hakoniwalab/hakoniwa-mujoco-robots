@@ -81,6 +81,11 @@ git submodule update --init --recursive
 `docker/` 配下に、本リポジトリ向けの Ubuntu 24.04 ベース実行環境を用意しています。
 Dockerイメージ作成時に `hakoniwa-core-pro` を GitHub から取得してソースビルド/インストールするため、初回ビルドには時間がかかります。
 
+> 注意:
+> - Ubuntu + Docker は viewer(GUI) 利用をサポートします。
+> - macOS + Docker は viewer(GUI) をサポートしません（headless実行のみサポート）。
+> - macOSでGUI表示したい場合は、Dockerではなくホスト(macOS)で実行してください。
+
 ### イメージ作成
 
 ```bash
@@ -111,6 +116,14 @@ bash build.bash
 2. ターミナル2（Python自動操縦）:
 ```bash
 python -m python.forklift_simple_auto config/custom.json
+```
+
+### macOS + Docker の実行方針
+
+macOS + Docker は headless で利用してください。
+
+```bash
+HAKO_DOCKER_GUI=off bash docker/run.bash
 ```
 
 ## サンプルの実行
