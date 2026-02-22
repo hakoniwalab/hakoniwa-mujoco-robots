@@ -83,7 +83,13 @@ static void keyboard(GLFWwindow* window, int key, int scancode, int action, int 
 void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex& mutex) {
     (void)running_flag;
     if (!glfwInit()) {
-        std::cerr << "[ERROR] GLFW Initialization failed!" << std::endl;
+        const char* desc = nullptr;
+        int err = glfwGetError(&desc);
+        std::cerr << "[ERROR] GLFW Initialization failed!";
+        if (err != GLFW_NO_ERROR) {
+            std::cerr << " code=" << err << " msg=" << (desc != nullptr ? desc : "<null>");
+        }
+        std::cerr << std::endl;
         return;
     }
     mujoco_model = model; 
@@ -127,4 +133,3 @@ void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex&
     glfwTerminate();
     std::cout << "[INFO] Viewer thread finished." << std::endl;
 }
-

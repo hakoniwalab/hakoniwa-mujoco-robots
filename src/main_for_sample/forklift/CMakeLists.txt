@@ -13,15 +13,16 @@ target_include_directories(forklift_sim
     PRIVATE ${PROJECT_ROOT_DIR}/src
     PRIVATE ${PROJECT_ROOT_DIR}/include
     PRIVATE ${GLFW_DIR}
-    PRIVATE ${ROS2PDU_SOURCE_DIR}/pdu/types
-    PRIVATE ${HAKO_CORE_SOURCE_DIR}
+    PRIVATE ${HAKO_CORE_INCLUDE_BASE}
+    PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
+    PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
     )
 
 # MuJoCoライブラリをリンク
 target_link_libraries(forklift_sim 
     ${LIBMUJOCO}
     mujoco-common
-    assets
-    conductor
+    ${HAKO_ASSETS_LINK_TARGET}
+    ${HAKO_CONDUCTOR_LINK_TARGET}
 )
 target_compile_definitions(forklift_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)

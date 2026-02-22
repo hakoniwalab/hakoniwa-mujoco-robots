@@ -79,6 +79,7 @@ git submodule update --init --recursive
 ## Docker (Ubuntu 24.04)
 
 `docker/` 配下に、本リポジトリ向けの Ubuntu 24.04 ベース実行環境を用意しています。
+Dockerイメージ作成時に `hakoniwa-core-pro` を GitHub から取得してソースビルド/インストールするため、初回ビルドには時間がかかります。
 
 ### イメージ作成
 
@@ -120,7 +121,33 @@ python -m python.forklift_simple_auto config/custom.json
 
 1.  **Hakoniwaコアのセットアップ**
     シミュレーションの中核を担うHakoniwaコアライブラリのセットアップが必須です。
-    詳細は **[thirdparty/hakoniwa-core-pro のREADME](https://github.com/hakoniwalab/hakoniwa-core-pro/blob/main/README.md)** を参照してインストールを完了してください。これにより、Pythonの `hakopy` ライブラリも同時にセットアップされます。
+    詳細は **[hakoniwa-core-pro のREADME](https://github.com/hakoniwalab/hakoniwa-core-pro/blob/main/README.md)** を参照してインストールを完了してください。これにより、Pythonの `hakopy` ライブラリも同時にセットアップされます。
+    既定のインストール先は `/usr/local/hakoniwa` です（必要なら `HAKONIWA_INSTALL_PREFIX` で変更可能）。
+    例:
+    Linux:
+    ```bash
+    git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
+    cd hakoniwa-core-pro
+    bash build.bash
+    bash install.bash
+    ```
+    インストール後、必要に応じてライブラリ検索パスを設定してください。
+    ```bash
+    export PATH=/usr/local/hakoniwa/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$LD_LIBRARY_PATH
+    ```
+    macOS:
+    ```bash
+    git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
+    cd hakoniwa-core-pro
+    bash build.bash
+    bash install.bash
+    ```
+    インストール後、必要に応じてライブラリ検索パスを設定してください。
+    ```bash
+    export PATH=/usr/local/hakoniwa/bin:$PATH
+    export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
+    ```
 
 2.  **Python追加ライブラリのインストール（ゲームパッド操作時のみ）**
     ゲームパッド操作を使う場合のみ `pygame` が必要です。`pip`でインストールしてください。
@@ -160,6 +187,10 @@ python -m python.forklift_api_control config/safety-forklift-pdu.json config/mon
 python -m python.forklift_simple_auto config/custom.json
 ```
 このサンプルは、前進・旋回・リフト上下の基本操作のみで構成されるため、最初の動作確認に向いています。
+移動距離を指定する例:
+```bash
+python -m python.forklift_simple_auto config/custom.json --forward-distance 1.5 --backward-distance 1.5 --turn-degree -90
+```
 
 #### 方法B: ゲームパッドで手動操作する（任意）
 

@@ -3,6 +3,8 @@
 #include <string>
 #include <thread>
 #include <mutex>
+#include <vector>
+#include <stdexcept>
 
 #include "mujoco_debug.hpp"
 #include "mujoco_viewer.hpp"
@@ -13,10 +15,10 @@
 #include "controller/slider_controller.hpp"
 #include "controller/differential_drive_controller.hpp"
 #include "controller/forklift_controller.hpp"
-#include "include/hako_asset.h"
-#include "include/hako_conductor.h"
+#include "hako_asset.h"
+#include "hako_asset_pdu.hpp"
+#include "hako_conductor.h"
 #include "hakoniwa/pdu/adapter/forklift_operation_adapter.hpp"
-#include "pdu.hpp"
 #include "geometry_msgs/pdu_cpptype_conv_Twist.hpp"
 #include "std_msgs/pdu_cpptype_conv_Float64.hpp"
 #include "hako_msgs/pdu_ctype_GameControllerOperation.h"
@@ -27,6 +29,77 @@ static const std::string model_path = "models/forklift/forklift.xml";
 static const char* config_path = "config/safety-forklift-pdu.json";
 static std::mutex data_mutex;
 static bool running_flag = true;
+
+static bool resolve_pdu_info(
+    const std::string& robot_name,
+    const std::string& pdu_name,
+    int& pdu_size,
+    int& channel_id)
+{
+    std::vector<hako::asset::Robot> robots;
+    if (!hako::asset::hako_asset_get_pdus(robots)) {
+        std::cerr << "[ERROR] Failed to get PDU configuration" << std::endl;
+        return false;
+    }
+    for (const auto& robot : robots) {
+        if (robot.name != robot_name) {
+            continue;
+        }
+        for (const auto& writer : robot.pdu_writers) {
+            if (writer.org_name == pdu_name) {
+                pdu_size = writer.pdu_size;
+                channel_id = writer.channel_id;
+                return true;
+            }
+        }
+        for (const auto& reader : robot.pdu_readers) {
+            if (reader.org_name == pdu_name) {
+                pdu_size = reader.pdu_size;
+                channel_id = reader.channel_id;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+template <typename CppType, typename Convertor>
+class PduChannel {
+private:
+    std::string robot_name_;
+    int channel_id_;
+    int pdu_size_;
+    Convertor convertor_;
+    std::vector<char> buffer_;
+
+public:
+    PduChannel(const std::string& robot_name, const std::string& pdu_name)
+        : robot_name_(robot_name), channel_id_(-1), pdu_size_(0)
+    {
+        if (!resolve_pdu_info(robot_name, pdu_name, pdu_size_, channel_id_)) {
+            throw std::runtime_error(
+                "PDU not found: robot=" + robot_name + " pdu=" + pdu_name);
+        }
+        buffer_.resize(static_cast<size_t>(pdu_size_));
+    }
+
+    bool load(CppType& data)
+    {
+        if (hako_asset_pdu_read(robot_name_.c_str(), channel_id_, buffer_.data(), buffer_.size()) != 0) {
+            return false;
+        }
+        return convertor_.pdu2cpp(buffer_.data(), data);
+    }
+
+    bool flush(CppType& data)
+    {
+        int actual_size = convertor_.cpp2pdu(data, buffer_.data(), static_cast<int>(buffer_.size()));
+        if (actual_size <= 0 || actual_size > static_cast<int>(buffer_.size())) {
+            return false;
+        }
+        return hako_asset_pdu_write(robot_name_.c_str(), channel_id_, buffer_.data(), static_cast<size_t>(actual_size)) == 0;
+    }
+};
 
 static int my_on_initialize(hako_asset_context_t* context)
 {
@@ -42,34 +115,23 @@ static int my_on_reset(hako_asset_context_t* context)
 class HakoObject {
 private:
     hako::robots::PhysicsObject obj;
-
-    using PduT = hako::pdu::PDU<
-        Hako_Twist, HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist>;
-
-    // ★ 非constの実体をメンバで持つ（初期化順に注意：posより前に宣言）
-    std::string robot_name_;
-    std::string pdu_name_;
-    PduT pos;
+    PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> pos_;
 
 public:
-    // ★ nameは by-value にして非constのlvalueとして使えるようにする
-    HakoObject(std::string name, std::shared_ptr<hako::robots::physics::IWorld> world)
-        : obj(world, name)                  // 先に PhysicsObject
-        , robot_name_(name)                 // 非constの実体
-        , pdu_name_("pos")                  // 非constの実体
-        , pos(robot_name_, pdu_name_)       // ★ 非const lvalue をPDUに渡す
+    HakoObject(const std::string& name, std::shared_ptr<hako::robots::physics::IWorld> world)
+        : obj(world, name)
+        , pos_(name, "pos")
     {}
 
     void flush() {
-        HakoCpp_Twist pos_data{};           // ゼロ初期化
-        pos.load(pos_data);
+        HakoCpp_Twist pos_data{};
         pos_data.linear.x = obj.getPosition().x;
         pos_data.linear.y = obj.getPosition().y;
         pos_data.linear.z = obj.getPosition().z;
         pos_data.angular.x = obj.getEuler().x;
         pos_data.angular.y = obj.getEuler().y;
         pos_data.angular.z = obj.getEuler().z;
-        pos.flush(pos_data);
+        (void)pos_.flush(pos_data);
     }
 };
 
@@ -86,14 +148,10 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         std::string pdu_pad_name = "hako_cmd_game";
         std::string pdu_pos_name = "pos";
         std::string pdu_height_name = "height";
-        //forklift::hako_cmd_game
-        HAKO_PDU_TYPE(hako::pdu::msgs::hako_msgs, GameControllerOperation) pad(robot_name, pdu_pad_name);
-        //forklift::pos
-        HAKO_PDU_TYPE(hako::pdu::msgs::geometry_msgs, Twist) forklift_pos(robot_name, pdu_pos_name);
-        //forklift::height
-        HAKO_PDU_TYPE(hako::pdu::msgs::std_msgs, Float64) lift_pos(robot_name, pdu_height_name);
-        //forklift_fork::pos
-        HAKO_PDU_TYPE(hako::pdu::msgs::geometry_msgs, Twist) forklift_fork_pos(robot_name2, pdu_pos_name);
+        PduChannel<HakoCpp_GameControllerOperation, hako::pdu::msgs::hako_msgs::GameControllerOperation> pad(robot_name, pdu_pad_name);
+        PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_pos(robot_name, pdu_pos_name);
+        PduChannel<HakoCpp_Float64, hako::pdu::msgs::std_msgs::Float64> lift_pos(robot_name, pdu_height_name);
+        PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_fork_pos(robot_name2, pdu_pos_name);
 
         hako::robots::controller::ForkliftController controller(world);
         HakoObject pallet1("pallet1", world);
@@ -126,9 +184,6 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 controller.update();
                 world->advanceTimeStep();
 
-                lift_pos.load(lift_pos_data);
-                forklift_pos.load(forklift_pos_data);
-                forklift_fork_pos.load(forklift_fork_pos_data);
                 //flush pos of forklift
                 forklift_pos_data.linear.x = controller.getForklift().getPosition().x;
                 forklift_pos_data.linear.y = controller.getForklift().getPosition().y;

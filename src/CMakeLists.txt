@@ -15,8 +15,7 @@ else()
 endif()
 
 set(PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}/..")
-set(ROS2PDU_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-pro/hakoniwa-ros2pdu")
-set(HAKO_CORE_SOURCE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-pro")
+set(HAKONIWA_INSTALL_PREFIX "/usr/local/hakoniwa" CACHE PATH "Install prefix of hakoniwa-core-pro")
 
 option(USE_MUJOCO "Enable MuJoCo support" ON)
 if(USE_MUJOCO)
@@ -85,7 +84,8 @@ if(USE_MUJOCO)
         set(MUJOCO_SOURCE_ROOT_DIR "${CMAKE_BINARY_DIR}/_deps/mujoco_precompiled-src")
         set(MUJOCO_SOURCE_DIR "${MUJOCO_SOURCE_ROOT_DIR}/include")
         set(MUJOCO_LIB_DIR "${MUJOCO_SOURCE_ROOT_DIR}/lib")
-        set(MUJOCO_DYLIB_PATH "${MUJOCO_LIB_DIR}/libmujoco.${MUJOCO_VERSION}.dylib")
+        set(MUJOCO_FRAMEWORK_DIR "${MUJOCO_LIB_DIR}/mujoco.framework")
+        set(MUJOCO_DYLIB_PATH "${MUJOCO_FRAMEWORK_DIR}/Versions/A/libmujoco.${MUJOCO_VERSION}.dylib")
 
         if(NOT EXISTS "${MUJOCO_SOURCE_DIR}/mujoco/mujoco.h" OR NOT EXISTS "${MUJOCO_DYLIB_PATH}")
             set(MUJOCO_DOWNLOAD_CODE 1)
@@ -131,9 +131,9 @@ if(USE_MUJOCO)
                     "${MUJOCO_SOURCE_DIR}/mujoco"
                 )
                 execute_process(
-                    COMMAND ${CMAKE_COMMAND} -E copy
-                    "${MUJOCO_MOUNT_DIR}/mujoco.framework/Versions/A/libmujoco.${MUJOCO_VERSION}.dylib"
-                    "${MUJOCO_DYLIB_PATH}"
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "${MUJOCO_MOUNT_DIR}/mujoco.framework"
+                    "${MUJOCO_FRAMEWORK_DIR}"
                 )
             else()
                 execute_process(COMMAND hdiutil detach "${MUJOCO_MOUNT_DIR}" OUTPUT_QUIET ERROR_QUIET)
@@ -161,7 +161,24 @@ else()
     message(STATUS "MuJoCo disabled: Using simple physics model")
 endif()
 
-set(HAKO_CORE_DIR "${PROJECT_SOURCE_DIR}/../thirdparty/hakoniwa-core-pro")
+set(HAKO_CORE_INCLUDE_ROOT "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa")
+set(HAKO_CORE_INCLUDE_BASE "${HAKONIWA_INSTALL_PREFIX}/include")
+set(HAKO_PDU_TYPES_INCLUDE_DIR "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa/pdu")
+set(HAKO_CORE_LIBRARY_DIR "${HAKONIWA_INSTALL_PREFIX}/lib")
+
+list(APPEND CMAKE_PREFIX_PATH "${HAKONIWA_INSTALL_PREFIX}")
+find_package(hakoniwa-core CONFIG QUIET)
+if(hakoniwa-core_FOUND)
+    message(STATUS "Using installed hakoniwa-core package: ${HAKONIWA_INSTALL_PREFIX}")
+    set(HAKO_ASSETS_LINK_TARGET hakoniwa-core::assets)
+    set(HAKO_CONDUCTOR_LINK_TARGET hakoniwa-core::conductor)
+else()
+    message(STATUS "hakoniwa-core package config not found. Falling back to direct library search in ${HAKO_CORE_LIBRARY_DIR}")
+    find_library(HAKO_ASSETS_LIB NAMES assets PATHS "${HAKO_CORE_LIBRARY_DIR}" REQUIRED NO_DEFAULT_PATH)
+    find_library(HAKO_CONDUCTOR_LIB NAMES conductor PATHS "${HAKO_CORE_LIBRARY_DIR}" REQUIRED NO_DEFAULT_PATH)
+    set(HAKO_ASSETS_LINK_TARGET "${HAKO_ASSETS_LIB}")
+    set(HAKO_CONDUCTOR_LINK_TARGET "${HAKO_CONDUCTOR_LIB}")
+endif()
 
 option(USE_VIEWER "Enable MuJoCo viewer" ON)
 MESSAGE(STATUS "USE_VIEWER=${USE_VIEWER}")
@@ -182,11 +199,6 @@ else()
     target_include_directories(mujoco-common PUBLIC mujoco-common)
 endif()
 
-
-add_subdirectory(
-    ${HAKO_CORE_DIR}
-    ${CMAKE_BINARY_DIR}/thirdparty/hakoniwa-core-pro/sources/core
-    )
 
 add_subdirectory(main_for_sample/forklift)
 add_subdirectory(main_for_sample/rover)
