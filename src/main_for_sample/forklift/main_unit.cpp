@@ -27,7 +27,7 @@
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift-unit.xml";
-static const char* config_path = "config/forklift-unit.json";
+static const char* config_path = "config/forklift-unit-compact.json";
 static std::mutex data_mutex;
 static bool running_flag = true;
 
