@@ -345,6 +345,7 @@ Save format and behavior:
 - state file format: `v8` (reads `v7` / `v6` / `v5` / `v4` / `v3` / `v2` / `v1` for backward compatibility)
 - autosave interval: `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS` (default `1000`)
 - save path: `HAKO_FORKLIFT_STATE_FILE` (default under `./tmp/`)
+- v8 design intent: expand saved boundary to forklift-subtree dynamics + actuator/PID internal state, based on observed divergence when fork/lift context was insufficient.
 
 Restore behavior (`main_unit.cpp`):
 - apply physics state first, then restore lift target
@@ -433,6 +434,21 @@ Pass criteria (practical):
 - `START restored=yes` appears in `logs/forklift-unit-recovery.log`.
 - In the first few hundred milliseconds after restart, trajectories trend toward the pre-restart curve.
 - `phase` continuity is preserved through resume and subsequent autosave logs.
+
+Acceptance (Phase1, `sim_step` aligned, strict):
+- `mean(|Δbody_vx|) <= 1e-3`
+- `max(|Δbody_vx|) <= 1e-2`
+- `max(|Δpos_x|) <= 1e-3`
+- `phase` continuity: identical
+- `max(|Δlift_z|) <= 1e-4`
+
+Evaluation protocol:
+- Official comparison window: `4010..4860`
+- Alignment: `sim_step` (baseline vs resumed)
+- Trace source: `logs/forklift-unit-trace.csv` (column definitions apply)
+- `Δx` definition: `(baseline - resumed)` and thresholds apply to `|Δx|`
+- Trace sampling: `HAKO_FORKLIFT_TRACE_EVERY_STEPS=10` (official evidence condition)
+- Metrics include the `RESUME_CMD_HOLD_SEC` window (stricter; operational resume procedure is part of the spec)
 
 Robustness note:
 - `python.plot_forklift_continuity` skips partially written CSV rows (e.g., interrupted append on `Ctrl+C`).
@@ -540,7 +556,7 @@ Ownership transition and commit-point are responsibilities of `hakoniwa-rd-core`
 ### Q2. How does commit-point relate to MuJoCo save?
 A. Currently they are not directly linked.
 Save is operational autosave.
-Future design may hook save at RD commit-point.
+Future hook point is explicit: commit-point reached in RD control-plane -> invoke context-save API at the data-plane boundary.
 
 ### Q3. How is this aligned with `d_max`?
 A. This repository focuses on local physics execution.
@@ -555,6 +571,7 @@ External objects are future extension.
 A. Partially.
 Saved data includes forklift-subtree `qpos` / `qvel` / `qacc`, `qacc_warmstart`, `qfrc_applied`, `xfrc_applied`, actuator `ctrl`, `act`, and control state.
 This is broader than minimal pose-only save, but still not a full-world MuJoCo snapshot.
+These buffers were chosen to stabilize contact/actuation resumption without targeting a full MuJoCo internal snapshot.
 
 ### Q6. Is physical continuity perfectly guaranteed?
 A. No.
@@ -571,6 +588,24 @@ Roadmap targets unification toward compact.
 ### Q9. How is this different from HLA/FMI positioning?
 A. This design centers on explicit PDU contracts, EU-level ownership, and commit-point semantics.
 Its positioning is different from master-algorithm-centric synchronization styles.
+
+### Q10. Is `HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC` a workaround?
+A. It is an intentional disturbance-shield window right after resume.
+Immediately after restore, command re-send and internal state settling can overlap; this short window suppresses external command noise to stabilize the resume boundary.
+With future commit-point-coupled save/restore, this window can be reduced or removed.
+
+### Q11. Why is there no Phase2 evidence (cargo/shelf/complex contact)?
+A. The current objective is to validate **ExecutionUnit continuity (Phase1)** as an RD prerequisite.
+This repository provides data-plane continuity implementation; without RD control-plane coupling (commit-point-triggered save, ownership handoff rule, epoch-consistent handoff timing), Phase2 evidence has low return relative to required effort.
+
+Phase2 (cargo/shelf/complex contact) will be executed after:
+- commit-point-triggered context-save hook from RD control-plane
+- handoff rule finalization (which state timing is authoritative at transfer)
+- boundary finalization for external-object context scope
+
+Therefore, Phase1 is treated as the official evidence in the current scope, and Phase2 is explicitly out of scope for now.
+
+Note: Phase1 evidence targets semantic continuity under the defined scope; it is not a claim of full-world physical determinism.
 
 This FAQ reflects the current implementation scope.
 For final semantics and distributed extensions, see [Hakoniwa Design Docs](https://github.com/hakoniwalab/hakoniwa-design-docs).

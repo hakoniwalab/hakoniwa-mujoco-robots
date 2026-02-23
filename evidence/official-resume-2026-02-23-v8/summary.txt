@@ -4,3 +4,5 @@ common_steps=86 range=4010..4860
 delta_vx_mean=0.000000000
 delta_vx_min=0.000000000
 delta_vx_max=0.000000000
+comparison_uses_raw_csv_values=true
+plot_rounding_applied=false
