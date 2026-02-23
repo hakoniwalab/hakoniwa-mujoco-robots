@@ -404,10 +404,11 @@ HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS=1000 \
 - `logs/forklift-unit-recovery.log` 監査ログ（`START/AUTOSAVE/END`）
 - `logs/forklift-unit-trace.csv` 客観評価用トレース（時系列）
 
-成功判定（Phase2復帰）:
+成功判定（Phase1復帰 / `phase=2` ラッチ確認）:
 - `START restored=yes ... phase=2 ...`
 - `Resume control phase=2 ...`
 - 復帰後 `AUTOSAVE` で `phase=2` 維持
+Note: ここでの `phase=2` はフォークリフト制御の帰路フラグであり、FAQの「Phase2（複雑接触・外部物体込み）」とは別概念です。
 
 ログは `tee -a` 追記です。  
 1回目/2回目は `START restored=no/yes` で区切って判定します。
@@ -447,6 +448,7 @@ Acceptance（Phase1, `sim_step` 整列, strict）:
 - `max(|Δpos_x|) <= 1e-3`
 - `phase` 連続性: 一致
 - `max(|Δlift_z|) <= 1e-4`
+Note: 公式エビデンスでゼロ差が観測された回でも、再現性と環境差（OS/CPU/微小ノイズ）を見越して閾値は工学的許容として設定します。
 
 評価プロトコル:
 - 公式比較ウィンドウ: `4010..4860`

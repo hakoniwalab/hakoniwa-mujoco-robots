@@ -398,10 +398,11 @@ HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS=1000 \
 - `logs/forklift-unit-recovery.log`: audit log (`START/AUTOSAVE/END`)
 - `logs/forklift-unit-trace.csv`: objective continuity trace (time series)
 
-Success signals for phase-2 resume:
+Success signals (Phase1 resume / `phase=2` latch check):
 - `START restored=yes ... phase=2 ...`
 - `Resume control phase=2 ...`
 - `AUTOSAVE` still shows `phase=2` after resume
+Note: `phase=2` here is the forklift control return-path flag, not FAQ “Phase2” (complex contact/cargo/shelf scope).
 
 Logs are append mode (`tee -a`).
 Use `START restored=no/yes` to separate first and second runs.
@@ -441,6 +442,7 @@ Acceptance (Phase1, `sim_step` aligned, strict):
 - `max(|Δpos_x|) <= 1e-3`
 - `phase` continuity: identical
 - `max(|Δlift_z|) <= 1e-4`
+Note: official evidence happened to show zero diff; thresholds are kept as engineering tolerance for reproducibility across environment/runtime noise.
 
 Evaluation protocol:
 - Official comparison window: `4010..4860`
