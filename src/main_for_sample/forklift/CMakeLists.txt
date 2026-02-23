@@ -9,6 +9,12 @@ add_executable(
     forklift_unit_sim
     main_unit.cpp
     forklift_unit_app.cpp
+    rd_light_integration.cpp
+    forklift_visibility_controller.cpp
+    forklift_trace_logger.cpp
+    forklift_recovery_logger.cpp
+    forklift_pdu_runtime.cpp
+    forklift_simulation_loop.cpp
 )
 
 #MESSAGE(STATUS "CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
