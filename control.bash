@@ -17,6 +17,10 @@ PDU_WRITE_LOG="${HAKO_PDU_WRITE_LOG:-1}"
 FORWARD_GOAL_X="${FORWARD_GOAL_X:-}"
 HOME_GOAL_X="${HOME_GOAL_X:-0.0}"
 GOAL_TOLERANCE="${GOAL_TOLERANCE:-0.03}"
+MISSION_LOOPS="${MISSION_LOOPS:-0}"
+if [[ $# -ge 2 ]]; then
+  MISSION_LOOPS="$2"
+fi
 
 mkdir -p ./logs
 
@@ -29,6 +33,7 @@ echo "[control] START_HEIGHT=${START_HEIGHT}" | tee -a "${CTRL_LOG_FILE}"
 echo "[control] PAUSE_SEC=${PAUSE_SEC}" | tee -a "${CTRL_LOG_FILE}"
 echo "[control] STARTUP_WAIT_SEC=${STARTUP_WAIT_SEC}" | tee -a "${CTRL_LOG_FILE}"
 echo "[control] HAKO_PDU_WRITE_LOG=${PDU_WRITE_LOG}" | tee -a "${CTRL_LOG_FILE}"
+echo "[control] MISSION_LOOPS=${MISSION_LOOPS}" | tee -a "${CTRL_LOG_FILE}"
 echo "[control] START_TIME=$(date '+%Y-%m-%d %H:%M:%S')" | tee -a "${CTRL_LOG_FILE}"
 if [[ -n "${FORWARD_GOAL_X}" ]]; then
   echo "[control] FORWARD_GOAL_X=${FORWARD_GOAL_X}" | tee -a "${CTRL_LOG_FILE}"
@@ -44,7 +49,8 @@ if [[ -n "${FORWARD_GOAL_X}" ]]; then
     --move-speed "${MOVE_SPEED}" \
     --start-height "${START_HEIGHT}" \
     --pause-sec "${PAUSE_SEC}" \
-    --startup-wait-sec "${STARTUP_WAIT_SEC}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
+    --startup-wait-sec "${STARTUP_WAIT_SEC}" \
+    --mission-loops "${MISSION_LOOPS}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
 else
   HAKO_PDU_WRITE_LOG="${PDU_WRITE_LOG}" python -u -m python.forklift_simple_auto "${CONFIG_PATH}" \
     --forward-distance "${FORWARD_DISTANCE}" \
@@ -53,6 +59,7 @@ else
     --turn-degree "${TURN_DEGREE}" \
     --start-height "${START_HEIGHT}" \
     --pause-sec "${PAUSE_SEC}" \
-    --startup-wait-sec "${STARTUP_WAIT_SEC}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
+    --startup-wait-sec "${STARTUP_WAIT_SEC}" \
+    --mission-loops "${MISSION_LOOPS}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
 fi
 exit ${PIPESTATUS[0]}

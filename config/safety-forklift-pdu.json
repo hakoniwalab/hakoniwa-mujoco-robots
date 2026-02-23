@@ -311,6 +311,24 @@
             "rpc_pdu_readers": [],
             "rpc_pdu_writers": [],
             "shm_pdu_readers": [
+                {
+                    "type": "hako_msgs/ExecutionUnitRuntimeStatus",
+                    "org_name": "runtime_status",
+                    "name": "forklift_runtime_status",
+                    "channel_id": 4,
+                    "pdu_size": 256,
+                    "write_cycle": 1,
+                    "method_type": "SHM"
+                },
+                {
+                    "type": "hako_msgs/ExecutionUnitRuntimeContext",
+                    "org_name": "runtime_context",
+                    "name": "forklift_runtime_context",
+                    "channel_id": 5,
+                    "pdu_size": 4136,
+                    "write_cycle": 1,
+                    "method_type": "SHM"
+                }
             ],
             "shm_pdu_writers": [
                 {
@@ -337,6 +355,24 @@
                     "name": "forklift_height",
                     "channel_id": 2,
                     "pdu_size": 32,
+                    "write_cycle": 1,
+                    "method_type": "SHM"
+                },
+                {
+                    "type": "hako_msgs/ExecutionUnitRuntimeStatus",
+                    "org_name": "runtime_status",
+                    "name": "forklift_runtime_status",
+                    "channel_id": 4,
+                    "pdu_size": 256,
+                    "write_cycle": 1,
+                    "method_type": "SHM"
+                },
+                {
+                    "type": "hako_msgs/ExecutionUnitRuntimeContext",
+                    "org_name": "runtime_context",
+                    "name": "forklift_runtime_context",
+                    "channel_id": 5,
+                    "pdu_size": 4136,
                     "write_cycle": 1,
                     "method_type": "SHM"
                 }

@@ -22,5 +22,17 @@
         "pdu_size": 32,
         "name": "phase",
         "type": "std_msgs/Int32"
+    },
+    {
+        "channel_id": 4,
+        "pdu_size": 256,
+        "name": "runtime_status",
+        "type": "hako_msgs/ExecutionUnitRuntimeStatus"
+    },
+    {
+        "channel_id": 5,
+        "pdu_size": 4136,
+        "name": "runtime_context",
+        "type": "hako_msgs/ExecutionUnitRuntimeContext"
     }
 ]

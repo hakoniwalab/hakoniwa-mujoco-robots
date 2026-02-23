@@ -61,7 +61,14 @@
         <geom name="castor" type="sphere" size="0.1" density="500" friction="1.01"/>
       </body>
     </body>
+
+    <!-- Fixed anchor for RD-lite standby freeze experiment -->
+    <body name="forklift_standby_anchor" pos="0 0 0.5"/>
   </worldbody>
+
+  <equality>
+    <weld name="forklift_standby_weld" body1="forklift_base" body2="forklift_standby_anchor" active="false"/>
+  </equality>
 
   <actuator>
     <motor name="left_motor" joint="left_wheel_hinge" ctrllimited="true" ctrlrange="-10 10" gear="1.0"/>

@@ -77,6 +77,12 @@ def parse_args() -> argparse.Namespace:
         default=0.5,
         help="Wait time before phase check/command start to let simulator publish restored state (default: 0.5)",
     )
+    parser.add_argument(
+        "--mission-loops",
+        type=int,
+        default=1,
+        help="Number of round trips to run (default: 1). Set 0 for infinite loop until Ctrl+C.",
+    )
     return parser.parse_args()
 
 
@@ -293,18 +299,27 @@ def main() -> int:
         if current_phase == 0:
             current_phase = infer_phase_from_pose(forklift)
         print(f"[INFO] Phase selected for mission: {current_phase}")
-        if args.forward_goal_x is not None:
-            run_global_goal_mission(
-                forklift=forklift,
-                forward_goal_x=args.forward_goal_x,
-                home_goal_x=args.home_goal_x,
-                goal_tolerance=max(0.001, args.goal_tolerance),
-                start_height=args.start_height,
-                pause_sec=pause_sec,
-                move_speed=args.move_speed,
-                current_phase=current_phase,
+        mission_loops = max(0, args.mission_loops)
+        loop_index = 0
+        while True:
+            phase_for_this_loop = current_phase if loop_index == 0 else 0
+            print(
+                f"[INFO] Mission loop {loop_index + 1}"
+                + (" (infinite)" if mission_loops == 0 else f"/{mission_loops}")
+                + f" phase={phase_for_this_loop}"
             )
-        else:
+            if args.forward_goal_x is not None:
+                run_global_goal_mission(
+                    forklift=forklift,
+                    forward_goal_x=args.forward_goal_x,
+                    home_goal_x=args.home_goal_x,
+                    goal_tolerance=max(0.001, args.goal_tolerance),
+                    start_height=args.start_height,
+                    pause_sec=pause_sec,
+                    move_speed=args.move_speed,
+                    current_phase=phase_for_this_loop,
+                )
+            else:
                 run_simple_mission(
                     forklift=forklift,
                     forward_distance=forward_distance,
@@ -313,8 +328,11 @@ def main() -> int:
                     start_height=args.start_height,
                     pause_sec=pause_sec,
                     move_speed=args.move_speed,
-                    current_phase=current_phase,
+                    current_phase=phase_for_this_loop,
                 )
+            loop_index += 1
+            if mission_loops > 0 and loop_index >= mission_loops:
+                break
         return 0
     except KeyboardInterrupt:
         interrupted = True

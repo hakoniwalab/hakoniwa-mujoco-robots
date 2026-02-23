@@ -9,6 +9,30 @@
 - 設定は移行期のため **C++=compact JSON / Python=legacy JSON** を使い分けます。  
 - 最短実行は「3ターミナル（sim / python / `hako-cmd start`）」です。  
 
+## デモ動画
+- Runtime handoff デモ（RD-lite / フォークリフト2アセット）  
+  - [![Watch the demo](https://img.youtube.com/vi/xaJJ1wEgNR8/hqdefault.jpg)](https://www.youtube.com/watch?v=xaJJ1wEgNR8)
+
+### この動画で示していること（意図）
+- 左右2つの MuJoCo Viewer は、同一EU（フォークリフト）を担当する2つのAsset Instanceです。
+- **前方1m地点を「別世界との境界」として定義**し、そこを handoff point（切替点）として使っています。
+- これは強化学習デモではなく、**RD-lite の所有権移譲（handoff）デモ**です。
+- 通常は片側のみが owner として制御・PDU publish を実行し、もう片側は standby で待機します。
+- しきい値到達時に owner が `RuntimeStatus/RuntimeContext` を更新し、standby 側が状態を受け取って owner 化します。
+- standby 側は半透明表示・非干渉化され、owner 側のみが有効に動作します（切替後に役割が反転）。
+- 左右は**それぞれ独立したMuJoCo物理計算アセット**であり、同一プロセス内の切替ではありません。
+- このデモの要点は、独立アセット間で**シームレスに実行権を委譲**し、運動を継続できることです。
+
+### ログの見方
+- `ownership release requested`: 現ownerが handoff を要求
+- `ownership activated`: 相手側が context 復元して owner 化
+- `status step=... owner=yes/no`: その時点のローカル所有権状態
+- `dist_to_release`, `dist_to_home`: 切替判定の距離指標
+
+### このデモで主張する範囲
+- 本デモは **RD制御プレーンの完全実装**ではなく、MuJoCoアセット側の前提実装（Data Plane）を示します。
+- 具体的には、所有権切替時にコンテキストを受け渡して継続実行できることを確認します。
+
 ---
 
 ## Why（なぜこのリポジトリが必要か）
@@ -144,6 +168,24 @@ RD意味論の最終定義（Normative）は次を参照してください。
 - [Hakoniwa Design Docs](https://github.com/hakoniwalab/hakoniwa-design-docs)
 - [Core Functions (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/architecture/core-functions-ja.md)
 - [Glossary (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/glossary-ja.md)
+
+### RD-Light（本リポジトリ実装）
+
+本リポジトリには、単一ノードで ownership handoff を実験するための **RD-Light** 実装を含みます。  
+これは RD 制御プレーン全体の代替ではなく、MuJoCoアセット側の前提機能を検証するための軽量実装です。
+
+- 目的:
+  - 2つの独立MuJoCoアセット間で ownership を切替
+  - `RuntimeStatus` / `RuntimeContext` による状態受け渡し
+  - handoff 後の運動継続（データプレーン継続性）を確認
+- 範囲:
+  - 単一ノード内の実験用
+  - commit-point 制御や分散再配線の最終意味論は `hakoniwa-rd-core` 側
+- 実行入口:
+  - `forklift-1.bash`（初期 owner）
+  - `forklift-2.bash`（初期 standby）
+- 設計詳細:
+  - [`rd-design.md`](rd-design.md)
 
 ---
 

@@ -9,6 +9,30 @@ English | [日本語](README-ja.md)
 - Current migration rule: C++ uses compact JSON, Python uses legacy JSON.
 - Fast start uses 3 terminals: simulator, controller, and `hako-cmd start`.
 
+## Demo Video
+- Runtime handoff demo (RD-lite, dual forklift assets):
+  - [![Watch the demo](https://img.youtube.com/vi/xaJJ1wEgNR8/hqdefault.jpg)](https://www.youtube.com/watch?v=xaJJ1wEgNR8)
+
+### What This Video Demonstrates
+- The two MuJoCo viewers are two asset instances of the same logical EU (forklift).
+- The **1m forward point is defined as the world boundary**, and used as the handoff point.
+- This is **not** a reinforcement-learning demo; it is an **RD-lite ownership handoff demo**.
+- Normally, only one side is owner (active control + PDU publish), while the other side is standby.
+- At the switching threshold, owner updates `RuntimeStatus/RuntimeContext`; standby restores context and becomes owner.
+- Standby is shown as semi-transparent and non-interfering; after handoff, roles are swapped.
+- The two sides are **separate MuJoCo physics assets** (not a single shared simulator instance).
+- The key point is **seamless execution-right delegation** between independent assets while preserving motion continuity.
+
+### How to Read the Logs
+- `ownership release requested`: current owner requested handoff
+- `ownership activated`: peer restored context and became owner
+- `status step=... owner=yes/no`: local ownership state at that step
+- `dist_to_release`, `dist_to_home`: distance metrics for switch conditions
+
+### Scope of This Claim
+- This demo does **not** claim full RD control-plane implementation.
+- It demonstrates the MuJoCo asset-side prerequisite (data-plane continuity with context handoff).
+
 ---
 
 ## Why
@@ -142,6 +166,24 @@ Final RD semantics are defined in (**Normative**):
 - [Hakoniwa Design Docs](https://github.com/hakoniwalab/hakoniwa-design-docs)
 - [Core Functions (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/architecture/core-functions-ja.md)
 - [Glossary (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/glossary-ja.md)
+
+### RD-Light (Implemented Here)
+
+This repository includes **RD-Light**, a lightweight single-node ownership handoff implementation for experiments.  
+It is not a replacement for the full RD control plane; it is a practical asset-side prerequisite implementation.
+
+- Purpose:
+  - switch ownership between two independent MuJoCo assets
+  - hand off state via `RuntimeStatus` / `RuntimeContext`
+  - validate motion continuity after handoff (data-plane continuity)
+- Scope:
+  - single-node experimental setup
+  - final commit-point semantics and distributed rewiring remain in `hakoniwa-rd-core`
+- Entry points:
+  - `forklift-1.bash` (initial owner)
+  - `forklift-2.bash` (initial standby)
+- Design details:
+  - [`rd-design.md`](rd-design.md)
 
 ---
 
