@@ -1,462 +1,515 @@
 # hakoniwa-mujoco-robots
 
-本リポジトリは、箱庭(Hakoniwa)シミュレーションフレームワーク向けに作成した
-MuJoCoベースのロボットアセット集です。フォークリフトをはじめとした複数の
-モデルを提供し、Hakoniwa環境と連携することでリアルな物理シミュレーションを
-実現します。
+English | [日本語](README-ja.md)
 
-## ディレクトリ構成
+## TL;DR
+- This repository provides MuJoCo-based physics assets for Hakoniwa.
+- It connects a C++ MuJoCo simulator and Python controllers via PDU contracts.
+- It includes context save/restore for forklift state + control state.
+- Current migration rule: C++ uses compact JSON, Python uses legacy JSON.
+- Fast start uses 3 terminals: simulator, controller, and `hako-cmd start`.
 
-- `models/` … MuJoCo 用のXMLモデルファイル
-- `config/` … 各ロボットのPDU(入出力データ)設定
-- `src/` … C++によるシミュレーション実装およびサンプルプログラム
-- `python/` … フォークリフト操作用APIやゲームパッド制御スクリプト
+---
 
-## セットアップ
+## Why
 
-本プロジェクトをビルドするには、C++コンパイラ、CMake、Gitがインストールされている必要があります。
+Hakoniwa is a PDU-based simulation platform for multi-process, multi-language, and distributed setups.
+This repository integrates MuJoCo as a high-fidelity physics asset inside that ecosystem.
 
-### WSL2 Ubuntu (22.04 / 24.04)の場合
+Main goals:
+- Provide a high-fidelity physics execution layer in Hakoniwa.
+- Keep Python control logic decoupled from C++ simulation.
+- Support experiment continuity (save/restore), as a prerequisite for future RD integration.
 
-OpenGL/GLX/Mesa関連のライブラリをインストールします。
+Why save/restore matters:
+- Resume long-running experiments.
+- Continue after manual stop/restart.
+- Recover from failures.
+- Prepare for future ownership transfer workflows.
 
+---
+
+## What
+
+Included:
+- MuJoCo models (forklift, rover)
+- Hakoniwa-integrated C++ samples
+- Python controller samples
+- Docker environment (Ubuntu 24.04)
+- Forklift context save/restore (state file + audit logs)
+
+Directory map:
+- `models/`: MuJoCo XML models
+- `config/`: PDU JSON configs
+- `src/`: C++ simulator implementation
+- `python/`: Python controllers
+- `docker/`: Docker scripts
+- `logs/`: generated logs
+- `tmp/`: generated state files
+
+---
+
+## Architecture
+
+Hakoniwa works as the hub, and MuJoCo (C++) and Python controllers communicate over PDU.
+
+- **Hakoniwa**: synchronization and PDU runtime
+- **MuJoCo C++ Asset**: physics stepping + PDU read/write
+- **Python Controller**: target-value control logic
+- **PDU JSON**: contract of channels/types/sizes
+
+```text
++-------------------+         PDU (shared contract)         +----------------------+
+| Python Controller |  <---------------------------------->  | MuJoCo C++ Simulator |
+| (forklift_* .py)  |                                        | (forklift*_sim)      |
++---------+---------+                                        +----------+-----------+
+          |                                                            |
+          |                   Hakoniwa runtime                         |
+          +--------------------(sync / mmap / PDU)---------------------+
+```
+
+---
+
+## Hakoniwa Core Summary (Reading Guide)
+
+Read this repository with the following 3 layers in mind:
+
+- `hakoniwa-core-cpp` (simulation hub core)
+  - Shared memory (`mmap`) and synchronization core
+  - `hako-master` manages runtime state and PDU areas
+- `hakoniwa-core-pro` (runtime/API layer)
+  - Asset APIs, command tools, and execution control
+  - Typical APIs: `hako_conductor_start()`, `hako_asset_register()`, `hako_asset_start()`, `hako_asset_pdu_read()`, `hako_asset_pdu_write()`
+- `hakoniwa-pdu-registry` (PDU type/size artifacts)
+  - Generated type/offset/size/converter artifacts derived from ROS msg
+  - Binary layout: `[MetaData(24B)] + [BaseData] + [HeapData]`
+  - MetaData is fixed-length 24B in the current PDU spec (ref: [`hakoniwa-pdu-registry` README](thirdparty/hakoniwa-core-pro/hakoniwa-pdu-registry/README.md))
+
+Minimum knowledge for reading samples:
+- `pdu_size` is total PDU buffer size (including metadata), not raw type size.
+  - Example: `Int32` payload is 8B, but config uses `24 + 8 = 32`.
+- Migration-period dual config:
+  - C++: compact (`pdudef + pdutypes`)
+  - Python: legacy (`pdudef`)
+- Runtime shared files are typically under `/var/lib/hakoniwa/mmap`.
+
+Recommended reading order:
+1. `src/main_for_sample/forklift/main_unit.cpp`
+2. `python/forklift_simple_auto.py`
+3. `config/forklift-unit*.json` and `config/safety-forklift-pdu*.json`
+
+---
+
+## Position in RD Architecture (Current)
+
+This repository does not implement RD control-plane logic itself.
+It provides the **data-plane physics execution base** required for RD.
+
+Responsibilities:
+- `hakoniwa-rd-core`
+  - Ownership transitions (Owner/NonOwner)
+  - Epoch/commit-point control
+  - Bridge rewiring and control-plane consistency
+- `hakoniwa-mujoco-robots`
+  - High-fidelity EU execution with MuJoCo
+  - PDU I/O
+  - Context save/restore (continuity prerequisite)
+
+Key boundaries:
+- This repository is a **prerequisite implementation**, not complete RD.
+- Ownership transition and commit-point decisions remain RD-core responsibility.
+- This repository currently has no RD control API (ownership transfer request/accept).
+  Integration is planned in the roadmap via context handoff design.
+
+### RD Summary (ExecutionUnit / Ownership / commit-point / d_max)
+
+RD is a control model for safe execution ownership transfer of an ExecutionUnit (EU) in distributed runs.
+An ExecutionUnit is a logical unit; an ExecutionUnitInstance is its concrete runtime instance per node.
+Ownership must remain unique at all times.
+
+Switching is explicit and state-driven. Epoch identifies generations, and next owner activation is coordinated after bridge rewiring is confirmed.
+A commit-point is a semantic boundary for responsibility/causality, not a physical simultaneous-start point.
+
+Time consistency assumes bounded drift and uses design limits (`d_max`, or `2*d_max` in distributed paths).
+Automatic repair for `d_max` violation and failure recovery is out of scope and handled operationally.
+
+**Note:** RD provides bounded-drift semantics, but automatic repair/failure recovery beyond `d_max` is out of scope.
+
+This README is implementation/operations guidance (**Informative**).
+Final RD semantics are defined in (**Normative**):
+- **Normative**: final specification of semantics
+- **Informative**: implementation/operations guidance (this README)
+- [Hakoniwa Design Docs](https://github.com/hakoniwalab/hakoniwa-design-docs)
+- [Core Functions (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/architecture/core-functions-ja.md)
+- [Glossary (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/glossary-ja.md)
+
+---
+
+## Migration Rule (Important)
+
+### legacy vs compact (must read)
+
+- C++ simulator: **compact JSON**
+  - e.g. `forklift-unit-compact.json`, `safety-forklift-pdu-compact.json`
+- Python controller: **legacy JSON**
+  - e.g. `forklift-unit.json`, `custom.json`, `safety-forklift-pdu.json`
+
+This is a migration-stage coexistence. Mixing wrong formats often causes "it starts but does not work" behavior.
+
+---
+
+## Prerequisites
+
+## 1) Install hakoniwa-core-pro (required)
+
+```bash
+git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
+cd hakoniwa-core-pro
+bash build.bash
+bash install.bash
+```
+
+Set paths if needed:
+
+Linux:
+```bash
+export PATH=/usr/local/hakoniwa/bin:$PATH
+export LD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$LD_LIBRARY_PATH
+```
+
+macOS:
+```bash
+export PATH=/usr/local/hakoniwa/bin:$PATH
+export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
+```
+
+## 2) OS notes
+
+- macOS: `brew install glfw`
+- Ubuntu:
 ```bash
 sudo apt-get update
-sudo apt-get install -y libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils
-sudo apt-get install -y libglfw3-dev
+sudo apt-get install -y libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils libglfw3-dev
 ```
 
-### macOSの場合
+---
 
-macOSでは、描画に必要なライブラリ `glfw` をインストールしてください。MuJoCo本体はビルド時に自動ダウンロードされます。
-
-**1. GLFWのインストール**
-
-[Homebrew](https://brew.sh/index_ja) を使用して、描画に必要なライブラリ `glfw` をインストールします。
+## Setup
 
 ```bash
-brew install glfw
-```
-
-### Windowsの場合
-
-TODO
-
-
-## リポジトリのクローンとサブモジュールの初期化
-
-まず、リポジトリをクローンし、依存するサブモジュールを初期化します。
-
-```bash
-git clone https://github.com/toppers/hakoniwa-mujoco-robots.git # (ご自身のフォークしたリポジトリURLに置き換えてください)
+git clone https://github.com/toppers/hakoniwa-mujoco-robots.git
 cd hakoniwa-mujoco-robots
 git submodule update --init --recursive
-```
-
-> 補足：`MUJOCO_VERSION.txt` を編集することで、使用する MuJoCo のバージョンを指定できます。
-
-## ビルド手順
-
-各OSのセットアップが完了したら、以下のコマンドでプロジェクトをビルドします。
-
-```bash
 ./build.bash
 ```
 
-> **Note:** MuJoCoライブラリは Linux / macOS / Windows でビルド時に自動ダウンロードされます。
-
-### 3. ビルド成果物
-
-ビルドが成功すると `src/cmake-build/` 以下にサンプル実行ファイル `forklift_sim` が生成されます。
-
-### ビルドのクリーン
-
-ビルド生成物を削除する場合は、`clean`オプションを使用します。
+- MuJoCo version is managed by `MUJOCO_VERSION.txt`.
+- Clean build:
 ```bash
 ./build.bash clean
 ```
 
+---
+
+## Quick Start
+
+Use host execution as the shortest path.
+Prepare 3 terminals.
+
+1. Simulator
+```bash
+./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
+```
+
+2. Python controller (legacy)
+```bash
+python -m python.forklift_simple_auto config/forklift-unit.json \
+  --forward-distance 2.0 --backward-distance 2.0 --move-speed 0.7
+```
+
+3. Start trigger
+```bash
+hako-cmd start
+```
+
+For compatibility, `controll.bash` is temporarily kept and internally calls `control.bash`.
+
+---
+
+## How (Detailed Run Commands)
+
+## C++ samples
+
+- Forklift:
+```bash
+./src/cmake-build/main_for_sample/forklift/forklift_sim
+```
+
+- Forklift unit (no cargo, useful for auto-control tests):
+```bash
+./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
+```
+
+- Rover:
+```bash
+./src/cmake-build/main_for_sample/rover/rover_sim
+```
+
+## Python samples
+
+- Minimal auto control:
+```bash
+python -m python.forklift_simple_auto config/custom.json
+```
+
+- For unit model (legacy):
+```bash
+python -m python.forklift_simple_auto config/forklift-unit.json --forward-distance 1.5 --backward-distance 1.5 --move-speed 0.7
+```
+
+- API control sample:
+```bash
+python -m python.forklift_api_control config/safety-forklift-pdu.json config/monitor_camera_config.json
+```
+
+- Gamepad sample:
+```bash
+python -m python.forklift_gamepad config/custom.json
+```
+
+---
+
 ## Docker (Ubuntu 24.04)
 
-`docker/` 配下に、本リポジトリ向けの Ubuntu 24.04 ベース実行環境を用意しています。
-Dockerイメージ作成時に `hakoniwa-core-pro` を GitHub から取得してソースビルド/インストールするため、初回ビルドには時間がかかります。
-
-> 注意:
-> - Ubuntu + Docker は viewer(GUI) 利用をサポートします。
-> - macOS + Docker は viewer(GUI) をサポートしません（headless実行のみサポート）。
-> - macOSでGUI表示したい場合は、Dockerではなくホスト(macOS)で実行してください。
-
-### イメージ作成
-
+Create image:
 ```bash
 bash docker/create-image.bash
 ```
 
-### コンテナ起動
-
+Run:
 ```bash
 bash docker/run.bash
 ```
 
-### コンテナ内ビルド
-
+Build in container:
 ```bash
 bash build.bash
 ```
 
-### Docker内での最小自動操縦サンプル実行
-
-ターミナルを3つ用意して、同一コンテナ内で以下を実行します。
-
-1. ターミナル1（シミュレータ）:
-```bash
-./src/cmake-build/main_for_sample/forklift/forklift_sim
-```
-
-2. ターミナル2（Python自動操縦）:
-```bash
-python -m python.forklift_simple_auto config/custom.json
-```
-※ Python側は当面 legacy 形式（`custom.json` / `forklift-unit.json` / `safety-forklift-pdu.json`）を使用してください。
-compact 形式（`*-compact.json`）は C++ シミュレータ側で使用します。
-
-`forklift_simple_auto.py` 向けの単体モデル版（荷物なし）:
-
-```bash
-./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
-```
-
-フォークリフト状態の保存/再開（C++サンプル）:
-- `forklift_sim` / `forklift_unit_sim` は、フォークリフト本体の状態（位置・姿勢・リフト高さ・各速度・各加速度）を自動保存します。
-- 次回起動時、保存ファイルがあればそこから自動再開します（荷物・棚などの状態は復元対象外）。
-- 保存先は `HAKO_FORKLIFT_STATE_FILE` で変更可能（未指定時は `./tmp/hakoniwa-forklift.state` または `./tmp/hakoniwa-forklift-unit.state`）。
-- 保存間隔は `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS`（シミュレーションstep数、既定: `1000`）で変更可能。
-- 共通実装クラスは `include/hakoniwa_mujoco_context.hpp` の `HakoniwaMujocoContext` です。
-
-例:
-```bash
-HAKO_FORKLIFT_STATE_FILE=./tmp/forklift-demo.state \
-HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS=500 \
-./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
-```
-
-```bash
-python -m python.forklift_simple_auto config/forklift-unit.json
-```
-
-3. ターミナル3（シミュレーション開始トリガ）:
-```bash
-hako-cmd start
-```
-
-### macOS + Docker の実行方針
-
-macOS + Docker は headless で利用してください。
-
+Notes:
+- Ubuntu + Docker: GUI supported
+- macOS + Docker: treat as **headless recommended**
 ```bash
 HAKO_DOCKER_GUI=off bash docker/run.bash
 ```
 
-## サンプルの実行
+---
 
-本サンプルは、**C++製のシミュレータ**と**Python製のコントローラ**を連携させて動作させます。それぞれを別のターミナルで起動する必要があります。
+## Context Save/Restore (MuJoCo)
 
-### 前提条件
+## Goal
 
-1.  **Hakoniwaコアのセットアップ**
-    シミュレーションの中核を担うHakoniwaコアライブラリのセットアップが必須です。
-    詳細は **[hakoniwa-core-pro のREADME](https://github.com/hakoniwalab/hakoniwa-core-pro/blob/main/README.md)** を参照してインストールを完了してください。これにより、Pythonの `hakopy` ライブラリも同時にセットアップされます。
-    既定のインストール先は `/usr/local/hakoniwa` です（必要なら `HAKONIWA_INSTALL_PREFIX` で変更可能）。
-    例:
-    Linux:
-    ```bash
-    git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
-    cd hakoniwa-core-pro
-    bash build.bash
-    bash install.bash
-    ```
-    インストール後、必要に応じてライブラリ検索パスを設定してください。
-    ```bash
-    export PATH=/usr/local/hakoniwa/bin:$PATH
-    export LD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$LD_LIBRARY_PATH
-    ```
-    macOS:
-    ```bash
-    git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
-    cd hakoniwa-core-pro
-    bash build.bash
-    bash install.bash
-    ```
-    インストール後、必要に応じてライブラリ検索パスを設定してください。
-    ```bash
-    export PATH=/usr/local/hakoniwa/bin:$PATH
-    export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
-    ```
+- Long-run continuity
+- Better stop/resume operations
+- Failure recovery support
+- Prerequisite for future RD ownership handoff
 
-2.  **Python追加ライブラリのインストール（ゲームパッド操作時のみ）**
-    ゲームパッド操作を使う場合のみ `pygame` が必要です。`pip`でインストールしてください。
-    ```bash
-    pip install pygame
-    ```
+## Boundary design (saved scope)
 
-3.  **ゲームパッドの接続（手動操作時のみ）**
-    手動操作を試す場合は、事前にPCにゲームパッドを接続しておいてください。
+Saved via `HakoniwaMujocoContext` (`include/hakoniwa_mujoco_context.hpp`):
+- Forklift body state (position/orientation/lift)
+- Velocity and acceleration
+- Control state (`phase`, `target_v`, `target_yaw`, `target_lift`, `step`)
 
-### 実行手順
+### Adopted context spec (implemented)
 
-3つのターミナル（以降、**ターミナル1**, **ターミナル2**, **ターミナル3**と呼びます）を用意してください。
+Saved content:
+- `ForkliftState`
+  - `base_qpos[7]`
+  - `base_qvel[6]`
+  - `base_qacc[6]`
+  - `lift_qpos`, `lift_qvel`, `lift_qacc`
+- `ControlState`
+  - `phase`
+  - `target_linear_velocity`
+  - `target_yaw_rate`
+  - `target_lift_z`
+  - `sim_step`
 
-**1. シミュレータの起動 (ターミナル1)**
+Save format and behavior:
+- state file format: `v3` (reads `v2` / `v1` for backward compatibility)
+- autosave interval: `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS` (default `1000`)
+- save path: `HAKO_FORKLIFT_STATE_FILE` (default under `./tmp/`)
 
-まず、C++でビルドされたシミュレータを起動します。
-```bash
-./src/cmake-build/main_for_sample/forklift/forklift_sim
-```
-実行後、MuJoCoのシミュレーションGUIウィンドウが立ち上がり、フォークリフトが表示されます。この時点ではまだ動きません。
+Restore behavior (`main_unit.cpp`):
+- apply physics state first, then restore lift target
+- apply restored `target_linear_velocity` / `target_yaw_rate`
+- keep `phase=2` latch in-session to avoid unintended phase flip
 
-**2. コントローラの起動 (ターミナル2)**
+## Boundary design (not saved)
 
-次に、Python製のコントローラを起動してフォークリフトを動かします。自動操縦（方法A）を推奨します。
-Pythonコントローラで指定する設定ファイルは、現時点では legacy 形式を使用してください。
+- External object states (cargo/shelf/etc.)
+- Internal states of external processes (e.g., Python internal state)
 
-#### 方法A: APIで自動制御する（推奨）
+This is intentionally **not** a full-world snapshot.
 
-`ForkliftAPI`を利用して、あらかじめプログラムされた動作を自動で実行します。このサンプルは、荷物をピックアップして棚に運ぶまでの一連の動作を行います。
-```bash
-python -m python.forklift_api_control config/safety-forklift-pdu.json config/monitor_camera_config.json
-```
-実行すると、フォークリフトが定義されたミッションを自動で開始します。
+## Save / Restore
 
-最小構成の自動操縦サンプル（monitor camera不要）:
-```bash
-python -m python.forklift_simple_auto config/custom.json
-```
-注: `custom-compact.json` / `forklift-unit-compact.json` / `safety-forklift-pdu-compact.json` は C++ シミュレータ向けです。
-Python側で使用すると入力PDUが正しく処理されない場合があります。
-このサンプルは、前進・旋回・リフト上下の基本操作のみで構成されるため、最初の動作確認に向いています。
-移動距離を指定する例:
-```bash
-python -m python.forklift_simple_auto config/forklift-unit.json --forward-distance 1.5 --backward-distance 1.5 --turn-degree -90
-```
-速度も指定する例:
-```bash
-python -m python.forklift_simple_auto config/forklift-unit.json --forward-distance 1.5 --backward-distance 1.5 --move-speed 0.7
-```
-さらに速くしたい場合（シミュレータ側ゲイン）:
-```bash
-HAKO_FORKLIFT_MOTION_GAIN=0.4 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
-```
+- Save:
+  - periodic autosave
+  - save on shutdown
+- Restore:
+  - if state file exists, restore
+  - otherwise start fresh
 
-#### 方法B: ゲームパッドで手動操作する（任意）
+Compatibility:
+- state restore assumes **the same model XML** and **the same MuJoCo version** (`MUJOCO_VERSION.txt`).
 
-ゲームパッドを使ってリアルタイムにフォークリフトを操作します。
-```bash
-python -m python.forklift_gamepad config/custom.json
-```
-このコマンドを実行すると、ゲームパッドの入力がシミュレータに送られ、フォークリフトを自由に動かせるようになります。
+Environment variables:
+- `HAKO_FORKLIFT_STATE_FILE`
+- `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS`
+- `HAKO_FORKLIFT_MOTION_GAIN`
 
-**3. シミュレーション開始 (ターミナル3)**
-
-最後に、以下を実行してシミュレーションを開始します。
-```bash
-hako-cmd start
-```
-
-## 結合テスト（forklift_unit）
-
-### 目的
-
-- Pythonコントローラが同一引数で目標値を送れることを確認する
-- MuJoCo（C++）側がフォークリフト状態と制御状態を保持し、再起動後に再開できることを確認する
-- 対象は `forklift_unit_sim`（フォークリフト単体）とし、荷物/棚は対象外とする
-
-### テスト手順
-
-ターミナルを3つ使用します。
-
-1. ターミナル1（C++シミュレータ）
+Example:
 ```bash
 HAKO_FORKLIFT_STATE_FILE=./tmp/forklift-it.state \
+HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS=1000 \
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
-または:
+
+## phase handling
+
+- `phase=2` (return path) is latched in-session
+- restored target values are applied for stable post-resume behavior
+
+## Log checks
+
+- `logs/forklift-unit-run.log`: C++ run log
+- `logs/control-run.log`: Python run log
+- `logs/forklift-unit-recovery.log`: audit log (`START/AUTOSAVE/END`)
+
+Success signals for phase-2 resume:
+- `START restored=yes ... phase=2 ...`
+- `Resume control phase=2 ...`
+- `AUTOSAVE` still shows `phase=2` after resume
+
+Logs are append mode (`tee -a`).
+Use `START restored=no/yes` to separate first and second runs.
+
+### Measured restore evidence
+
+Confirmed in `forklift_unit` restart test:
+- Date: 2026-02-23
+- MuJoCo: v3.5.0 (from `MUJOCO_VERSION.txt`)
+- State format: v3
+
+Observed:
+- `logs/forklift-unit-recovery.log`: `START restored=yes ... phase=2 ... target_v=-0.700000 ...`
+- `logs/forklift-unit-run.log`: `Resume control phase=2 target(v,yaw,lift)=(-0.7, ...)`
+- `AUTOSAVE` after resume still keeps `phase=2`
+
+This confirms **Phase2 stop -> Phase2 resume** for current scope (forklift body + control state).
+
+---
+
+## Integration Test (forklift_unit)
+
+Purpose:
+- Python control can be re-run with the same args
+- C++ side can save/restore
+- phase continuity (especially phase-2 resume) can be verified
+
+3 terminals:
+
+1. sim
 ```bash
 bash forklift-unit.bash
 ```
 
-2. ターミナル2（Pythonコントローラ）
+2. control
 ```bash
-python -m python.forklift_simple_auto config/forklift-unit.json \
-  --forward-distance 2.0 \
-  --backward-distance 2.0 \
-  --move-speed 0.7
-```
-または:
-```bash
-bash controll.bash
-```
-絶対目標モード（現在位置から逆算してグローバル目標へ移動）:
-```bash
-FORWARD_GOAL_X=5.0 HOME_GOAL_X=0.0 GOAL_TOLERANCE=0.03 bash controll.bash
+FORWARD_GOAL_X=5.0 HOME_GOAL_X=0.0 GOAL_TOLERANCE=0.03 bash control.bash
 ```
 
-3. ターミナル3（開始トリガ）
+3. start
 ```bash
 hako-cmd start
 ```
 
-### 再開確認テスト
+Resume test:
+1. stop sim with `Ctrl+C`
+2. restart sim with same command
+3. re-run control with same args
+4. verify `restored=yes` and `phase=2` in logs
 
-1. いったん `forklift_unit_sim` を停止する（`Ctrl+C`）
-2. 同じコマンドで `forklift_unit_sim` を再起動する
-3. ログに以下が出ることを確認する
-   - `Resume forklift state from: ...`
-   - `Resume control phase=...`
-4. Pythonコントローラは同じ引数で再実行し、継続して制御できることを確認する
+---
 
-### ログ確認（復旧判定）
+## FAQ
 
-`logs/` 配下に以下のログが出力されます。
+### Q1. Does this repository implement RD itself?
+A. No.
+It does not implement RD control-plane logic (ownership transition/Epoch control).
+It provides physical ExecutionUnit continuity needed by RD.
+Ownership transition and commit-point are responsibilities of `hakoniwa-rd-core`.
 
-- `logs/forklift-unit-run.log` : C++シミュレータ実行ログ
-- `logs/control-run.log` : Pythonコントローラ実行ログ
-- `logs/forklift-unit-recovery.log` : 復旧監査ログ（初期位置・phase・target・step）
+### Q2. How does commit-point relate to MuJoCo save?
+A. Currently they are not directly linked.
+Save is operational autosave.
+Future design may hook save at RD commit-point.
 
-復旧判定は `logs/forklift-unit-recovery.log` の `START` 行で確認します。
+### Q3. How is this aligned with `d_max`?
+A. This repository focuses on local physics execution.
+`d_max` guarantee belongs to RD semantics; this repository is the data-plane EU implementation running under that model.
 
-- `restored=yes` なら保存状態から復旧
-- `restored=no` なら新規開始
-- 併せて `pos=...`, `phase=...`, `target_v=...`, `target_yaw=...`, `target_lift=...`, `step=...` を確認
+### Q4. Why not full-world snapshot?
+A. Intentional phased scope.
+Current saved scope is forklift body + control state.
+External objects are future extension.
 
-### Phase2復帰の成功判定（推奨チェック）
+### Q5. Do you save MuJoCo solver internal state?
+A. No.
+Saved data is `qpos` / `qvel` / `qacc` + control state.
+Solver caches/warm-start states are out of scope.
 
-`Phase2`（帰りフェーズ）で停止して再起動した場合、以下が揃っていれば成功です。
+### Q6. Is physical continuity perfectly guaranteed?
+A. No.
+Target is semantic continuity, not strict micro-level physical continuity.
 
-1. `logs/forklift-unit-recovery.log` に 2 回目の開始行として
-   - `START restored=yes ... phase=2 ... target_v=-0.700000 ...`
-2. `logs/forklift-unit-run.log` に
-   - `Resume control phase=2 ...`
-3. 2回目開始後の `AUTOSAVE` が `phase=2` を維持している
+### Q7. Can restore work across model/version changes?
+A. Not guaranteed.
+Restore assumes same model XML and same MuJoCo version.
 
-### ログの追記仕様（tee -a）
+### Q8. Is legacy/compact coexistence a design issue?
+A. It is a migration-stage constraint.
+Roadmap targets unification toward compact.
 
-`forklift-unit.bash` / `controll.bash` はどちらも `tee -a` でログへ追記します。
-そのため、1回目と2回目の実行結果は同じファイルに連続して残ります。
+### Q9. How is this different from HLA/FMI positioning?
+A. This design centers on explicit PDU contracts, EU-level ownership, and commit-point semantics.
+Its positioning is different from master-algorithm-centric synchronization styles.
 
-- 1回目/2回目の境界は `START` 行（`restored=no` / `restored=yes`）で判定してください。
-- 必要に応じてテスト前に `logs/*.log` を退避または削除してから実行してください。
+This FAQ reflects the current implementation scope.
+For final semantics and distributed extensions, see [Hakoniwa Design Docs](https://github.com/hakoniwalab/hakoniwa-design-docs).
 
-## コンテキスト退避の設計と狙い
+---
 
-### 狙い
+## Samples
 
-- 再起動後にシミュレーションを継続できるようにする
-- 長時間実験を中断/再開しやすくする
-- `phase` を含む制御状態の再現性を高める
+- `src/main_for_sample/forklift/main.cpp`: forklift basic integration
+- `src/main_for_sample/forklift/main_unit.cpp`: unit model verification
+- `src/main_for_sample/rover/main.cpp`: rover sample
 
-### 退避対象
+---
 
-`HakoniwaMujocoContext`（`include/hakoniwa_mujoco_context.hpp`）で、主に以下を保存します。
+## Roadmap
 
-- フォークリフト本体の状態（位置・姿勢・リフト高さ）
-- 各速度・各加速度
-- 制御状態（`phase`, `target_v`, `target_yaw`, `target_lift`, `step`）
+- Windows run flow (build/run/log)
+- Python-side compact format support (remove legacy dependency)
+- Expand saved scope (cargo/shelf/etc.)
+- Automated restore consistency checks (log verification scripts)
+- RD integration for context handoff design
 
-### 退避対象外
+---
 
-- 荷物・棚など外部オブジェクトの状態
-- 実験ごとの補助プロセス状態（外部Pythonプロセスの内部状態など）
+## License
 
-### 保存/復帰方針
-
-- 保存:
-  - 定期 autosave（`HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS`）
-  - 終了時保存
-  - 保存先は `HAKO_FORKLIFT_STATE_FILE`（未指定時は `./tmp/...`）
-- 復帰:
-  - 起動時に保存ファイルがあれば復帰（`restored=yes`）
-  - 保存ファイルがなければ原点開始（`restored=no`）
-
-### phase運用方針
-
-- `phase=2`（帰りフェーズ）をセッション内でラッチし、不要な反転を抑制
-- 復帰時は保存済みの `target_v/target_yaw` も初期適用し、復帰直後の挙動を安定化
-
-### 監査ログ
-
-- `logs/forklift-unit-recovery.log` に `START / AUTOSAVE / END` を出力
-- 復帰判定時は `START` 行の `restored`, `phase`, `target_v`, `step` を確認
-
-## サンプルコード
-
-`src/main_for_sample/` 以下に C++ 製のサンプルプログラムを収録しています。
-
-- `forklift/main.cpp` … フォークリフトモデルを Hakoniwa と連携して動かす最小構成例
-- `forklift/main_unit.cpp` … 荷物なし単体モデル (`models/forklift/forklift-unit.xml`) 用サンプル
-- `rover/main.cpp` … ローバー型ロボットの制御例
-
-設定ファイルの使い分け:
-- C++シミュレータ (`forklift_sim` / `forklift_unit_sim`) は compact 形式（`*-compact.json`）を使用
-- Pythonコントローラ (`forklift_api_control` / `forklift_simple_auto` / `forklift_gamepad`) は legacy 形式（`*.json`）を使用
-
-ビルド後は `forklift_sim` などの実行ファイルが生成され、上記サンプルでは
-実際にシミュレーションを起動して Hakoniwa に登録する処理を確認できます。
-
-## Python API の利用方法
-
-`python/api/`には、シミュレーション上のフォークリフトを簡単に操作するための`ForkliftAPI`が用意されています。
-以下に、現在のAPI仕様に合わせた基本的な使い方を示します。このコードは、フォークリフトを1m前進させた後、90度旋回させる簡単なサンプルです。
-
-```python
-import sys
-import time
-import hakopy
-from hakoniwa_pdu.pdu_manager import PduManager
-from hakoniwa_pdu.impl.shm_communication_service import ShmCommunicationService
-from api.forklift_api import ForkliftAPI
-
-def main():
-    # C++シミュレータ側と合わせたPDU設定ファイルのパス
-    # このファイルで、どのロボットがどのデータをやり取りするかが定義されます
-    config_path = "config/safety-forklift-pdu.json"
-
-    # PDUマネージャーを初期化し、通信を開始します
-    pdu_manager = PduManager()
-    pdu_manager.initialize(config_path=config_path, comm_service=ShmCommunicationService())
-    pdu_manager.start_service_nowait()
-
-    # Hakoniwaに外部コントローラとして接続します
-    if not hakopy.init_for_external():
-        raise RuntimeError("Failed to initialize hakopy")
-
-    # ForkliftAPIのインスタンスを作成します
-    forklift = ForkliftAPI(pdu_manager)
-
-    try:
-        print("フォークリフトを1m前進させます...")
-        forklift.move(1.0)
-        time.sleep(1) # 動作完了を待つ
-
-        print("フォークリフトを90度旋回させます...")
-        forklift.set_yaw_degree(90)
-        time.sleep(1) # 動作完了を待つ
-
-        print("処理が完了しました。")
-
-    except KeyboardInterrupt:
-        print("プログラムを終了します。")
-    finally:
-        # 終了処理
-        forklift.stop()
-        pdu_manager.stop_service()
-        hakopy.fin()
-
-if __name__ == "__main__":
-    main()
-```
-
-このAPIを利用することで、より複雑な自動制御アプリケーションをPythonで開発できます。
-
-## ライセンス
-
-本リポジトリのコードは MIT ライセンスで提供されます。
+MIT License
