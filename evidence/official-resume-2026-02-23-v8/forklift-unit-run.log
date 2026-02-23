@@ -1,0 +1,89 @@
+[forklift-unit] STATE_FILE=./tmp/forklift-it.state
+[forklift-unit] AUTOSAVE_STEPS=1000
+[forklift-unit] MOTION_GAIN=0.2
+[forklift-unit] TRACE_FILE=./logs/forklift-unit-trace.csv
+[forklift-unit] TRACE_EVERY_STEPS=10
+[forklift-unit] RESUME_CMD_HOLD_SEC=2.0
+[forklift-unit] START_TIME=2026-02-23 12:20:35
+[INFO] Creating world and loading model...
+[INFO] Starting viewer...
+INFO: hako::init() : type: mmap
+INFO: HakoProData::init() : type: mmap
+INFO: register_master_extension()
+INFO: hako::create_master()
+INFO: register_asset_extension()
+INFO: hako_asset_register :forklift
+INFO: hako_conductor thread start
+Robot: forklift, PduIO: forklift_hako_cmd_game
+channel_id: 0 pdu_size: 136
+INFO: forklift create_lchannel: logical_id=0 real_id=0 size=136
+Robot: forklift, PduIO: forklift_pos
+channel_id: 1 pdu_size: 72
+INFO: forklift create_lchannel: logical_id=1 real_id=1 size=72
+Robot: forklift, PduIO: forklift_height
+channel_id: 2 pdu_size: 32
+INFO: forklift create_lchannel: logical_id=2 real_id=2 size=32
+Robot: forklift, PduIO: forklift_phase
+channel_id: 3 pdu_size: 32
+INFO: forklift create_lchannel: logical_id=3 real_id=3 size=32
+Robot: forklift_fork, PduIO: forklift_fork_pos
+channel_id: 0 pdu_size: 72
+INFO: forklift_fork create_lchannel: logical_id=0 real_id=4 size=72
+INFO: asset(forklift) is registered.
+WAIT START
+[INFO] Viewer thread started.
+INFO: HakoMasterData::load() called: master_ext_ = 0x103dabe28
+INFO: HakoProData::on_pdu_data_load()
+INFO: HakoProData::on_pdu_data_load() loaded memory
+LOADED: PDU DATA
+INFO: PDU is created successfully!
+WAIT RUNNING
+PDU CREATED
+INFO: start simulation
+[INFO] Simulation timestep: 0.001 sec
+[forklift-unit] STATE_FILE=./tmp/forklift-it.state
+[forklift-unit] AUTOSAVE_STEPS=1000
+[forklift-unit] MOTION_GAIN=0.2
+[forklift-unit] TRACE_FILE=./logs/forklift-unit-trace.csv
+[forklift-unit] TRACE_EVERY_STEPS=10
+[forklift-unit] RESUME_CMD_HOLD_SEC=2.0
+[forklift-unit] START_TIME=2026-02-23 12:20:49
+[INFO] Creating world and loading model...
+[INFO] Starting viewer...
+INFO: hako::init() : type: mmap
+INFO: HakoProData::init() : type: mmap
+INFO: register_master_extension()
+INFO: hako::create_master()
+INFO: register_asset_extension()
+INFO: hako_asset_register :forklift
+INFO: hako_conductor thread start
+Robot: forklift, PduIO: forklift_hako_cmd_game
+channel_id: 0 pdu_size: 136
+INFO: forklift create_lchannel: logical_id=0 real_id=0 size=136
+Robot: forklift, PduIO: forklift_pos
+channel_id: 1 pdu_size: 72
+INFO: forklift create_lchannel: logical_id=1 real_id=1 size=72
+Robot: forklift, PduIO: forklift_height
+channel_id: 2 pdu_size: 32
+INFO: forklift create_lchannel: logical_id=2 real_id=2 size=32
+Robot: forklift, PduIO: forklift_phase
+channel_id: 3 pdu_size: 32
+INFO: forklift create_lchannel: logical_id=3 real_id=3 size=32
+Robot: forklift_fork, PduIO: forklift_fork_pos
+channel_id: 0 pdu_size: 72
+INFO: forklift_fork create_lchannel: logical_id=0 real_id=4 size=72
+INFO: asset(forklift) is registered.
+WAIT START
+[INFO] Viewer thread started.
+INFO: HakoMasterData::load() called: master_ext_ = 0x82b048018
+INFO: HakoProData::on_pdu_data_load()
+INFO: HakoProData::on_pdu_data_load() loaded memory
+LOADED: PDU DATA
+INFO: PDU is created successfully!
+WAIT RUNNING
+PDU CREATED
+INFO: start simulation
+[INFO] Simulation timestep: 0.001 sec
+[INFO] Resume forklift state from: ./tmp/forklift-it.state
+[INFO] Resume control phase=1 target(v,yaw,lift)=(0.7, -0, 0.1712) step=4000
+[INFO] Restore PID policy: restore-all-pid

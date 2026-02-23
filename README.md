@@ -317,21 +317,22 @@ HAKO_DOCKER_GUI=off bash docker/run.bash
 ## Boundary design (saved scope)
 
 Saved via `HakoniwaMujocoContext` (`include/hakoniwa_mujoco_context.hpp`):
-- Forklift body state (position/orientation/lift)
-- Velocity and acceleration
+- Forklift subtree physical state (not full-world)
 - Control state (`phase`, `target_v`, `target_yaw`, `target_lift`, `step`)
 
 ### Adopted context spec (implemented)
 
 Saved content:
 - `ForkliftState`
-  - `base_qpos[7]`
-  - `base_qvel[6]`
-  - `base_qacc[6]`
-  - `lift_qpos`, `lift_qvel`, `lift_qacc`
-  - `act[]`, `ctrl[]`
-  - `qacc_warmstart[]`
-  - `qfrc_applied[]`, `xfrc_applied[]`
+  - Forklift-subtree `qpos[]`
+  - Forklift-subtree `qvel[]`
+  - Forklift-subtree `qacc[]`
+  - Forklift-subtree `qacc_warmstart[]`
+  - Forklift-subtree `qfrc_applied[]`
+  - Forklift-subtree `xfrc_applied[]`
+  - Forklift actuators `ctrl[]` (`left_motor`, `right_motor`, `lift_motor`)
+  - `act[]` (`mjData.act`)
+  - (compat/debug snapshot) base/lift pose/vel fields
 - `ControlState`
   - `phase`
   - `target_linear_velocity`
@@ -341,7 +342,7 @@ Saved content:
   - PID internal states (`lift`, `drive_v`, `drive_w`)
 
 Save format and behavior:
-- state file format: `v5` (reads `v4` / `v3` / `v2` / `v1` for backward compatibility)
+- state file format: `v8` (reads `v7` / `v6` / `v5` / `v4` / `v3` / `v2` / `v1` for backward compatibility)
 - autosave interval: `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS` (default `1000`)
 - save path: `HAKO_FORKLIFT_STATE_FILE` (default under `./tmp/`)
 
@@ -438,17 +439,32 @@ Robustness note:
 
 ### Measured restore evidence
 
-Confirmed in `forklift_unit` restart test:
+Confirmed in `forklift_unit` restart tests:
 - Date: 2026-02-23
 - MuJoCo: v3.5.0 (from `MUJOCO_VERSION.txt`)
-- State format: v4
+- State format: `v8`
 
-Observed:
-- `logs/forklift-unit-recovery.log`: `START restored=yes ... phase=2 ... target_v=-0.700000 ...`
-- `logs/forklift-unit-run.log`: `Resume control phase=2 target(v,yaw,lift)=(-0.7, ...)`
-- `AUTOSAVE` after resume still keeps `phase=2`
+Observed (latest run):
+- `logs/forklift-unit-recovery.log`: `START restored=yes ... step=4000 ... target_v=0.700000 ... target_lift=0.171200 ...`
+- `logs/forklift-unit-run.log`: `Resume control phase=1 target(v,yaw,lift)=(0.7, -0, 0.1712) step=4000`
+- Numeric continuity check on common steps (`4010..4860`, 86 points):
+  - `delta_vx mean/min/max = 0.0 / 0.0 / 0.0`
+  - `delta_target_lift mean/min/max = 0.0 / 0.0 / 0.0`
 
-This confirms **Phase2 stop -> Phase2 resume** for current scope (forklift body + control state).
+This confirms step-aligned continuity for current scope (forklift subtree + control state).
+
+Official resume evidence package:
+- `evidence/official-resume-2026-02-23-v8/`
+- Includes copied raw logs + plots + `summary.txt`
+
+Position evidence:
+![Resume Position Overlay](evidence/official-resume-2026-02-23-v8/position_overlay.png)
+
+Velocity evidence:
+![Resume Velocity Overlay](evidence/official-resume-2026-02-23-v8/velocity_overlay.png)
+
+Acceleration evidence (finite difference of `body_vx`):
+![Resume Acceleration Overlay](evidence/official-resume-2026-02-23-v8/acceleration_overlay.png)
 
 ---
 
@@ -532,13 +548,13 @@ A. This repository focuses on local physics execution.
 
 ### Q4. Why not full-world snapshot?
 A. Intentional phased scope.
-Current saved scope is forklift body + control state.
+Current saved scope is forklift subtree + control state (with selected MuJoCo dynamics buffers).
 External objects are future extension.
 
 ### Q5. Do you save MuJoCo solver internal state?
 A. Partially.
-Saved data includes `qpos` / `qvel` / `qacc`, control state, plus `act`, `ctrl`, `qacc_warmstart`, `qfrc_applied`, and `xfrc_applied`.
-However, this is still not a full MuJoCo-internal snapshot, so solver-internal transient caches may still differ after resume.
+Saved data includes forklift-subtree `qpos` / `qvel` / `qacc`, `qacc_warmstart`, `qfrc_applied`, `xfrc_applied`, actuator `ctrl`, `act`, and control state.
+This is broader than minimal pose-only save, but still not a full-world MuJoCo snapshot.
 
 ### Q6. Is physical continuity perfectly guaranteed?
 A. No.
