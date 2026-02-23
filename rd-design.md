@@ -200,6 +200,94 @@ Asset-B (new Owner)-write----> RuntimeStatus (activating/stable)
 - handoff後も運動継続（位置/速度/phase）が破綻しない
 - ログで `epoch` の単調増加と ownership 遷移が確認できる
 
+## 14. クラス設計（実装反映）
+
+`main_unit.cpp` はエントリポイントのみとし、実行責務はクラス分割している。  
+RD-Lightに直接関係する設計境界は次の通り。
+
+- `ForkliftUnitApplication`
+  - プロセス起動、モデル読み込み、シミュレーションスレッド起動
+  - `hako_asset_register/start` の呼び出し
+- `ForkliftSimulationLoop`
+  - 手動タイミング制御ループ本体（1 stepごとの統合実行）
+  - RD判定、制御更新、PDU publish、保存、ログ出力のオーケストレーション
+- `RdLightIntegration`
+  - `RuntimeStatus/RuntimeContext` の初期化と `tick()` 実行
+  - owner判定、切替閾値、cooldown等の RD-Light 制御
+- `ForkliftPduRuntime`
+  - PDUチャネル解決、padコマンド読取、状態PDU書込
+- `ForkliftVisibilityController`
+  - standby時の可視化・干渉制御（半透明、非干渉、zero dynamics）
+- `ForkliftTraceLogger` / `ForkliftRecoveryLogger`
+  - エビデンス向け CSV・復旧監査ログ出力
+- `HakoniwaMujocoContext`
+  - forklift状態＋制御状態の保存/復元（RuntimeContext payload の元データ）
+
+### 14.1 依存関係（クラス図）
+
+```mermaid
+classDiagram
+    class ForkliftUnitApplication {
+      +run(argc, argv) int
+    }
+    class ForkliftSimulationLoop {
+      +run() int
+    }
+    class RdLightIntegration {
+      +initialize(asset_name, save_cb, restore_cb) bool
+      +tick(pos_x) bool
+      +is_local_owner() bool
+    }
+    class ForkliftPduRuntime {
+      +load_pad(out_pad) bool
+      +publish_state(controller, control_state) void
+    }
+    class ForkliftVisibilityController {
+      +set_owner_active(owner_active) void
+    }
+    class ForkliftTraceLogger
+    class ForkliftRecoveryLogger
+    class HakoniwaMujocoContext
+
+    ForkliftUnitApplication --> ForkliftSimulationLoop
+    ForkliftSimulationLoop --> RdLightIntegration
+    ForkliftSimulationLoop --> ForkliftPduRuntime
+    ForkliftSimulationLoop --> ForkliftVisibilityController
+    ForkliftSimulationLoop --> ForkliftTraceLogger
+    ForkliftSimulationLoop --> ForkliftRecoveryLogger
+    ForkliftSimulationLoop --> HakoniwaMujocoContext
+```
+
+### 14.2 1ステップの処理順（RD有効時）
+
+```mermaid
+flowchart TD
+    A[Loop step begin] --> B[RdLightIntegration.tick(pos_x)]
+    B --> C{is_local_owner?}
+    C -- No --> D[standby visibility/physics path]
+    D --> E[sleep and next step]
+    C -- Yes --> F[load pad cmd from ForkliftPduRuntime]
+    F --> G[update controller target]
+    G --> H[controller.update + world.advance]
+    H --> I[publish state PDUs]
+    I --> J[trace/recovery logging]
+    J --> K[autosave if needed]
+    K --> L[sleep and next step]
+```
+
+### 14.3 RD責務の境界（コードレベル）
+
+- `RdLightIntegration` が扱うもの
+  - ownership状態機械（`RuntimeStatus/RuntimeContext`）
+  - handoffトリガ判定（位置閾値）
+  - handoff時の payload 保存/復元コールバック実行
+- `ForkliftSimulationLoop` が扱うもの
+  - 物理 step と制御更新の実行順
+  - owner/standby に応じた挙動分岐（可視化、PDU publish可否）
+- `HakoniwaMujocoContext` が扱うもの
+  - payload中身（MuJoCo状態＋制御内部状態）
+  - ただし payload 転送制御自体は `RdLightIntegration` 側
+
 ---
 
 本設計は **RDフル実装の代替ではなく前提実装（RD-Light）**。  

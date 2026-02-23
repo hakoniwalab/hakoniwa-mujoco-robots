@@ -190,6 +190,7 @@ It is not a replacement for the full RD control plane; it is a practical asset-s
     - [Switch trigger](rd-design.md#rd-switch-trigger)
     - [Stabilization features](rd-design.md#rd-stabilization-features)
     - [Failure behavior](rd-design.md#rd-failure-behavior)
+    - [Class design](rd-design.md#14-クラス設計実装反映)
     - [TODO](rd-design.md#rd-todo)
 
 ---

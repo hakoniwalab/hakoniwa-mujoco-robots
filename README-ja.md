@@ -192,6 +192,7 @@ RD意味論の最終定義（Normative）は次を参照してください。
     - [切替トリガ](rd-design.md#rd-switch-trigger)
     - [実装済みの安定化機能](rd-design.md#rd-stabilization-features)
     - [失敗時動作（現行）](rd-design.md#rd-failure-behavior)
+    - [クラス設計（実装反映）](rd-design.md#14-クラス設計実装反映)
     - [未実装 / TODO](rd-design.md#rd-todo)
 
 ---
