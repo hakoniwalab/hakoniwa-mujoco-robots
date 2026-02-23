@@ -69,6 +69,7 @@ Asset-B (Standby) --read-----> RuntimeStatus/RuntimeContext
 Asset-B (new Owner)-write----> RuntimeStatus (activating/stable)
 ```
 
+<a id="rd-state-transition-rules"></a>
 ## 6. 状態遷移ルール
 
 `RuntimeStatus.status`:
@@ -98,6 +99,7 @@ Asset-B (new Owner)-write----> RuntimeStatus (activating/stable)
   - `curr_owner_node_id != self`
   - `epoch` 一致
 
+<a id="rd-context-specification"></a>
 ## 8. コンテキスト仕様
 
 `RuntimeContext.context[]` には `HakoniwaMujocoContext` のシリアライズバイト列を格納する。
@@ -127,6 +129,7 @@ Asset-B (new Owner)-write----> RuntimeStatus (activating/stable)
 - `MAX_CONTEXT_BYTES = 4096`
 - `pdu_size = 4136`
 
+<a id="rd-switch-trigger"></a>
 ## 9. 切替トリガ
 
 位置ベース切替:
@@ -142,6 +145,7 @@ Asset-B (new Owner)-write----> RuntimeStatus (activating/stable)
 
 実デモでは「前方1m境界」を handoff point として利用。
 
+<a id="rd-stabilization-features"></a>
 ## 10. 実装済みの安定化機能
 
 ### 10.1 ownership チャタリング抑制
@@ -171,6 +175,7 @@ Asset-B (new Owner)-write----> RuntimeStatus (activating/stable)
 - ownerを失った側は、handoff保存直後のstateをローカル再適用
 - standby時は `ctrl/act/qvel/qacc` を抑制してドリフト低減
 
+<a id="rd-failure-behavior"></a>
 ## 11. 失敗時動作（現行）
 
 - 復元失敗:
@@ -180,6 +185,7 @@ Asset-B (new Owner)-write----> RuntimeStatus (activating/stable)
 - `RuntimeStatus` unreadable:
   - 前回状態で継続
 
+<a id="rd-todo"></a>
 ## 12. 未実装 / TODO
 
 - `RuntimeContext` ペイロード専用ヘッダ（`magic`, `format`, `checksum`, `mujoco_version`）

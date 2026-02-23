@@ -186,6 +186,13 @@ RD意味論の最終定義（Normative）は次を参照してください。
   - `forklift-2.bash`（初期 standby）
 - 設計詳細:
   - [`rd-design.md`](rd-design.md)
+  - クイックリンク:
+    - [状態遷移ルール](rd-design.md#rd-state-transition-rules)
+    - [コンテキスト仕様](rd-design.md#rd-context-specification)
+    - [切替トリガ](rd-design.md#rd-switch-trigger)
+    - [実装済みの安定化機能](rd-design.md#rd-stabilization-features)
+    - [失敗時動作（現行）](rd-design.md#rd-failure-behavior)
+    - [未実装 / TODO](rd-design.md#rd-todo)
 
 ---
 

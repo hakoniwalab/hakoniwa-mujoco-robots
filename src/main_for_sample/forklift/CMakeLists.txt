@@ -8,6 +8,7 @@ add_executable(
 add_executable(
     forklift_unit_sim
     main_unit.cpp
+    forklift_unit_app.cpp
 )
 
 #MESSAGE(STATUS "CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})

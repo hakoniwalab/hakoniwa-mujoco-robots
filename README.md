@@ -184,6 +184,13 @@ It is not a replacement for the full RD control plane; it is a practical asset-s
   - `forklift-2.bash` (initial standby)
 - Design details:
   - [`rd-design.md`](rd-design.md)
+  - Quick links:
+    - [State transition rules](rd-design.md#rd-state-transition-rules)
+    - [Context specification](rd-design.md#rd-context-specification)
+    - [Switch trigger](rd-design.md#rd-switch-trigger)
+    - [Stabilization features](rd-design.md#rd-stabilization-features)
+    - [Failure behavior](rd-design.md#rd-failure-behavior)
+    - [TODO](rd-design.md#rd-todo)
 
 ---
 
