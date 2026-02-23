@@ -23,6 +23,14 @@ public:
     void reset() {
         pid.reset();
     }
+
+    PID::State get_pid_state() const {
+        return pid.get_state();
+    }
+
+    void set_pid_state(const PID::State& s) {
+        pid.set_state(s);
+    }
 };
 
 }

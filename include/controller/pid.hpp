@@ -2,6 +2,11 @@
 
 namespace hako::robots::controller {
     class PID {
+    public:
+        struct State {
+            double integral {0.0};
+            double prev_error {0.0};
+        };
     private:
         double kp;
         double ki;
@@ -24,6 +29,18 @@ namespace hako::robots::controller {
         void reset() {
             integral = 0.0;
             prev_error = 0.0;
+        }
+
+        State get_state() const {
+            State s;
+            s.integral = integral;
+            s.prev_error = prev_error;
+            return s;
+        }
+
+        void set_state(const State& s) {
+            integral = s.integral;
+            prev_error = s.prev_error;
         }
     };
 }

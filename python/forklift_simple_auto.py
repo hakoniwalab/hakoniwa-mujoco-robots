@@ -71,6 +71,12 @@ def parse_args() -> argparse.Namespace:
         default=0.03,
         help="Tolerance for absolute-goal convergence in meters (default: 0.03)",
     )
+    parser.add_argument(
+        "--startup-wait-sec",
+        type=float,
+        default=0.5,
+        help="Wait time before phase check/command start to let simulator publish restored state (default: 0.5)",
+    )
     return parser.parse_args()
 
 
@@ -84,6 +90,19 @@ def print_status(forklift: ForkliftAPI, label: str) -> None:
     )
 
 
+def infer_phase_from_pose(forklift: ForkliftAPI, origin_threshold: float = 0.3) -> int:
+    pos = forklift.get_position()
+    dist_xy = (pos.linear.x ** 2 + pos.linear.y ** 2) ** 0.5
+    if dist_xy > origin_threshold:
+        print(
+            f"[WARN] Phase read as 0, but pose indicates resumed run "
+            f"(x={pos.linear.x:.3f}, y={pos.linear.y:.3f}, dist={dist_xy:.3f}). "
+            "Use phase=1 fallback."
+        )
+        return 1
+    return 0
+
+
 def run_simple_mission(
     forklift: ForkliftAPI,
     forward_distance: float,
@@ -92,6 +111,7 @@ def run_simple_mission(
     start_height: float,
     pause_sec: float,
     move_speed: float,
+    current_phase: int = 0,
 ) -> None:
     print("[INFO] Mission start: simple auto control")
     forklift.set_move_speed(move_speed)
@@ -101,13 +121,20 @@ def run_simple_mission(
     )
     print_status(forklift, "Initial state")
 
-    print(f"[INFO] Set fork height to {start_height:.3f}m")
-    forklift.lift_move(start_height)
-    time.sleep(pause_sec)
+    print(f"[INFO] Current sim phase from PDU: {current_phase}")
+    if current_phase == 0:
+        print(f"[INFO] Set fork height to {start_height:.3f}m")
+        forklift.lift_move(start_height)
+        time.sleep(pause_sec)
+    else:
+        print("[INFO] Resume phase detected. Skip initial lift command to preserve restored drive target.")
 
-    print(f"[INFO] Move forward {forward_distance:.3f}m")
-    forklift.move(forward_distance)
-    time.sleep(pause_sec)
+    if current_phase == 2:
+        print("[INFO] Phase indicates return leg. Skip forward move.")
+    else:
+        print(f"[INFO] Move forward {forward_distance:.3f}m")
+        forklift.move(forward_distance)
+        time.sleep(pause_sec)
 
     if abs(turn_degree) > 1e-6:
         print(f"[INFO] Turn to {turn_degree:.3f} deg")
@@ -140,7 +167,6 @@ def move_to_global_x(
         err = target_x - pos.linear.x
         print(f"[INFO] Global target_x={target_x:.3f}, current_x={pos.linear.x:.3f}, err={err:.3f}")
         if abs(err) <= tolerance:
-            forklift.stop()
             return True
         forklift.move(err)
     print(f"[WARN] Failed to reach global X target {target_x:.3f} within {max_iter} iterations")
@@ -154,7 +180,6 @@ def stabilize_at_global_x(
     max_rounds: int = 5,
 ) -> bool:
     for _ in range(max_rounds):
-        forklift.stop()
         time.sleep(settle_sec)
         pos = forklift.get_position()
         err = target_x - pos.linear.x
@@ -172,13 +197,18 @@ def wait_for_sim_phase(
 ) -> int:
     deadline = time.time() + max(0.1, timeout_sec)
     last_phase = 0
+    start = time.time()
     while time.time() < deadline:
         ok, phase = forklift.get_phase_status()
         if ok:
             last_phase = phase
             if phase in (1, 2):
+                elapsed = time.time() - start
+                print(f"[INFO] Phase resolved: phase={phase} elapsed={elapsed:.3f}s")
                 return phase
         time.sleep(max(0.001, poll_interval_sec))
+    elapsed = time.time() - start
+    print(f"[WARN] Phase resolve timeout: use last_phase={last_phase} elapsed={elapsed:.3f}s")
     return last_phase
 
 def run_global_goal_mission(
@@ -189,6 +219,7 @@ def run_global_goal_mission(
     start_height: float,
     pause_sec: float,
     move_speed: float,
+    current_phase: int,
 ) -> None:
     print("[INFO] Mission start: absolute-goal control")
     forklift.set_move_speed(move_speed)
@@ -197,14 +228,14 @@ def run_global_goal_mission(
         f"goal_tolerance={goal_tolerance:.3f}, start_height={start_height:.3f}, move_speed={forklift.move_speed:.3f}"
     )
     print_status(forklift, "Initial state")
-    # Prime command PDU before phase polling to avoid startup null-conversion noise.
-    forklift.stop()
-    current_phase = wait_for_sim_phase(forklift)
     print(f"[INFO] Current sim phase from PDU: {current_phase}")
 
-    print(f"[INFO] Set fork height to {start_height:.3f}m")
-    forklift.lift_move(start_height)
-    time.sleep(pause_sec)
+    if current_phase == 0:
+        print(f"[INFO] Set fork height to {start_height:.3f}m")
+        forklift.lift_move(start_height)
+        time.sleep(pause_sec)
+    else:
+        print("[INFO] Resume phase detected. Skip initial lift command to avoid overriding restored drive target.")
 
     if current_phase == 2:
         print("[INFO] Phase indicates return leg. Skip forward phase and go home.")
@@ -226,6 +257,7 @@ def run_global_goal_mission(
     print(f"[INFO] Return fork height to {start_height:.3f}m")
     forklift.lift_move(start_height)
     _ = stabilize_at_global_x(forklift, home_goal_x, goal_tolerance)
+    forklift.stop()
     time.sleep(pause_sec)
 
     print_status(forklift, "Mission done")
@@ -241,9 +273,11 @@ def main() -> int:
     forward_distance = abs(args.forward_distance)
     backward_distance = abs(args.backward_distance) if args.backward_distance is not None else forward_distance
     pause_sec = max(0.0, args.pause_sec)
+    startup_wait_sec = max(0.0, args.startup_wait_sec)
 
     pdu_manager = PduManager()
     forklift = None
+    interrupted = False
     try:
         pdu_manager.initialize(config_path=config_path, comm_service=ShmCommunicationService())
         pdu_manager.start_service_nowait()
@@ -252,6 +286,13 @@ def main() -> int:
             return 1
 
         forklift = ForkliftAPI(pdu_manager)
+        if startup_wait_sec > 0.0:
+            print(f"[INFO] Startup wait: {startup_wait_sec:.3f}s")
+            time.sleep(startup_wait_sec)
+        current_phase = wait_for_sim_phase(forklift)
+        if current_phase == 0:
+            current_phase = infer_phase_from_pose(forklift)
+        print(f"[INFO] Phase selected for mission: {current_phase}")
         if args.forward_goal_x is not None:
             run_global_goal_mission(
                 forklift=forklift,
@@ -261,24 +302,28 @@ def main() -> int:
                 start_height=args.start_height,
                 pause_sec=pause_sec,
                 move_speed=args.move_speed,
+                current_phase=current_phase,
             )
         else:
-            run_simple_mission(
-                forklift=forklift,
-                forward_distance=forward_distance,
-                backward_distance=backward_distance,
-                turn_degree=args.turn_degree,
-                start_height=args.start_height,
-                pause_sec=pause_sec,
-                move_speed=args.move_speed,
-            )
+                run_simple_mission(
+                    forklift=forklift,
+                    forward_distance=forward_distance,
+                    backward_distance=backward_distance,
+                    turn_degree=args.turn_degree,
+                    start_height=args.start_height,
+                    pause_sec=pause_sec,
+                    move_speed=args.move_speed,
+                    current_phase=current_phase,
+                )
         return 0
     except KeyboardInterrupt:
+        interrupted = True
         print("[INFO] Interrupted by user")
         return 0
     finally:
         try:
-            if forklift is not None:
+            # For resume experiments, avoid overwriting restored target on Ctrl+C.
+            if forklift is not None and (not interrupted):
                 forklift.stop()
         except Exception:
             pass

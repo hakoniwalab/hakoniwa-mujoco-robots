@@ -329,15 +329,19 @@ Saved content:
   - `base_qvel[6]`
   - `base_qacc[6]`
   - `lift_qpos`, `lift_qvel`, `lift_qacc`
+  - `act[]`, `ctrl[]`
+  - `qacc_warmstart[]`
+  - `qfrc_applied[]`, `xfrc_applied[]`
 - `ControlState`
   - `phase`
   - `target_linear_velocity`
   - `target_yaw_rate`
   - `target_lift_z`
   - `sim_step`
+  - PID internal states (`lift`, `drive_v`, `drive_w`)
 
 Save format and behavior:
-- state file format: `v3` (reads `v2` / `v1` for backward compatibility)
+- state file format: `v5` (reads `v4` / `v3` / `v2` / `v1` for backward compatibility)
 - autosave interval: `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS` (default `1000`)
 - save path: `HAKO_FORKLIFT_STATE_FILE` (default under `./tmp/`)
 
@@ -369,6 +373,9 @@ Environment variables:
 - `HAKO_FORKLIFT_STATE_FILE`
 - `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS`
 - `HAKO_FORKLIFT_MOTION_GAIN`
+- `HAKO_FORKLIFT_TRACE_FILE` (default: `./logs/forklift-unit-trace.csv`)
+- `HAKO_FORKLIFT_TRACE_EVERY_STEPS` (default: `10`)
+- `HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC` (default: `2.0`, ignore all external commands during this fixed window after resume)
 
 Example:
 ```bash
@@ -387,6 +394,7 @@ HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS=1000 \
 - `logs/forklift-unit-run.log`: C++ run log
 - `logs/control-run.log`: Python run log
 - `logs/forklift-unit-recovery.log`: audit log (`START/AUTOSAVE/END`)
+- `logs/forklift-unit-trace.csv`: objective continuity trace (time series)
 
 Success signals for phase-2 resume:
 - `START restored=yes ... phase=2 ...`
@@ -396,12 +404,44 @@ Success signals for phase-2 resume:
 Logs are append mode (`tee -a`).
 Use `START restored=no/yes` to separate first and second runs.
 
+### Continuity graph (objective check)
+
+Generate continuity plots from trace CSV:
+
+```bash
+python -m python.plot_forklift_continuity \
+  --csv logs/forklift-unit-trace.csv \
+  --output logs/forklift-unit-continuity.png \
+  --window-sec 8
+```
+
+This overlays pre-restart and post-restore sessions for:
+- `pos_x`
+- `body_vx` (with `target_v`)
+- `yaw`
+- `lift_z`
+- `phase`
+
+How to read:
+- `pos_x`: post-restore should start near the pre-restart tail value.
+- `body_vx` vs `target_v`: transient mismatch is acceptable, but convergence should be fast.
+- `phase`: should continue from restored phase (no unintended reset).
+- `yaw` / `lift_z`: small discontinuity is acceptable; persistent drift indicates restore mismatch.
+
+Pass criteria (practical):
+- `START restored=yes` appears in `logs/forklift-unit-recovery.log`.
+- In the first few hundred milliseconds after restart, trajectories trend toward the pre-restart curve.
+- `phase` continuity is preserved through resume and subsequent autosave logs.
+
+Robustness note:
+- `python.plot_forklift_continuity` skips partially written CSV rows (e.g., interrupted append on `Ctrl+C`).
+
 ### Measured restore evidence
 
 Confirmed in `forklift_unit` restart test:
 - Date: 2026-02-23
 - MuJoCo: v3.5.0 (from `MUJOCO_VERSION.txt`)
-- State format: v3
+- State format: v4
 
 Observed:
 - `logs/forklift-unit-recovery.log`: `START restored=yes ... phase=2 ... target_v=-0.700000 ...`
@@ -444,6 +484,35 @@ Resume test:
 
 ---
 
+## Evidence Workflow (Phase1)
+
+Recommended sequence:
+1. Run baseline (no restart), generate plot, move artifacts.
+2. Run resume test (stop/restart), generate plot, move artifacts.
+3. Compare both evidence folders.
+
+Move logs/plots from `logs/` to `evidence/<case_name>/`:
+
+```bash
+bash evidence/move-logs-to-evidence.bash phase1-baseline-01
+bash evidence/move-logs-to-evidence.bash phase1-resume-01
+```
+
+Each evidence folder stores:
+- `control-run.log`
+- `forklift-unit-run.log`
+- `forklift-unit-recovery.log`
+- `forklift-unit-trace.csv`
+- `forklift-unit-continuity.png`
+- `meta.txt` (capture timestamp + MuJoCo version)
+
+Graph interpretation is documented in:
+- `Context Save/Restore -> Continuity graph (objective check)`
+  - `How to read`
+  - `Pass criteria (practical)`
+
+---
+
 ## FAQ
 
 ### Q1. Does this repository implement RD itself?
@@ -467,9 +536,9 @@ Current saved scope is forklift body + control state.
 External objects are future extension.
 
 ### Q5. Do you save MuJoCo solver internal state?
-A. No.
-Saved data is `qpos` / `qvel` / `qacc` + control state.
-Solver caches/warm-start states are out of scope.
+A. Partially.
+Saved data includes `qpos` / `qvel` / `qacc`, control state, plus `act`, `ctrl`, `qacc_warmstart`, `qfrc_applied`, and `xfrc_applied`.
+However, this is still not a full MuJoCo-internal snapshot, so solver-internal transient caches may still differ after resume.
 
 ### Q6. Is physical continuity perfectly guaranteed?
 A. No.

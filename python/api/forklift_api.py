@@ -7,6 +7,7 @@ from hakoniwa_pdu.pdu_msgs.geometry_msgs.pdu_pytype_Twist import Twist
 from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_pytype_Float64 import Float64
 from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_conv_Float64 import pdu_to_py_Float64
 from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_conv_Int32 import pdu_to_py_Int32
+import os
 import time
 
 class ForkliftAPI:
@@ -23,6 +24,8 @@ class ForkliftAPI:
         self.robot_name = robot_name
         self.pdu_manager = pdu_manager
         self.move_speed = self.MOVE_SPEED
+        self.write_log_enabled = os.getenv("HAKO_PDU_WRITE_LOG", "0") in ("1", "true", "TRUE", "on", "ON")
+        self.write_seq = 0
 
     def set_move_speed(self, speed: float):
         # Gamepad axis valid range is [-1.0, 1.0], so clamp to (0, 1].
@@ -44,7 +47,20 @@ class ForkliftAPI:
             value.button = [False] * 16
             return value  # Return empty data on error
             
-    def put_gamepad(self, data: GameControllerOperation):
+    def _log_pdu_write(self, data: GameControllerOperation, reason: str):
+        if not self.write_log_enabled:
+            return
+        self.write_seq += 1
+        axis = list(data.axis)
+        ts = time.time()
+        print(
+            f"[PDU-WRITE] ts={ts:.6f} seq={self.write_seq} reason={reason} "
+            f"axis[yaw]={axis[self.AXIS_YAW]:.3f} axis[lift]={axis[self.AXIS_LIFT]:.3f} "
+            f"axis[fwd]={axis[self.AXIS_FORWARD]:.3f}"
+        )
+
+    def put_gamepad(self, data: GameControllerOperation, reason: str = "unknown"):
+        self._log_pdu_write(data, reason)
         return self.pdu_manager.flush_pdu_raw_data_nowait(self.robot_name, "hako_cmd_game", py_to_pdu_GameControllerOperation(data))
 
     def get_position(self) -> Twist:
@@ -87,7 +103,7 @@ class ForkliftAPI:
         yaw_degree = yaw_rad * (180.0 / 3.14159)
         return yaw_degree
     
-    def stop(self):
+    def stop(self, reason: str = "stop"):
         gamepad_data: GameControllerOperation = self.get_gamepad()
         gamepad_data.axis = list(gamepad_data.axis)
         gamepad_data.axis[self.AXIS_YAW] = 0.0
@@ -95,7 +111,7 @@ class ForkliftAPI:
         gamepad_data.axis[self.AXIS_FORWARD] = 0.0
         gamepad_data.button = list(gamepad_data.button)
         gamepad_data.button[self.BUTTON_ESTOP] = False
-        self.put_gamepad(gamepad_data)
+        self.put_gamepad(gamepad_data, reason=reason)
         time.sleep(self.SLEEP_INTERVAL)
 
     def calc_yaw_degree_error(self, target_yaw_degree):
@@ -119,7 +135,7 @@ class ForkliftAPI:
         while True:
             error = self.calc_yaw_degree_error(target_yaw_degree)
             if abs(error) < 0.25:
-                self.stop()
+                self.stop(reason="turn_done")
                 break
             
             #print(f"[DEBUG] Current yaw: {self.get_yaw_degree()}, Target yaw: {target_yaw_degree}, Error: {error}")
@@ -142,7 +158,7 @@ class ForkliftAPI:
             gamepad_data.axis = list(gamepad_data.axis)
             gamepad_data.axis[self.AXIS_YAW] = control
             #print(f"[DEBUG] Control output: {control}")
-            self.put_gamepad(gamepad_data)
+            self.put_gamepad(gamepad_data, reason="turn_pid")
 
             time.sleep(dt)
 
@@ -173,14 +189,14 @@ class ForkliftAPI:
             #print(f"[INFO] Current height: {current_height:.2f}, Target height: {target_height:.2f}")
             error = target_height - current_height
             if abs(current_height - target_height) < 0.01:
-                self.stop()
+                self.stop(reason="lift_done")
                 #print(f"[INFO] Reached target height: {current_height:.2f}")
                 break
             # Move the lift
             gamepad_data = self.get_gamepad()
             gamepad_data.axis = list(gamepad_data.axis)
             gamepad_data.axis[self.AXIS_LIFT] = -1.0 if error > 0 else 1.0
-            self.put_gamepad(gamepad_data)
+            self.put_gamepad(gamepad_data, reason="lift_move")
             time.sleep(self.SLEEP_INTERVAL)
 
     def move_forward(self, distance):
@@ -194,14 +210,14 @@ class ForkliftAPI:
             #print(f"[INFO] Current position: {current_pos}, Target distance: {distance}")
             error = distance - move_distance
             if abs(error) < 0.01:
-                self.stop()
+                self.stop(reason="move_forward_done")
                 #print(f"[INFO] Reached target distance: {distance}")
                 break
             # Move the forklift forward
             gamepad_data = self.get_gamepad()
             gamepad_data.axis = list(gamepad_data.axis)
             gamepad_data.axis[self.AXIS_FORWARD] = -self.move_speed if error > 0 else self.move_speed
-            self.put_gamepad(gamepad_data)
+            self.put_gamepad(gamepad_data, reason="move_forward")
             time.sleep(self.SLEEP_INTERVAL)
 
     def move_backward(self, distance):
@@ -213,14 +229,14 @@ class ForkliftAPI:
             #print(f"[INFO] Current position: {current_pos}, Target distance: {distance}")
             error = distance - move_distance
             if abs(error) < 0.01:
-                self.stop()
+                self.stop(reason="move_backward_done")
                 #print(f"[INFO] Reached target distance: {distance}")
                 break
             # Move the forklift forward
             gamepad_data = self.get_gamepad()
             gamepad_data.axis = list(gamepad_data.axis)
             gamepad_data.axis[self.AXIS_FORWARD] = self.move_speed if error > 0 else -self.move_speed
-            self.put_gamepad(gamepad_data)
+            self.put_gamepad(gamepad_data, reason="move_backward")
             time.sleep(self.SLEEP_INTERVAL)
 
     def move(self, distance):

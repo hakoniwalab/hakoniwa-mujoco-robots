@@ -5,6 +5,11 @@
 
 namespace hako::robots::controller {
     class DifferentialDriveController {
+    public:
+        struct State {
+            PID::State v_pid;
+            PID::State w_pid;
+        };
     private:
         PID v_pid;
         PID w_pid;
@@ -24,6 +29,18 @@ namespace hako::robots::controller {
             auto w_torque = w_pid.update(target_w, current_w, dt);
             out_torque_left = v_force - w_torque * tread_width / 2.0;
             out_torque_right = v_force + w_torque * tread_width / 2.0;
+        }
+
+        State get_state() const {
+            State s;
+            s.v_pid = v_pid.get_state();
+            s.w_pid = w_pid.get_state();
+            return s;
+        }
+
+        void set_state(const State& s) {
+            v_pid.set_state(s.v_pid);
+            w_pid.set_state(s.w_pid);
         }
     };
 }

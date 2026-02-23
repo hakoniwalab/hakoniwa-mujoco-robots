@@ -12,6 +12,8 @@ TURN_DEGREE="${TURN_DEGREE:-0.0}"
 START_HEIGHT="${START_HEIGHT:--0.05}"
 PAUSE_SEC="${PAUSE_SEC:-0.5}"
 CTRL_LOG_FILE="${HAKO_CTRL_LOG_FILE:-./logs/control-run.log}"
+STARTUP_WAIT_SEC="${STARTUP_WAIT_SEC:-0.5}"
+PDU_WRITE_LOG="${HAKO_PDU_WRITE_LOG:-1}"
 FORWARD_GOAL_X="${FORWARD_GOAL_X:-}"
 HOME_GOAL_X="${HOME_GOAL_X:-0.0}"
 GOAL_TOLERANCE="${GOAL_TOLERANCE:-0.03}"
@@ -25,6 +27,9 @@ echo "[control] MOVE_SPEED=${MOVE_SPEED}" | tee -a "${CTRL_LOG_FILE}"
 echo "[control] TURN_DEGREE=${TURN_DEGREE}" | tee -a "${CTRL_LOG_FILE}"
 echo "[control] START_HEIGHT=${START_HEIGHT}" | tee -a "${CTRL_LOG_FILE}"
 echo "[control] PAUSE_SEC=${PAUSE_SEC}" | tee -a "${CTRL_LOG_FILE}"
+echo "[control] STARTUP_WAIT_SEC=${STARTUP_WAIT_SEC}" | tee -a "${CTRL_LOG_FILE}"
+echo "[control] HAKO_PDU_WRITE_LOG=${PDU_WRITE_LOG}" | tee -a "${CTRL_LOG_FILE}"
+echo "[control] START_TIME=$(date '+%Y-%m-%d %H:%M:%S')" | tee -a "${CTRL_LOG_FILE}"
 if [[ -n "${FORWARD_GOAL_X}" ]]; then
   echo "[control] FORWARD_GOAL_X=${FORWARD_GOAL_X}" | tee -a "${CTRL_LOG_FILE}"
   echo "[control] HOME_GOAL_X=${HOME_GOAL_X}" | tee -a "${CTRL_LOG_FILE}"
@@ -32,20 +37,22 @@ if [[ -n "${FORWARD_GOAL_X}" ]]; then
 fi
 
 if [[ -n "${FORWARD_GOAL_X}" ]]; then
-  python -m python.forklift_simple_auto "${CONFIG_PATH}" \
+  HAKO_PDU_WRITE_LOG="${PDU_WRITE_LOG}" python -u -m python.forklift_simple_auto "${CONFIG_PATH}" \
     --forward-goal-x "${FORWARD_GOAL_X}" \
     --home-goal-x "${HOME_GOAL_X}" \
     --goal-tolerance "${GOAL_TOLERANCE}" \
     --move-speed "${MOVE_SPEED}" \
     --start-height "${START_HEIGHT}" \
-    --pause-sec "${PAUSE_SEC}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
+    --pause-sec "${PAUSE_SEC}" \
+    --startup-wait-sec "${STARTUP_WAIT_SEC}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
 else
-  python -m python.forklift_simple_auto "${CONFIG_PATH}" \
+  HAKO_PDU_WRITE_LOG="${PDU_WRITE_LOG}" python -u -m python.forklift_simple_auto "${CONFIG_PATH}" \
     --forward-distance "${FORWARD_DISTANCE}" \
     --backward-distance "${BACKWARD_DISTANCE}" \
     --move-speed "${MOVE_SPEED}" \
     --turn-degree "${TURN_DEGREE}" \
     --start-height "${START_HEIGHT}" \
-    --pause-sec "${PAUSE_SEC}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
+    --pause-sec "${PAUSE_SEC}" \
+    --startup-wait-sec "${STARTUP_WAIT_SEC}" 2>&1 | tee -a "${CTRL_LOG_FILE}"
 fi
 exit ${PIPESTATUS[0]}

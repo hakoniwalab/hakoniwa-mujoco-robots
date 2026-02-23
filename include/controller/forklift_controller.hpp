@@ -7,6 +7,15 @@
 namespace hako::robots::controller {
 
     class ForkliftController {
+    public:
+        struct InternalState {
+            double target_lift_z {0.0};
+            double target_linear_vel {0.0};
+            double target_yaw_rate {0.0};
+            PID::State lift_pid;
+            PID::State drive_v_pid;
+            PID::State drive_w_pid;
+        };
     private:
         Forklift forklift;
         controller::SliderController lift_ctrl;
@@ -20,6 +29,9 @@ namespace hako::robots::controller {
         double target_lift_z_max = 1.0;
         double target_lift_z_min = -0.05;
         double delta_pos = 0.01;
+        double last_left_torque {0.0};
+        double last_right_torque {0.0};
+        double last_lift_torque {0.0};
     public:
         ForkliftController(std::shared_ptr<physics::IWorld> world)
             : forklift(world),
@@ -53,6 +65,36 @@ namespace hako::robots::controller {
             target_linear_vel = v;
             target_yaw_rate = yaw_rate;
         }
+        double getLiftTarget() const { return target_lift_z; }
+        double getTargetLinearVel() const { return target_linear_vel; }
+        double getTargetYawRate() const { return target_yaw_rate; }
+        double getLastLeftTorque() const { return last_left_torque; }
+        double getLastRightTorque() const { return last_right_torque; }
+        double getLastLiftTorque() const { return last_lift_torque; }
+
+        InternalState get_internal_state() const {
+            InternalState s;
+            s.target_lift_z = target_lift_z;
+            s.target_linear_vel = target_linear_vel;
+            s.target_yaw_rate = target_yaw_rate;
+            s.lift_pid = lift_ctrl.get_pid_state();
+            auto drive_state = drive_ctrl.get_state();
+            s.drive_v_pid = drive_state.v_pid;
+            s.drive_w_pid = drive_state.w_pid;
+            return s;
+        }
+
+        void set_internal_state(const InternalState& s) {
+            target_lift_z = s.target_lift_z;
+            target_linear_vel = s.target_linear_vel;
+            target_yaw_rate = s.target_yaw_rate;
+            lift_ctrl.set_pid_state(s.lift_pid);
+            controller::DifferentialDriveController::State d;
+            d.v_pid = s.drive_v_pid;
+            d.w_pid = s.drive_w_pid;
+            drive_ctrl.set_state(d);
+        }
+
         void update() {
             double left_torque = 0.0;
             double right_torque = 0.0;
@@ -64,6 +106,8 @@ namespace hako::robots::controller {
                 dt,
                 left_torque, right_torque
             );
+            last_left_torque = left_torque;
+            last_right_torque = right_torque;
 #if false
             std::cout << "euler: " << forklift.getEuler().to_string() << std::endl;
             std::cout << "world velocity: " << forklift.getVelocity().to_string() << std::endl;
@@ -73,6 +117,7 @@ namespace hako::robots::controller {
             forklift.drive_motor(left_torque, right_torque);
             //std::cout << "lift position: " << forklift.getLiftPosition().z << std::endl;
             double lift_torque = lift_ctrl.update(forklift.getLiftPosition().z, target_lift_z, dt);
+            last_lift_torque = lift_torque;
             forklift.drive_lift(lift_torque);
         }
     

@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <sstream>
 #include <cstdint>
+#include <limits>
 
 #include "mujoco_debug.hpp"
 #include "mujoco_viewer.hpp"
@@ -53,6 +54,41 @@ static std::string now_local_time_string()
     std::ostringstream oss;
     oss << std::put_time(&tmv, "%Y-%m-%d %H:%M:%S");
     return oss.str();
+}
+
+static int get_env_int(const char* name, int default_value)
+{
+    const char* env = std::getenv(name);
+    if (env == nullptr || env[0] == '\0') {
+        return default_value;
+    }
+    try {
+        return std::stoi(env);
+    } catch (...) {
+        return default_value;
+    }
+}
+
+static double get_env_double(const char* name, double default_value)
+{
+    const char* env = std::getenv(name);
+    if (env == nullptr || env[0] == '\0') {
+        return default_value;
+    }
+    try {
+        return std::stod(env);
+    } catch (...) {
+        return default_value;
+    }
+}
+
+static std::string get_trace_file_path()
+{
+    const char* env = std::getenv("HAKO_FORKLIFT_TRACE_FILE");
+    if (env == nullptr || env[0] == '\0') {
+        return "./logs/forklift-unit-trace.csv";
+    }
+    return std::string(env);
 }
 
 static double get_motion_gain()
@@ -187,12 +223,43 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         std::filesystem::create_directories("./logs");
         std::ofstream recovery_log("./logs/forklift-unit-recovery.log", std::ios::app);
         recovery_log << std::fixed << std::setprecision(6);
+        const std::string trace_file = get_trace_file_path();
+        const int trace_every_steps = std::max(1, get_env_int("HAKO_FORKLIFT_TRACE_EVERY_STEPS", 10));
+        const bool trace_file_exists = std::filesystem::exists(trace_file);
+        std::ofstream trace_log(trace_file, std::ios::app);
+        const bool restore_debug_enabled = (get_env_int("HAKO_FORKLIFT_RESTORE_DEBUG", 1) != 0);
+        const double restore_debug_window_sec = get_env_double("HAKO_FORKLIFT_RESTORE_DEBUG_WINDOW_SEC", 3.0);
+        const std::string restore_debug_file = "./logs/forklift-unit-restore-debug.csv";
+        const bool restore_debug_exists = std::filesystem::exists(restore_debug_file);
+        std::ofstream restore_debug_log(restore_debug_file, std::ios::app);
+        if (!trace_file_exists) {
+            trace_log
+                << "session_ts,restored,step,sim_time_sec,pos_x,pos_y,pos_z,yaw,body_vx,body_wz,"
+                << "lift_z,target_v,target_yaw,target_lift,phase\n";
+        }
+        if (!restore_debug_exists) {
+            restore_debug_log
+                << "session_ts,restored,step,sim_time_sec,sim_time_from_resume,pad_loaded,in_resume_hold,"
+                << "cmd_v,cmd_yaw,cmd_lift,target_v,target_yaw,target_lift,body_vx,body_wz,"
+                << "left_torque,right_torque,lift_torque,"
+                << "drive_v_pid_integral,drive_v_pid_prev_error,drive_w_pid_integral,drive_w_pid_prev_error\n";
+        }
+        const std::string session_ts = now_local_time_string();
         HakoniwaMujocoContext::ForkliftState loaded_state;
         HakoniwaMujocoContext::ControlState control_state;
         bool restored = mujoco_ctx.restore_forklift_state(&loaded_state, &control_state);
         if (restored) {
-            controller.setLiftTarget(loaded_state.lift_qpos);
-            controller.setVelocityCommand(control_state.target_linear_velocity, control_state.target_yaw_rate);
+            hako::robots::controller::ForkliftController::InternalState internal {};
+            internal.target_lift_z = control_state.target_lift_z;
+            internal.target_linear_vel = control_state.target_linear_velocity;
+            internal.target_yaw_rate = control_state.target_yaw_rate;
+            internal.lift_pid.integral = control_state.lift_pid_integral;
+            internal.lift_pid.prev_error = control_state.lift_pid_prev_error;
+            internal.drive_v_pid.integral = control_state.drive_v_pid_integral;
+            internal.drive_v_pid.prev_error = control_state.drive_v_pid_prev_error;
+            internal.drive_w_pid.integral = control_state.drive_w_pid_integral;
+            internal.drive_w_pid.prev_error = control_state.drive_w_pid_prev_error;
+            controller.set_internal_state(internal);
             std::cout << "[INFO] Resume forklift state from: " << mujoco_ctx.state_file_path() << std::endl;
             std::cout << "[INFO] Resume control phase=" << control_state.phase
                       << " target(v,yaw,lift)=("
@@ -200,6 +267,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                       << control_state.target_yaw_rate << ", "
                       << control_state.target_lift_z << ")"
                       << " step=" << control_state.sim_step << std::endl;
+            std::cout << "[INFO] Restore PID policy: restore-all-pid" << std::endl;
         }
         const auto initial_pos = controller.getForklift().getPosition();
         const auto initial_euler = controller.getForklift().getEuler();
@@ -224,18 +292,39 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         HakoCpp_Int32 phase_pos_data = {};
         HakoCpp_GameControllerOperation pad_data = {};
         int step_count = 0;
+        if (restored && control_state.sim_step > 0) {
+            const auto max_int = static_cast<std::uint64_t>(std::numeric_limits<int>::max());
+            step_count = static_cast<int>(std::min(control_state.sim_step, max_int));
+        }
+        const int resumed_step_base = step_count;
+        const double resume_cmd_hold_sec = get_env_double("HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC", 2.0);
 
         while (running_flag) {
             auto start = std::chrono::steady_clock::now();
             {
                 std::lock_guard<std::mutex> lock(data_mutex);
+                const double sim_time_sec = static_cast<double>(step_count) * simulation_timestep;
+                const double sim_time_sec_from_resume =
+                    static_cast<double>(step_count - resumed_step_base) * simulation_timestep;
+                bool pad_loaded = false;
+                double cmd_v = 0.0;
+                double cmd_yaw = 0.0;
+                double cmd_lift = 0.0;
+                const bool in_resume_hold_window =
+                    restored && (sim_time_sec_from_resume <= resume_cmd_hold_sec);
                 if (pad.load(pad_data)) {
+                    pad_loaded = true;
                     hako::robots::pdu::adapter::ForkliftOperationCommand adapter;
                     auto command = adapter.convert(pad_data);
-                    control_state.target_linear_velocity = command.linear_velocity;
-                    control_state.target_yaw_rate = command.yaw_rate;
-                    controller.update_target_lift_z(command.lift_position);
-                    controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
+                    cmd_v = command.linear_velocity;
+                    cmd_yaw = command.yaw_rate;
+                    cmd_lift = command.lift_position;
+                    if (!in_resume_hold_window) {
+                        control_state.target_linear_velocity = command.linear_velocity;
+                        control_state.target_yaw_rate = command.yaw_rate;
+                        controller.update_target_lift_z(command.lift_position);
+                        controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
+                    }
                     const double kVelEps = 1e-4;
                     if (control_state.phase <= 0) {
                         if (command.linear_velocity > kVelEps) {
@@ -268,7 +357,9 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
                 lift_pos_data.data = controller.getForklift().getLiftPosition().z;
                 (void)lift_pos.flush(lift_pos_data);
-                control_state.target_lift_z = lift_pos_data.data;
+                control_state.target_linear_velocity = controller.getTargetLinearVel();
+                control_state.target_yaw_rate = controller.getTargetYawRate();
+                control_state.target_lift_z = controller.getLiftTarget();
                 phase_pos_data.data = static_cast<int32_t>(control_state.phase);
                 (void)phase_pos.flush(phase_pos_data);
 
@@ -282,6 +373,67 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
                 step_count++;
                 control_state.sim_step = static_cast<std::uint64_t>(step_count);
+                auto internal = controller.get_internal_state();
+                control_state.lift_pid_integral = internal.lift_pid.integral;
+                control_state.lift_pid_prev_error = internal.lift_pid.prev_error;
+                control_state.drive_v_pid_integral = internal.drive_v_pid.integral;
+                control_state.drive_v_pid_prev_error = internal.drive_v_pid.prev_error;
+                control_state.drive_w_pid_integral = internal.drive_w_pid.integral;
+                control_state.drive_w_pid_prev_error = internal.drive_w_pid.prev_error;
+                if (restore_debug_enabled && restore_debug_log.good() && restored &&
+                    (sim_time_sec_from_resume >= -1e-9) &&
+                    (sim_time_sec_from_resume <= restore_debug_window_sec)) {
+                    const auto body_v = controller.getForklift().getBodyVelocity();
+                    const auto body_w = controller.getForklift().getBodyAngularVelocity();
+                    restore_debug_log
+                        << session_ts << ","
+                        << (restored ? 1 : 0) << ","
+                        << step_count << ","
+                        << sim_time_sec << ","
+                        << sim_time_sec_from_resume << ","
+                        << (pad_loaded ? 1 : 0) << ","
+                        << (in_resume_hold_window ? 1 : 0) << ","
+                        << cmd_v << ","
+                        << cmd_yaw << ","
+                        << cmd_lift << ","
+                        << control_state.target_linear_velocity << ","
+                        << control_state.target_yaw_rate << ","
+                        << control_state.target_lift_z << ","
+                        << body_v.x << ","
+                        << body_w.z << ","
+                        << controller.getLastLeftTorque() << ","
+                        << controller.getLastRightTorque() << ","
+                        << controller.getLastLiftTorque() << ","
+                        << control_state.drive_v_pid_integral << ","
+                        << control_state.drive_v_pid_prev_error << ","
+                        << control_state.drive_w_pid_integral << ","
+                        << control_state.drive_w_pid_prev_error
+                        << "\n";
+                    restore_debug_log.flush();
+                }
+                if ((step_count % trace_every_steps) == 0) {
+                    const auto p = controller.getForklift().getPosition();
+                    const auto e = controller.getForklift().getEuler();
+                    const auto v = controller.getForklift().getBodyVelocity();
+                    const auto w = controller.getForklift().getBodyAngularVelocity();
+                    const auto l = controller.getForklift().getLiftPosition();
+                    trace_log
+                        << session_ts << ","
+                        << (restored ? 1 : 0) << ","
+                        << step_count << ","
+                        << sim_time_sec << ","
+                        << p.x << "," << p.y << "," << p.z << ","
+                        << e.z << ","
+                        << v.x << ","
+                        << w.z << ","
+                        << l.z << ","
+                        << control_state.target_linear_velocity << ","
+                        << control_state.target_yaw_rate << ","
+                        << control_state.target_lift_z << ","
+                        << control_state.phase
+                        << "\n";
+                    trace_log.flush();
+                }
                 if (mujoco_ctx.should_autosave(step_count)) {
                     (void)mujoco_ctx.save_forklift_state_with_control(&control_state);
                     const auto p = controller.getForklift().getPosition();
