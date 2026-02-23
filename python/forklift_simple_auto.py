@@ -1,4 +1,6 @@
 import argparse
+import asyncio
+import inspect
 import os
 import sys
 import time
@@ -50,6 +52,24 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=0.5,
         help="Forward/backward speed in gamepad axis range (0.0, 1.0] (default: 0.5)",
+    )
+    parser.add_argument(
+        "--forward-goal-x",
+        type=float,
+        default=None,
+        help="Global X target for forward phase. If set, absolute-goal mission is used.",
+    )
+    parser.add_argument(
+        "--home-goal-x",
+        type=float,
+        default=0.0,
+        help="Global X target for return-home phase in absolute-goal mission (default: 0.0)",
+    )
+    parser.add_argument(
+        "--goal-tolerance",
+        type=float,
+        default=0.03,
+        help="Tolerance for absolute-goal convergence in meters (default: 0.03)",
     )
     return parser.parse_args()
 
@@ -109,6 +129,107 @@ def run_simple_mission(
 
     print_status(forklift, "Mission done")
 
+def move_to_global_x(
+    forklift: ForkliftAPI,
+    target_x: float,
+    tolerance: float,
+    max_iter: int = 8,
+) -> bool:
+    for i in range(max_iter):
+        pos = forklift.get_position()
+        err = target_x - pos.linear.x
+        print(f"[INFO] Global target_x={target_x:.3f}, current_x={pos.linear.x:.3f}, err={err:.3f}")
+        if abs(err) <= tolerance:
+            forklift.stop()
+            return True
+        forklift.move(err)
+    print(f"[WARN] Failed to reach global X target {target_x:.3f} within {max_iter} iterations")
+    return False
+
+def stabilize_at_global_x(
+    forklift: ForkliftAPI,
+    target_x: float,
+    tolerance: float,
+    settle_sec: float = 0.3,
+    max_rounds: int = 5,
+) -> bool:
+    for _ in range(max_rounds):
+        forklift.stop()
+        time.sleep(settle_sec)
+        pos = forklift.get_position()
+        err = target_x - pos.linear.x
+        print(f"[INFO] Stabilize target_x={target_x:.3f}, current_x={pos.linear.x:.3f}, err={err:.3f}")
+        if abs(err) <= tolerance:
+            return True
+        forklift.move(err)
+    print(f"[WARN] Failed to stabilize at global X target {target_x:.3f}")
+    return False
+
+def wait_for_sim_phase(
+    forklift: ForkliftAPI,
+    timeout_sec: float = 3.0,
+    poll_interval_sec: float = 0.05,
+) -> int:
+    deadline = time.time() + max(0.1, timeout_sec)
+    last_phase = 0
+    while time.time() < deadline:
+        ok, phase = forklift.get_phase_status()
+        if ok:
+            last_phase = phase
+            if phase in (1, 2):
+                return phase
+        time.sleep(max(0.001, poll_interval_sec))
+    return last_phase
+
+def run_global_goal_mission(
+    forklift: ForkliftAPI,
+    forward_goal_x: float,
+    home_goal_x: float,
+    goal_tolerance: float,
+    start_height: float,
+    pause_sec: float,
+    move_speed: float,
+) -> None:
+    print("[INFO] Mission start: absolute-goal control")
+    forklift.set_move_speed(move_speed)
+    print(
+        f"[INFO] Parameters: forward_goal_x={forward_goal_x:.3f}, home_goal_x={home_goal_x:.3f}, "
+        f"goal_tolerance={goal_tolerance:.3f}, start_height={start_height:.3f}, move_speed={forklift.move_speed:.3f}"
+    )
+    print_status(forklift, "Initial state")
+    # Prime command PDU before phase polling to avoid startup null-conversion noise.
+    forklift.stop()
+    current_phase = wait_for_sim_phase(forklift)
+    print(f"[INFO] Current sim phase from PDU: {current_phase}")
+
+    print(f"[INFO] Set fork height to {start_height:.3f}m")
+    forklift.lift_move(start_height)
+    time.sleep(pause_sec)
+
+    if current_phase == 2:
+        print("[INFO] Phase indicates return leg. Skip forward phase and go home.")
+    else:
+        print(f"[INFO] Move to global forward goal X={forward_goal_x:.3f}")
+        reached_forward = move_to_global_x(forklift, forward_goal_x, goal_tolerance)
+        stable_forward = stabilize_at_global_x(forklift, forward_goal_x, goal_tolerance)
+        if not (reached_forward and stable_forward):
+            print("[WARN] Forward phase did not fully converge; continue to return-home phase.")
+        time.sleep(pause_sec)
+
+    print(f"[INFO] Return to global home X={home_goal_x:.3f}")
+    reached_home = move_to_global_x(forklift, home_goal_x, goal_tolerance)
+    stable_home = stabilize_at_global_x(forklift, home_goal_x, goal_tolerance)
+    if not (reached_home and stable_home):
+        print("[WARN] Home phase did not fully converge.")
+    time.sleep(pause_sec)
+
+    print(f"[INFO] Return fork height to {start_height:.3f}m")
+    forklift.lift_move(start_height)
+    _ = stabilize_at_global_x(forklift, home_goal_x, goal_tolerance)
+    time.sleep(pause_sec)
+
+    print_status(forklift, "Mission done")
+
 
 def main() -> int:
     args = parse_args()
@@ -131,15 +252,26 @@ def main() -> int:
             return 1
 
         forklift = ForkliftAPI(pdu_manager)
-        run_simple_mission(
-            forklift=forklift,
-            forward_distance=forward_distance,
-            backward_distance=backward_distance,
-            turn_degree=args.turn_degree,
-            start_height=args.start_height,
-            pause_sec=pause_sec,
-            move_speed=args.move_speed,
-        )
+        if args.forward_goal_x is not None:
+            run_global_goal_mission(
+                forklift=forklift,
+                forward_goal_x=args.forward_goal_x,
+                home_goal_x=args.home_goal_x,
+                goal_tolerance=max(0.001, args.goal_tolerance),
+                start_height=args.start_height,
+                pause_sec=pause_sec,
+                move_speed=args.move_speed,
+            )
+        else:
+            run_simple_mission(
+                forklift=forklift,
+                forward_distance=forward_distance,
+                backward_distance=backward_distance,
+                turn_degree=args.turn_degree,
+                start_height=args.start_height,
+                pause_sec=pause_sec,
+                move_speed=args.move_speed,
+            )
         return 0
     except KeyboardInterrupt:
         print("[INFO] Interrupted by user")
@@ -151,7 +283,9 @@ def main() -> int:
         except Exception:
             pass
         try:
-            pdu_manager.stop_service()
+            stop_result = pdu_manager.stop_service()
+            if inspect.isawaitable(stop_result):
+                asyncio.run(stop_result)
         except Exception:
             pass
         try:

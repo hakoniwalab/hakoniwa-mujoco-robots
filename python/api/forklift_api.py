@@ -6,6 +6,7 @@ from hakoniwa_pdu.pdu_msgs.geometry_msgs.pdu_conv_Twist import pdu_to_py_Twist
 from hakoniwa_pdu.pdu_msgs.geometry_msgs.pdu_pytype_Twist import Twist
 from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_pytype_Float64 import Float64
 from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_conv_Float64 import pdu_to_py_Float64
+from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_conv_Int32 import pdu_to_py_Int32
 import time
 
 class ForkliftAPI:
@@ -61,6 +62,22 @@ class ForkliftAPI:
             return pdu_to_py_Float64(raw_data).data
         except Exception as e:
             return 0  # Return empty data on error
+
+    def get_phase(self) -> int:
+        self.pdu_manager.run_nowait()
+        raw_data = self.pdu_manager.read_pdu_raw_data(self.robot_name, "phase")
+        try:
+            return int(pdu_to_py_Int32(raw_data).data)
+        except Exception:
+            return 0
+
+    def get_phase_status(self):
+        self.pdu_manager.run_nowait()
+        raw_data = self.pdu_manager.read_pdu_raw_data(self.robot_name, "phase")
+        try:
+            return True, int(pdu_to_py_Int32(raw_data).data)
+        except Exception:
+            return False, 0
 
     def get_yaw_degree(self):
         # Convert radians to degrees for the gamepad axis

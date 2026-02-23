@@ -6,6 +6,13 @@
 #include <vector>
 #include <stdexcept>
 #include <cstdlib>
+#include <fstream>
+#include <filesystem>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <cstdint>
 
 #include "mujoco_debug.hpp"
 #include "mujoco_viewer.hpp"
@@ -22,14 +29,31 @@
 #include "hakoniwa/pdu/adapter/forklift_operation_adapter.hpp"
 #include "geometry_msgs/pdu_cpptype_conv_Twist.hpp"
 #include "std_msgs/pdu_cpptype_conv_Float64.hpp"
+#include "std_msgs/pdu_cpptype_conv_Int32.hpp"
 #include "hako_msgs/pdu_ctype_GameControllerOperation.h"
 #include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
+#include "hakoniwa_mujoco_context.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift-unit.xml";
 static const char* config_path = "config/forklift-unit-compact.json";
 static std::mutex data_mutex;
 static bool running_flag = true;
+
+static std::string now_local_time_string()
+{
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm tmv {};
+#if defined(_WIN32)
+    localtime_s(&tmv, &t);
+#else
+    localtime_r(&t, &tmv);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tmv, "%Y-%m-%d %H:%M:%S");
+    return oss.str();
+}
 
 static double get_motion_gain()
 {
@@ -106,6 +130,13 @@ public:
         if (hako_asset_pdu_read(robot_name_.c_str(), channel_id_, buffer_.data(), buffer_.size()) != 0) {
             return false;
         }
+        auto* meta = reinterpret_cast<const HakoPduMetaDataType*>(buffer_.data());
+        if (HAKO_PDU_METADATA_IS_INVALID(meta)) {
+            return false;
+        }
+        if (hako_get_base_ptr_pdu(static_cast<void*>(buffer_.data())) == nullptr) {
+            return false;
+        }
         return convertor_.pdu2cpp(buffer_.data(), data);
     }
 
@@ -145,17 +176,54 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         PduChannel<HakoCpp_GameControllerOperation, hako::pdu::msgs::hako_msgs::GameControllerOperation> pad(robot_name, "hako_cmd_game");
         PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_pos(robot_name, "pos");
         PduChannel<HakoCpp_Float64, hako::pdu::msgs::std_msgs::Float64> lift_pos(robot_name, "height");
+        PduChannel<HakoCpp_Int32, hako::pdu::msgs::std_msgs::Int32> phase_pos(robot_name, "phase");
         PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> forklift_fork_pos(robot_name2, "pos");
 
         hako::robots::controller::ForkliftController controller(world);
         controller.setVelocityCommand(0.0, 0.0);
         controller.setLiftTarget(0.0);
         controller.set_delta_pos(simulation_timestep * get_motion_gain());
+        HakoniwaMujocoContext mujoco_ctx(world, "./tmp/hakoniwa-forklift-unit.state");
+        std::filesystem::create_directories("./logs");
+        std::ofstream recovery_log("./logs/forklift-unit-recovery.log", std::ios::app);
+        recovery_log << std::fixed << std::setprecision(6);
+        HakoniwaMujocoContext::ForkliftState loaded_state;
+        HakoniwaMujocoContext::ControlState control_state;
+        bool restored = mujoco_ctx.restore_forklift_state(&loaded_state, &control_state);
+        if (restored) {
+            controller.setLiftTarget(loaded_state.lift_qpos);
+            controller.setVelocityCommand(control_state.target_linear_velocity, control_state.target_yaw_rate);
+            std::cout << "[INFO] Resume forklift state from: " << mujoco_ctx.state_file_path() << std::endl;
+            std::cout << "[INFO] Resume control phase=" << control_state.phase
+                      << " target(v,yaw,lift)=("
+                      << control_state.target_linear_velocity << ", "
+                      << control_state.target_yaw_rate << ", "
+                      << control_state.target_lift_z << ")"
+                      << " step=" << control_state.sim_step << std::endl;
+        }
+        const auto initial_pos = controller.getForklift().getPosition();
+        const auto initial_euler = controller.getForklift().getEuler();
+        const auto initial_lift = controller.getForklift().getLiftPosition();
+        recovery_log
+            << "[" << now_local_time_string() << "] START"
+            << " restored=" << (restored ? "yes" : "no")
+            << " state_file=" << mujoco_ctx.state_file_path()
+            << " pos=(" << initial_pos.x << "," << initial_pos.y << "," << initial_pos.z << ")"
+            << " euler=(" << initial_euler.x << "," << initial_euler.y << "," << initial_euler.z << ")"
+            << " lift_z=" << initial_lift.z
+            << " phase=" << control_state.phase
+            << " target_v=" << control_state.target_linear_velocity
+            << " target_yaw=" << control_state.target_yaw_rate
+            << " target_lift=" << control_state.target_lift_z
+            << " step=" << control_state.sim_step
+            << std::endl;
 
         HakoCpp_Twist forklift_pos_data = {};
         HakoCpp_Twist forklift_fork_pos_data = {};
         HakoCpp_Float64 lift_pos_data = {};
+        HakoCpp_Int32 phase_pos_data = {};
         HakoCpp_GameControllerOperation pad_data = {};
+        int step_count = 0;
 
         while (running_flag) {
             auto start = std::chrono::steady_clock::now();
@@ -164,8 +232,27 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 if (pad.load(pad_data)) {
                     hako::robots::pdu::adapter::ForkliftOperationCommand adapter;
                     auto command = adapter.convert(pad_data);
+                    control_state.target_linear_velocity = command.linear_velocity;
+                    control_state.target_yaw_rate = command.yaw_rate;
                     controller.update_target_lift_z(command.lift_position);
                     controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
+                    const double kVelEps = 1e-4;
+                    if (control_state.phase <= 0) {
+                        if (command.linear_velocity > kVelEps) {
+                            control_state.phase = 1;
+                        } else if (command.linear_velocity < -kVelEps) {
+                            control_state.phase = 2;
+                        } else if (std::abs(command.yaw_rate) > 1e-6 || std::abs(command.lift_position) > 1e-6) {
+                            control_state.phase = 1;
+                        }
+                    } else if (control_state.phase == 1) {
+                        if (command.linear_velocity < -kVelEps) {
+                            control_state.phase = 2;
+                        }
+                    } else {
+                        // phase=2 is latched during one simulation session.
+                        control_state.phase = 2;
+                    }
                 }
 
                 controller.update();
@@ -181,6 +268,9 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
                 lift_pos_data.data = controller.getForklift().getLiftPosition().z;
                 (void)lift_pos.flush(lift_pos_data);
+                control_state.target_lift_z = lift_pos_data.data;
+                phase_pos_data.data = static_cast<int32_t>(control_state.phase);
+                (void)phase_pos.flush(phase_pos_data);
 
                 forklift_fork_pos_data.linear.x = controller.getForklift().getLiftWorldPosition().x;
                 forklift_fork_pos_data.linear.y = controller.getForklift().getLiftWorldPosition().y;
@@ -189,6 +279,23 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 forklift_fork_pos_data.angular.y = controller.getForklift().getLiftEuler().y;
                 forklift_fork_pos_data.angular.z = controller.getForklift().getLiftEuler().z;
                 (void)forklift_fork_pos.flush(forklift_fork_pos_data);
+
+                step_count++;
+                control_state.sim_step = static_cast<std::uint64_t>(step_count);
+                if (mujoco_ctx.should_autosave(step_count)) {
+                    (void)mujoco_ctx.save_forklift_state_with_control(&control_state);
+                    const auto p = controller.getForklift().getPosition();
+                    const auto e = controller.getForklift().getEuler();
+                    const auto l = controller.getForklift().getLiftPosition();
+                    recovery_log
+                        << "[" << now_local_time_string() << "] AUTOSAVE"
+                        << " step=" << control_state.sim_step
+                        << " pos=(" << p.x << "," << p.y << "," << p.z << ")"
+                        << " euler=(" << e.x << "," << e.y << "," << e.z << ")"
+                        << " lift_z=" << l.z
+                        << " phase=" << control_state.phase
+                        << std::endl;
+                }
             }
 
             auto end = std::chrono::steady_clock::now();
@@ -199,6 +306,24 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 std::this_thread::sleep_for(std::chrono::duration<double>(sleep_time));
             }
         }
+        (void)mujoco_ctx.save_forklift_state_with_control(&control_state);
+        std::cout << "[INFO] Saved forklift state to: " << mujoco_ctx.state_file_path() << std::endl;
+        const auto final_pos = controller.getForklift().getPosition();
+        const auto final_euler = controller.getForklift().getEuler();
+        const auto final_lift = controller.getForklift().getLiftPosition();
+        recovery_log
+            << "[" << now_local_time_string() << "] END"
+            << " saved=yes"
+            << " state_file=" << mujoco_ctx.state_file_path()
+            << " pos=(" << final_pos.x << "," << final_pos.y << "," << final_pos.z << ")"
+            << " euler=(" << final_euler.x << "," << final_euler.y << "," << final_euler.z << ")"
+            << " lift_z=" << final_lift.z
+            << " phase=" << control_state.phase
+            << " target_v=" << control_state.target_linear_velocity
+            << " target_yaw=" << control_state.target_yaw_rate
+            << " target_lift=" << control_state.target_lift_z
+            << " step=" << control_state.sim_step
+            << std::endl;
     } catch (const std::exception& e) {
         std::fflush(stdout);
         std::cerr << "Exception in simulation thread: " << e.what() << std::endl;

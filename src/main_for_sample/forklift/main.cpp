@@ -24,6 +24,7 @@
 #include "std_msgs/pdu_cpptype_conv_Float64.hpp"
 #include "hako_msgs/pdu_ctype_GameControllerOperation.h"
 #include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
+#include "hakoniwa_mujoco_context.hpp"
 
 std::shared_ptr<hako::robots::physics::IWorld> world;
 static const std::string model_path = "models/forklift/forklift.xml";
@@ -106,6 +107,13 @@ public:
         if (hako_asset_pdu_read(robot_name_.c_str(), channel_id_, buffer_.data(), buffer_.size()) != 0) {
             return false;
         }
+        auto* meta = reinterpret_cast<const HakoPduMetaDataType*>(buffer_.data());
+        if (HAKO_PDU_METADATA_IS_INVALID(meta)) {
+            return false;
+        }
+        if (hako_get_base_ptr_pdu(static_cast<void*>(buffer_.data())) == nullptr) {
+            return false;
+        }
         return convertor_.pdu2cpp(buffer_.data(), data);
     }
 
@@ -183,12 +191,19 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         controller.setLiftTarget(0.0);
         double delta_pos = simulation_timestep * get_motion_gain();
         controller.set_delta_pos(delta_pos);
+        HakoniwaMujocoContext mujoco_ctx(world, "./tmp/hakoniwa-forklift.state");
+        HakoniwaMujocoContext::ForkliftState loaded_state;
+        if (mujoco_ctx.restore_forklift_state(&loaded_state)) {
+            controller.setLiftTarget(loaded_state.lift_qpos);
+            std::cout << "[INFO] Resume forklift state from: " << mujoco_ctx.state_file_path() << std::endl;
+        }
 
 
         HakoCpp_Twist forklift_pos_data = {};
         HakoCpp_Twist forklift_fork_pos_data = {};
         HakoCpp_Float64 lift_pos_data = {};
         HakoCpp_GameControllerOperation pad_data = {};
+        int step_count = 0;
         while (running_flag) {
             auto start = std::chrono::steady_clock::now();
             {
@@ -232,6 +247,11 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 cargo2.flush();
                 cargo3.flush();
                 cargo4.flush();
+
+                step_count++;
+                if (mujoco_ctx.should_autosave(step_count)) {
+                    (void)mujoco_ctx.save_forklift_state();
+                }
             }
 
             auto end = std::chrono::steady_clock::now();
@@ -242,6 +262,8 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 std::this_thread::sleep_for(std::chrono::duration<double>(sleep_time));
             }
         }
+        (void)mujoco_ctx.save_forklift_state();
+        std::cout << "[INFO] Saved forklift state to: " << mujoco_ctx.state_file_path() << std::endl;
     } catch (const std::exception& e) {
         std::fflush(stdout);
         std::cerr << "Exception in simulation thread: " << e.what() << std::endl;

@@ -16,5 +16,11 @@
         "pdu_size": 32,
         "name": "height",
         "type": "std_msgs/Float64"
+    },
+    {
+        "channel_id": 3,
+        "pdu_size": 32,
+        "name": "phase",
+        "type": "std_msgs/Int32"
     }
 ]

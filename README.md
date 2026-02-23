@@ -126,6 +126,20 @@ compact 形式（`*-compact.json`）は C++ シミュレータ側で使用しま
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
+フォークリフト状態の保存/再開（C++サンプル）:
+- `forklift_sim` / `forklift_unit_sim` は、フォークリフト本体の状態（位置・姿勢・リフト高さ・各速度・各加速度）を自動保存します。
+- 次回起動時、保存ファイルがあればそこから自動再開します（荷物・棚などの状態は復元対象外）。
+- 保存先は `HAKO_FORKLIFT_STATE_FILE` で変更可能（未指定時は `./tmp/hakoniwa-forklift.state` または `./tmp/hakoniwa-forklift-unit.state`）。
+- 保存間隔は `HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS`（シミュレーションstep数、既定: `1000`）で変更可能。
+- 共通実装クラスは `include/hakoniwa_mujoco_context.hpp` の `HakoniwaMujocoContext` です。
+
+例:
+```bash
+HAKO_FORKLIFT_STATE_FILE=./tmp/forklift-demo.state \
+HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS=500 \
+./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
+```
+
 ```bash
 python -m python.forklift_simple_auto config/forklift-unit.json
 ```
@@ -247,6 +261,131 @@ python -m python.forklift_gamepad config/custom.json
 ```bash
 hako-cmd start
 ```
+
+## 結合テスト（forklift_unit）
+
+### 目的
+
+- Pythonコントローラが同一引数で目標値を送れることを確認する
+- MuJoCo（C++）側がフォークリフト状態と制御状態を保持し、再起動後に再開できることを確認する
+- 対象は `forklift_unit_sim`（フォークリフト単体）とし、荷物/棚は対象外とする
+
+### テスト手順
+
+ターミナルを3つ使用します。
+
+1. ターミナル1（C++シミュレータ）
+```bash
+HAKO_FORKLIFT_STATE_FILE=./tmp/forklift-it.state \
+./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
+```
+または:
+```bash
+bash forklift-unit.bash
+```
+
+2. ターミナル2（Pythonコントローラ）
+```bash
+python -m python.forklift_simple_auto config/forklift-unit.json \
+  --forward-distance 2.0 \
+  --backward-distance 2.0 \
+  --move-speed 0.7
+```
+または:
+```bash
+bash controll.bash
+```
+絶対目標モード（現在位置から逆算してグローバル目標へ移動）:
+```bash
+FORWARD_GOAL_X=5.0 HOME_GOAL_X=0.0 GOAL_TOLERANCE=0.03 bash controll.bash
+```
+
+3. ターミナル3（開始トリガ）
+```bash
+hako-cmd start
+```
+
+### 再開確認テスト
+
+1. いったん `forklift_unit_sim` を停止する（`Ctrl+C`）
+2. 同じコマンドで `forklift_unit_sim` を再起動する
+3. ログに以下が出ることを確認する
+   - `Resume forklift state from: ...`
+   - `Resume control phase=...`
+4. Pythonコントローラは同じ引数で再実行し、継続して制御できることを確認する
+
+### ログ確認（復旧判定）
+
+`logs/` 配下に以下のログが出力されます。
+
+- `logs/forklift-unit-run.log` : C++シミュレータ実行ログ
+- `logs/control-run.log` : Pythonコントローラ実行ログ
+- `logs/forklift-unit-recovery.log` : 復旧監査ログ（初期位置・phase・target・step）
+
+復旧判定は `logs/forklift-unit-recovery.log` の `START` 行で確認します。
+
+- `restored=yes` なら保存状態から復旧
+- `restored=no` なら新規開始
+- 併せて `pos=...`, `phase=...`, `target_v=...`, `target_yaw=...`, `target_lift=...`, `step=...` を確認
+
+### Phase2復帰の成功判定（推奨チェック）
+
+`Phase2`（帰りフェーズ）で停止して再起動した場合、以下が揃っていれば成功です。
+
+1. `logs/forklift-unit-recovery.log` に 2 回目の開始行として
+   - `START restored=yes ... phase=2 ... target_v=-0.700000 ...`
+2. `logs/forklift-unit-run.log` に
+   - `Resume control phase=2 ...`
+3. 2回目開始後の `AUTOSAVE` が `phase=2` を維持している
+
+### ログの追記仕様（tee -a）
+
+`forklift-unit.bash` / `controll.bash` はどちらも `tee -a` でログへ追記します。
+そのため、1回目と2回目の実行結果は同じファイルに連続して残ります。
+
+- 1回目/2回目の境界は `START` 行（`restored=no` / `restored=yes`）で判定してください。
+- 必要に応じてテスト前に `logs/*.log` を退避または削除してから実行してください。
+
+## コンテキスト退避の設計と狙い
+
+### 狙い
+
+- 再起動後にシミュレーションを継続できるようにする
+- 長時間実験を中断/再開しやすくする
+- `phase` を含む制御状態の再現性を高める
+
+### 退避対象
+
+`HakoniwaMujocoContext`（`include/hakoniwa_mujoco_context.hpp`）で、主に以下を保存します。
+
+- フォークリフト本体の状態（位置・姿勢・リフト高さ）
+- 各速度・各加速度
+- 制御状態（`phase`, `target_v`, `target_yaw`, `target_lift`, `step`）
+
+### 退避対象外
+
+- 荷物・棚など外部オブジェクトの状態
+- 実験ごとの補助プロセス状態（外部Pythonプロセスの内部状態など）
+
+### 保存/復帰方針
+
+- 保存:
+  - 定期 autosave（`HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS`）
+  - 終了時保存
+  - 保存先は `HAKO_FORKLIFT_STATE_FILE`（未指定時は `./tmp/...`）
+- 復帰:
+  - 起動時に保存ファイルがあれば復帰（`restored=yes`）
+  - 保存ファイルがなければ原点開始（`restored=no`）
+
+### phase運用方針
+
+- `phase=2`（帰りフェーズ）をセッション内でラッチし、不要な反転を抑制
+- 復帰時は保存済みの `target_v/target_yaw` も初期適用し、復帰直後の挙動を安定化
+
+### 監査ログ
+
+- `logs/forklift-unit-recovery.log` に `START / AUTOSAVE / END` を出力
+- 復帰判定時は `START` 行の `restored`, `phase`, `target_v`, `step` を確認
 
 ## サンプルコード
 
