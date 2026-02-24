@@ -231,7 +231,6 @@ int ForkliftSimulationLoop::run()
             step_count = static_cast<int>(std::min(control_state.sim_step, max_int));
         }
         int resumed_step_base = step_count;
-        const double resume_cmd_hold_sec = get_env_double("HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC", 2.0);
         auto rd_save_context_payload = [&](std::vector<std::uint8_t>& out_bytes) -> bool {
             if (!mujoco_ctx.save_forklift_state_with_control(&control_state)) {
                 return false;
@@ -271,8 +270,7 @@ int ForkliftSimulationLoop::run()
                 double cmd_v = 0.0;
                 double cmd_yaw = 0.0;
                 double cmd_lift = 0.0;
-                const bool in_resume_hold_window =
-                    restored && (sim_time_sec_from_resume <= resume_cmd_hold_sec);
+                const bool in_resume_hold_window = false;
                 if (rd_integration.is_enabled()) {
                     const auto cur_pos = controller.getForklift().getPosition();
                     if (!rd_integration.tick(cur_pos.x)) {
@@ -320,12 +318,10 @@ int ForkliftSimulationLoop::run()
                     cmd_v = command.linear_velocity;
                     cmd_yaw = command.yaw_rate;
                     cmd_lift = command.lift_position;
-                    if (!in_resume_hold_window) {
-                        control_state.target_linear_velocity = command.linear_velocity;
-                        control_state.target_yaw_rate = command.yaw_rate;
-                        controller.update_target_lift_z(command.lift_position);
-                        controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
-                    }
+                    control_state.target_linear_velocity = command.linear_velocity;
+                    control_state.target_yaw_rate = command.yaw_rate;
+                    controller.update_target_lift_z(command.lift_position);
+                    controller.setVelocityCommand(command.linear_velocity, command.yaw_rate);
                     const double kVelEps = 1e-4;
                     if (control_state.phase <= 0) {
                         if (command.linear_velocity > kVelEps) {

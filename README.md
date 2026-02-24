@@ -489,10 +489,6 @@ Environment variables:
 - `HAKO_FORKLIFT_MOTION_GAIN`
 - `HAKO_FORKLIFT_TRACE_FILE` (default: `./logs/forklift-unit-trace.csv`)
 - `HAKO_FORKLIFT_TRACE_EVERY_STEPS` (default: `10`)
-- `HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC` (default: `2.0`)
-  - temporary barrier for external real-time Python control race at resume boundary
-  - not RD semantic logic and not a physics guarantee mechanism
-  - can be reduced/removed after Python controller is assetized and tick-synchronized
 
 Example:
 ```bash
@@ -565,7 +561,7 @@ Evaluation protocol:
 - Trace source: `logs/forklift-unit-trace.csv` (column definitions apply)
 - `Δx` definition: `(baseline - resumed)` and thresholds apply to `|Δx|`
 - Trace sampling: `HAKO_FORKLIFT_TRACE_EVERY_STEPS=10` (official evidence condition)
-- Metrics include the `RESUME_CMD_HOLD_SEC` window (stricter; operational resume procedure is part of the spec)
+- Metrics include the immediate post-restore window (stricter; operational resume procedure is part of the spec)
 
 Robustness note:
 - `python.plot_forklift_continuity` skips partially written CSV rows (e.g., interrupted append on `Ctrl+C`).
@@ -706,12 +702,9 @@ Roadmap targets unification toward compact.
 A. This design centers on explicit PDU contracts, EU-level ownership, and commit-point semantics.
 Its positioning is different from master-algorithm-centric synchronization styles.
 
-### Q10. Is `HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC` a workaround?
-A. It is a temporary transitional barrier for time-model mismatch.
-Current Python control runs as external real-time process (not Hakoniwa tick-synchronized asset), so resume boundary can suffer command-race.
-`RESUME_CMD_HOLD_SEC` absorbs that race window; it is not RD semantic core and not a claim of physics continuity guarantee.
-Root fix is Python controller assetization with tick synchronization (step/epoch-aligned input causality).
-After that, this hold window can be reduced and eventually removed.
+### Q10. How is input handled at restore boundary?
+A. Controller runs as a Hakoniwa asset (tick-synchronized), and input is applied immediately at restore boundary.
+So there is no hold-time tuning operation in the current flow.
 
 ### Q11. Why is there no Phase2 evidence (cargo/shelf/complex contact)?
 A. The current objective is to validate **ExecutionUnit continuity (Phase1)** as an RD prerequisite.
@@ -758,7 +751,7 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 
 - Windows run flow (build/run/log)
 - Python-side compact format support (remove legacy dependency)
-- Python controller assetization (tick-synchronized control path) to remove resume-time input race and phase out `RESUME_CMD_HOLD_SEC`
+- Operational hardening of Python controller asset mode (tick-synchronized path)
 - Expand saved scope (cargo/shelf/etc.)
 - Automated restore consistency checks (log verification scripts)
 - Safe handoff diagnosability (optional logs: reason=`contact_active` / `near_collision` / `constraint_active`)
