@@ -4,8 +4,10 @@ English | [日本語](README-ja.md)
 
 ## TL;DR
 - This repository provides MuJoCo-based physics assets for Hakoniwa.
+- RD-light is implemented for single-node handoff: ownership release/activation + context save/restore + single-owner operation.
 - It connects a C++ MuJoCo simulator and Python controllers via PDU contracts.
 - It includes context save/restore for forklift state + control state.
+- RD-full control-plane semantics (commit-point finalization, epoch guarantee, `d_max` guarantee, bridge rewiring completion) are out of scope here.
 - Current migration rule: C++ uses compact JSON, Python uses legacy JSON.
 - Fast start uses 3 terminals: simulator, controller, and `hako-cmd start`.
 
@@ -145,6 +147,28 @@ Key boundaries:
 - This repository currently has no RD control API (ownership transfer request/accept).
   Integration is planned in the roadmap via context handoff design.
 
+### Guarantees / Non-goals / Interfaces
+
+Guarantees (this repository):
+- Data Plane execution for MuJoCo EU (forklift/rover) in Hakoniwa
+- RD-light minimal handoff on single node:
+  - ownership release / activation
+  - RuntimeContext save/restore continuity
+  - single-owner operation
+  - standby non-interference operation
+
+Non-goals (out of scope in this repository):
+- RD-full Control Plane semantics finalization
+- commit-point meaning finalization and global decision authority
+- epoch consistency guarantee across distributed nodes
+- `d_max` guarantee and drift repair
+- bridge rewiring completion confirmation
+
+Interfaces:
+- PDU interface (RuntimeStatus / RuntimeContext / robot PDUs)
+- Callback boundary for context save/restore payload
+- Asset-level ownership status (`owner=yes/no`) and handoff logging
+
 ### RD Summary (ExecutionUnit / Ownership / commit-point / d_max)
 
 RD is a control model for safe execution ownership transfer of an ExecutionUnit (EU) in distributed runs.
@@ -192,6 +216,44 @@ It is not a replacement for the full RD control plane; it is a practical asset-s
     - [Failure behavior](rd-design.md#rd-failure-behavior)
     - [Class design](rd-design.md#14-クラス設計実装反映)
     - [TODO](rd-design.md#rd-todo)
+
+## Safe Handoff Condition (User Responsibility)
+
+Handoff timing is a user / upper-layer responsibility.
+RD-light does not automatically certify physical safety at arbitrary handoff instants.
+
+The position of this project is explicit.  
+**The responsibility for how far to push high-fidelity complex physics belongs to the user (scenario designer / upper-layer control)**,  
+while this repository provides the Data Plane and handoff mechanism.  
+Therefore, **preconditions before entering truly critical simulation phases (handoff boundary, velocity constraints, contact-state constraints, etc.) must be defined by the user side**.
+
+MUST NOT:
+- do not handoff during active contact/collision
+- do not handoff immediately before predicted collision
+- do not handoff during grasp/constraint-active states
+- do not handoff when strong external-object contact constraints are active
+
+SHOULD:
+- handoff in free space
+- handoff under stable motion (small acceleration / bounded angular rate / low contact count)
+- use explicit safe boundary design in scenario definition
+
+Failure semantics when violated:
+- physical continuity is **not guaranteed**
+- divergence / bounce / sudden transients are within supported failure behavior
+
+Current demo interpretation:
+- the 1m boundary is a **safe-boundary design example** for handoff timing.
+- this is a scenario-level policy, not an automatic RD-full safety proof.
+
+### Design Principle: Explicitly Decide What Not to Guarantee
+
+This repository does not attempt to guarantee full physical continuity for every possible situation.  
+Instead, it assumes **ownership handoff before entering high-risk contact/collision zones**.
+
+- Expanding guarantees into contact-heavy edge cases too early causes implementation and operational complexity to explode.
+- Therefore, boundaries are fixed first: what is guaranteed here, and what is delegated to upper-layer control/operations.
+- This is not a weakness; it is an intentional boundary design for scalable distributed simulation.
 
 ---
 
@@ -427,7 +489,10 @@ Environment variables:
 - `HAKO_FORKLIFT_MOTION_GAIN`
 - `HAKO_FORKLIFT_TRACE_FILE` (default: `./logs/forklift-unit-trace.csv`)
 - `HAKO_FORKLIFT_TRACE_EVERY_STEPS` (default: `10`)
-- `HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC` (default: `2.0`, ignore all external commands during this fixed window after resume)
+- `HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC` (default: `2.0`)
+  - temporary barrier for external real-time Python control race at resume boundary
+  - not RD semantic logic and not a physics guarantee mechanism
+  - can be reduced/removed after Python controller is assetized and tick-synchronized
 
 Example:
 ```bash
@@ -600,19 +665,19 @@ Graph interpretation is documented in:
 ## FAQ
 
 ### Q1. Does this repository implement RD itself?
-A. No.
-It does not implement RD control-plane logic (ownership transition/Epoch control).
-It provides physical ExecutionUnit continuity needed by RD.
-Ownership transition and commit-point are responsibilities of `hakoniwa-rd-core`.
+A. RD-light is implemented, RD-full is not.
+Implemented here: single-node minimal handoff in the Data Plane (ownership release/activation + context handoff + single owner operation).
+Not implemented here: RD-full Control Plane semantics (commit-point finalization authority, distributed epoch guarantees, `d_max` guarantee, bridge rewiring completion confirmation).
 
 ### Q2. How does commit-point relate to MuJoCo save?
 A. Currently they are not directly linked.
 Save is operational autosave.
 Future hook point is explicit: commit-point reached in RD control-plane -> invoke context-save API at the data-plane boundary.
+So current behavior is practical continuity support, not final commit-point semantics.
 
 ### Q3. How is this aligned with `d_max`?
 A. This repository focuses on local physics execution.
-`d_max` guarantee belongs to RD semantics; this repository is the data-plane EU implementation running under that model.
+`d_max` guarantee belongs to RD semantics in upper layers; this repository does not provide `d_max` guarantee by itself.
 
 ### Q4. Why not full-world snapshot?
 A. Intentional phased scope.
@@ -642,9 +707,11 @@ A. This design centers on explicit PDU contracts, EU-level ownership, and commit
 Its positioning is different from master-algorithm-centric synchronization styles.
 
 ### Q10. Is `HAKO_FORKLIFT_RESUME_CMD_HOLD_SEC` a workaround?
-A. It is an intentional disturbance-shield window right after resume.
-Immediately after restore, command re-send and internal state settling can overlap; this short window suppresses external command noise to stabilize the resume boundary.
-With future commit-point-coupled save/restore, this window can be reduced or removed.
+A. It is a temporary transitional barrier for time-model mismatch.
+Current Python control runs as external real-time process (not Hakoniwa tick-synchronized asset), so resume boundary can suffer command-race.
+`RESUME_CMD_HOLD_SEC` absorbs that race window; it is not RD semantic core and not a claim of physics continuity guarantee.
+Root fix is Python controller assetization with tick synchronization (step/epoch-aligned input causality).
+After that, this hold window can be reduced and eventually removed.
 
 ### Q11. Why is there no Phase2 evidence (cargo/shelf/complex contact)?
 A. The current objective is to validate **ExecutionUnit continuity (Phase1)** as an RD prerequisite.
@@ -658,6 +725,21 @@ Phase2 (cargo/shelf/complex contact) will be executed after:
 Therefore, Phase1 is treated as the official evidence in the current scope, and Phase2 is explicitly out of scope for now.
 
 Note: Phase1 evidence targets semantic continuity under the defined scope; it is not a claim of full-world physical determinism.
+
+### Q12. Is this a "glass castle"? (Only valid in a special setup?)
+A. This concern is valid.  
+This repository is not a universal "restore everything" solution; it is a **scoped Data Plane implementation**.
+
+- Validity conditions:
+  - single-owner operation
+  - Safe Handoff Condition (avoid handoff during contact, near-collision, or active constraints)
+  - same model XML / same MuJoCo version
+- What it provides:
+  - ownership handoff + continuity within that scope (Phase1)
+- What is still non-guaranteed:
+  - general continuity with contact/external objects (Phase2)
+
+So this is not "works only by accident"; it is a staged design with explicit applicability boundaries.
 
 This FAQ reflects the current implementation scope.
 For final semantics and distributed extensions, see [Hakoniwa Design Docs](https://github.com/hakoniwalab/hakoniwa-design-docs).
@@ -676,8 +758,10 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 
 - Windows run flow (build/run/log)
 - Python-side compact format support (remove legacy dependency)
+- Python controller assetization (tick-synchronized control path) to remove resume-time input race and phase out `RESUME_CMD_HOLD_SEC`
 - Expand saved scope (cargo/shelf/etc.)
 - Automated restore consistency checks (log verification scripts)
+- Safe handoff diagnosability (optional logs: reason=`contact_active` / `near_collision` / `constraint_active`)
 - RD integration for context handoff design
 
 ---
