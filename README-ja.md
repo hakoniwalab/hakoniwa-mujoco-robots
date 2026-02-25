@@ -8,7 +8,7 @@
 - 目的は、PDU連携で**C++シミュレータ（MuJoCo）とPython制御**を統合し、分散実験の基盤を作ることです。  
 - 重要機能として、**フォークリフト本体＋制御状態のコンテキスト退避・復旧**を実装しています。  
 - RD-full制御プレーン（commit-point意味論確定、epoch整合保証、`d_max`保証、bridge再配線完了確認）は本リポジトリの範囲外です。  
-- 設定は移行期のため **C++=compact JSON / Python=legacy JSON** を使い分けます。  
+- 設定は **C++/Python ともに compact JSON** を使用します（`hakoniwa-pdu >= 1.3.7`）。  
 - 最短実行は「3ターミナル（sim / python / `hako-cmd start`）」です。  
 
 ## デモ動画
@@ -117,9 +117,9 @@ Hakoniwaをハブとして、MuJoCo（C++）とPython制御がPDUで接続され
 
 - `pdu_size` は「型そのもののサイズ」ではなく、**PDU総サイズ（MetaData込み）**で扱う
   - 例: `Int32` 本体サイズ 8B でも、設定上は `24 + 8 = 32` を使う
-- 設定は移行期のため二系統
-  - C++側: compact（`pdudef + pdutypes`）
-  - Python側: legacy（従来の `pdudef`）
+- 設定フォーマット
+  - C++/Python側: compact（`pdudef + pdutypes`）
+  - Python実行環境: `hakoniwa-pdu >= 1.3.7`
 - 実行時共有領域は通常 `/var/lib/hakoniwa/mmap`
 
 ### このリポジトリでの追い方（推奨順）
@@ -284,16 +284,15 @@ SHOULD:
 
 ---
 
-## 重要な互換性ルール（移行期）
+## 重要な設定ルール
 
-### legacy / compact の使い分け（必読）
+### compactのみ（必読）
 
-- C++シミュレータ: **compact JSON**
-  - 例: `forklift-unit-compact.json`, `safety-forklift-pdu-compact.json`
-- Pythonコントローラ: **legacy JSON**
-  - 例: `forklift-unit.json`, `custom.json`, `safety-forklift-pdu.json`
+- C++シミュレータ / Pythonコントローラ: **compact JSON**
+  - 例: `forklift-unit-compact.json`, `custom-compact.json`, `safety-forklift-pdu-compact.json`
+- Python実行環境: `hakoniwa-pdu >= 1.3.7`
 
-移行期の併存です。ここを誤ると「読めるが動かない」状態になります。
+`hakoniwa-pdu` が古い場合、初期化は通っても PDU 解決に失敗することがあります（`channel=-1`, `size=-1`）。
 
 ---
 
@@ -361,9 +360,9 @@ git submodule update --init --recursive
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
-2. Pythonコントローラ（legacy）
+2. Pythonコントローラ（compact）
 ```bash
-python -m python.forklift_simple_auto config/forklift-unit.json \
+python -m python.forklift_simple_auto config/forklift-unit-compact.json \
   --forward-distance 2.0 --backward-distance 2.0 --move-speed 0.7
 ```
 
@@ -399,22 +398,22 @@ hako-cmd start
 
 - 最小自動操縦:
 ```bash
-python -m python.forklift_simple_auto config/custom.json
+python -m python.forklift_simple_auto config/custom-compact.json
 ```
 
-- 単体モデル向け（legacy）:
+- 単体モデル向け:
 ```bash
-python -m python.forklift_simple_auto config/forklift-unit.json --forward-distance 1.5 --backward-distance 1.5 --move-speed 0.7
+python -m python.forklift_simple_auto config/forklift-unit-compact.json --forward-distance 1.5 --backward-distance 1.5 --move-speed 0.7
 ```
 
 - API制御サンプル:
 ```bash
-python -m python.forklift_api_control config/safety-forklift-pdu.json config/monitor_camera_config.json
+python -m python.forklift_api_control config/safety-forklift-pdu-compact.json config/monitor_camera_config.json
 ```
 
 - ゲームパッド制御:
 ```bash
-python -m python.forklift_gamepad config/custom.json
+python -m python.forklift_gamepad config/custom-compact.json
 ```
 
 ---
@@ -728,7 +727,7 @@ A. 保証しません。stateは同一モデルXML・同一MuJoCoバージョン
 PDU疎結合は**プロセス間インターフェース契約**の話であり、ここで要求している一致条件は**物理エンジン内部状態の互換性**の話です。責務レイヤが異なります。
 
 ### Q8. legacy/compact混在は設計上の問題では？
-A. 移行期のためです。最終的にはcompactへの統一をRoadmapで予定しています。
+A. 現在は compact 統一方針です。本リポジトリから legacy 設定・例は削除しました。
 
 ### Q9. HLAやFMIと何が違いますか？
 A. 本設計は、PDUによる明示的データ契約、ExecutionUnit単位でのOwnership管理、commit-point意味論を中核にしています。マスターアルゴリズム依存の並列同期設計とは立ち位置が異なります。
@@ -780,7 +779,7 @@ A. この懸念は妥当です。
 ## Roadmap
 
 - Windows実行フローの整備（ビルド/実行/ログ）
-- compactフォーマットのPython側対応（legacy依存の解消）
+- compact統一運用の検証強化（`hakoniwa-pdu` バージョン/PDU解決診断）
 - Python controller asset 実装の運用安定化（tick同期）
 - 退避対象の段階的拡張（荷物・棚など）
 - 復帰整合性チェックの自動化（ログ検査スクリプト）

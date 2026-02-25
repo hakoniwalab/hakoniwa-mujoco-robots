@@ -73,5 +73,5 @@ bash docker/attach.bash
 
 ```bash
 mkdir -p images
-python3 -m python.forklift_api_control config/safety-forklift-pdu.json config/monitor_camera_config.json
+python3 -m python.forklift_api_control config/safety-forklift-pdu-compact.json config/monitor_camera_config.json
 ```

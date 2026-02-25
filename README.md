@@ -8,7 +8,7 @@ English | [日本語](README-ja.md)
 - It connects a C++ MuJoCo simulator and Python controllers via PDU contracts.
 - It includes context save/restore for forklift state + control state.
 - RD-full control-plane semantics (commit-point finalization, epoch guarantee, `d_max` guarantee, bridge rewiring completion) are out of scope here.
-- Current migration rule: C++ uses compact JSON, Python uses legacy JSON.
+- Compact JSON is the default for both C++ and Python (`hakoniwa-pdu >= 1.3.7`).
 - Fast start uses 3 terminals: simulator, controller, and `hako-cmd start`.
 
 ## Demo Video
@@ -114,9 +114,9 @@ Read this repository with the following 3 layers in mind:
 Minimum knowledge for reading samples:
 - `pdu_size` is total PDU buffer size (including metadata), not raw type size.
   - Example: `Int32` payload is 8B, but config uses `24 + 8 = 32`.
-- Migration-period dual config:
-  - C++: compact (`pdudef + pdutypes`)
-  - Python: legacy (`pdudef`)
+- Config format:
+  - C++/Python: compact (`pdudef + pdutypes`)
+  - Minimum Python package: `hakoniwa-pdu >= 1.3.7`
 - Runtime shared files are typically under `/var/lib/hakoniwa/mmap`.
 
 Recommended reading order:
@@ -257,16 +257,15 @@ Instead, it assumes **ownership handoff before entering high-risk contact/collis
 
 ---
 
-## Migration Rule (Important)
+## Config Rule (Important)
 
-### legacy vs compact (must read)
+### compact only (must read)
 
-- C++ simulator: **compact JSON**
-  - e.g. `forklift-unit-compact.json`, `safety-forklift-pdu-compact.json`
-- Python controller: **legacy JSON**
-  - e.g. `forklift-unit.json`, `custom.json`, `safety-forklift-pdu.json`
+- C++ simulator / Python controller: **compact JSON**
+  - e.g. `forklift-unit-compact.json`, `custom-compact.json`, `safety-forklift-pdu-compact.json`
+- Python runtime requirement: `hakoniwa-pdu >= 1.3.7`
 
-This is a migration-stage coexistence. Mixing wrong formats often causes "it starts but does not work" behavior.
+If runtime `hakoniwa-pdu` is older, startup may succeed but PDU resolution can fail (`channel=-1`, `size=-1`).
 
 ---
 
@@ -333,9 +332,9 @@ Prepare 3 terminals.
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
-2. Python controller (legacy)
+2. Python controller (compact)
 ```bash
-python -m python.forklift_simple_auto config/forklift-unit.json \
+python -m python.forklift_simple_auto config/forklift-unit-compact.json \
   --forward-distance 2.0 --backward-distance 2.0 --move-speed 0.7
 ```
 
@@ -371,22 +370,22 @@ For compatibility, `controll.bash` is temporarily kept and internally calls `con
 
 - Minimal auto control:
 ```bash
-python -m python.forklift_simple_auto config/custom.json
+python -m python.forklift_simple_auto config/custom-compact.json
 ```
 
-- For unit model (legacy):
+- For unit model:
 ```bash
-python -m python.forklift_simple_auto config/forklift-unit.json --forward-distance 1.5 --backward-distance 1.5 --move-speed 0.7
+python -m python.forklift_simple_auto config/forklift-unit-compact.json --forward-distance 1.5 --backward-distance 1.5 --move-speed 0.7
 ```
 
 - API control sample:
 ```bash
-python -m python.forklift_api_control config/safety-forklift-pdu.json config/monitor_camera_config.json
+python -m python.forklift_api_control config/safety-forklift-pdu-compact.json config/monitor_camera_config.json
 ```
 
 - Gamepad sample:
 ```bash
-python -m python.forklift_gamepad config/custom.json
+python -m python.forklift_gamepad config/custom-compact.json
 ```
 
 ---
@@ -695,8 +694,7 @@ A. Not guaranteed.
 Restore assumes same model XML and same MuJoCo version.
 
 ### Q8. Is legacy/compact coexistence a design issue?
-A. It is a migration-stage constraint.
-Roadmap targets unification toward compact.
+A. Current policy is compact-only. Legacy examples/configs were removed from this repository.
 
 ### Q9. How is this different from HLA/FMI positioning?
 A. This design centers on explicit PDU contracts, EU-level ownership, and commit-point semantics.
@@ -750,7 +748,7 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 ## Roadmap
 
 - Windows run flow (build/run/log)
-- Python-side compact format support (remove legacy dependency)
+- Keep compact-only runtime checks and diagnostics (`hakoniwa-pdu` version / PDU resolution)
 - Operational hardening of Python controller asset mode (tick-synchronized path)
 - Expand saved scope (cargo/shelf/etc.)
 - Automated restore consistency checks (log verification scripts)

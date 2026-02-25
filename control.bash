@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-CONFIG_PATH="${1:-config/forklift-unit.json}"
+CONFIG_PATH="${1:-config/forklift-unit-compact.json}"
 FORWARD_DISTANCE="${FORWARD_DISTANCE:-2.0}"
 BACKWARD_DISTANCE="${BACKWARD_DISTANCE:-2.0}"
 MOVE_SPEED="${MOVE_SPEED:-0.7}"

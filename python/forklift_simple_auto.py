@@ -1,10 +1,12 @@
 import argparse
 import asyncio
 import inspect
+import json
 import os
 import sys
 import time
 from typing import Optional
+import importlib.metadata
 
 import hakopy
 from hakoniwa_pdu.impl.shm_communication_service import ShmCommunicationService
@@ -106,6 +108,16 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=int(os.getenv("HAKO_CONTROLLER_DELTA_USEC", "1000")),
         help="Hakoniwa controller delta time in usec for --controller-mode asset (default: 1000)",
+    )
+    parser.add_argument(
+        "--pdu-diagnose",
+        action="store_true",
+        help="Print PDU diagnostics (hakoniwa-pdu version, config format, required PDU channel/size).",
+    )
+    parser.add_argument(
+        "--pdu-diagnose-strict",
+        action="store_true",
+        help="Exit with error if any required PDU cannot be resolved (use with --pdu-diagnose).",
     )
     return parser.parse_args()
 
@@ -304,6 +316,63 @@ def run_global_goal_mission(
 class ControllerInterrupted(Exception):
     pass
 
+
+def _detect_pdudef_format(config_path: str) -> str:
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return "unknown"
+    if isinstance(data, dict) and "paths" in data:
+        return "compact"
+    robots = data.get("robots", []) if isinstance(data, dict) else []
+    if robots and isinstance(robots, list):
+        first = robots[0]
+        if isinstance(first, dict) and (
+            "shm_pdu_readers" in first or "shm_pdu_writers" in first
+        ):
+            return "legacy"
+    return "unknown"
+
+
+def log_pdu_diagnostics(
+    pdu_manager: PduManager,
+    config_path: str,
+    robot_name: str = "forklift",
+    required_pdus=None,
+) -> bool:
+    if required_pdus is None:
+        required_pdus = ["hako_cmd_game", "pos", "height", "phase"]
+    try:
+        pdu_version = importlib.metadata.version("hakoniwa-pdu")
+    except Exception:
+        pdu_version = "unknown"
+    fmt = _detect_pdudef_format(config_path)
+    print(f"[DIAG] hakoniwa-pdu version: {pdu_version}")
+    print(f"[DIAG] pdudef path: {config_path}")
+    print(f"[DIAG] pdudef format: {fmt}")
+
+    unresolved = []
+    for pdu_name in required_pdus:
+        ch = pdu_manager.get_pdu_channel_id(robot_name, pdu_name)
+        sz = pdu_manager.get_pdu_size(robot_name, pdu_name)
+        ok = (ch >= 0 and sz > 0)
+        state = "OK" if ok else "NG"
+        print(f"[DIAG] resolve {robot_name}/{pdu_name}: channel={ch} size={sz} => {state}")
+        if not ok:
+            unresolved.append(pdu_name)
+
+    if unresolved:
+        print(f"[WARN] unresolved pdus: {', '.join(unresolved)}")
+        if fmt == "compact":
+            print(
+                "[WARN] compact format detected but required PDUs were unresolved. "
+                "Check hakoniwa-pdu runtime version and compact support path."
+            )
+        return False
+    return True
+
+
 def _build_tick_sleep():
     # Use hakopy.usleep() for tick-synchronized controller execution.
     def _sleep(sec: float):
@@ -439,6 +508,11 @@ def main() -> int:
     try:
         pdu_manager.initialize(config_path=config_path, comm_service=ShmCommunicationService())
         pdu_manager.start_service_nowait()
+        if args.pdu_diagnose:
+            ok = log_pdu_diagnostics(pdu_manager, config_path)
+            if args.pdu_diagnose_strict and not ok:
+                print("[ERROR] PDU diagnose strict mode failed")
+                return 2
         mode = args.controller_mode
         print(f"[INFO] Controller mode: {mode}")
         if mode == "asset":

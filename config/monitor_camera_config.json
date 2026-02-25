@@ -1,5 +1,5 @@
 {
-    "pdu_path": "config/safety-forklift-pdu.json",
+    "pdu_path": "config/safety-forklift-pdu-compact.json",
     "monitor_cameras": [
         {
             "pdu_info": {

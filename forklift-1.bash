@@ -23,7 +23,7 @@ export HAKO_LOCAL_STATE_ENABLE="${HAKO_LOCAL_STATE_ENABLE:-0}"
 export HAKO_ASSET_NAME="${HAKO_ASSET_NAME:-forklift-1}"
 # Keep robot name as legacy "forklift" for current control/config compatibility.
 export HAKO_FORKLIFT_ROBOT_NAME="${HAKO_FORKLIFT_ROBOT_NAME:-forklift}"
-export HAKO_ASSET_CONFIG_PATH="${HAKO_ASSET_CONFIG_PATH:-config/forklift-unit.json}"
+export HAKO_ASSET_CONFIG_PATH="${HAKO_ASSET_CONFIG_PATH:-config/forklift-unit-compact.json}"
 unset HAKO_CONFIG_PATH
 
 export HAKO_FORKLIFT_STATE_FILE="${HAKO_FORKLIFT_STATE_FILE:-./tmp/forklift-1.state}"

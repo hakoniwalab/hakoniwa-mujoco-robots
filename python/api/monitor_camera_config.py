@@ -25,11 +25,55 @@ class MonitorCameraConfig:
         if not self.pdu_def or "robots" not in self.pdu_def:
             print("WARNING: PDU definition is not available.")
             return []
+        if "paths" in self.pdu_def:
+            return self._get_monitor_cameras_compact()
+        return self._get_monitor_cameras_legacy()
 
+    def _get_monitor_cameras_legacy(self) -> List[Dict[str, Any]]:
         entries = [
             entry for entry in self.pdu_def["robots"]
             if fnmatch.fnmatch(entry["name"], self.monitor_camera_pattern)
         ]
+        return entries
+
+    def _get_monitor_cameras_compact(self) -> List[Dict[str, Any]]:
+        base_dir = os.path.dirname(os.path.abspath(self.data["pdu_path"]))
+        path_map = {}
+        for p in self.pdu_def.get("paths", []):
+            path_id = p.get("id")
+            rel_path = p.get("path")
+            if not path_id or not rel_path:
+                continue
+            path_map[path_id] = os.path.join(base_dir, rel_path)
+
+        pdutypes_cache: Dict[str, List[Dict[str, Any]]] = {}
+        entries: List[Dict[str, Any]] = []
+        for robot in self.pdu_def.get("robots", []):
+            robot_name = robot.get("name")
+            if not robot_name or not fnmatch.fnmatch(robot_name, self.monitor_camera_pattern):
+                continue
+            pdutypes_id = robot.get("pdutypes_id")
+            pdutypes_path = path_map.get(pdutypes_id, "")
+            if not pdutypes_path or not os.path.exists(pdutypes_path):
+                print(f"WARNING: pdutypes path is not found for {robot_name}: {pdutypes_path}")
+                continue
+            if pdutypes_path not in pdutypes_cache:
+                pdutypes_data = self.load_from_json(pdutypes_path)
+                pdutypes_cache[pdutypes_path] = pdutypes_data if isinstance(pdutypes_data, list) else []
+            pdus = pdutypes_cache[pdutypes_path]
+            io_entries = []
+            for pdu in pdus:
+                io_entries.append({
+                    "type": pdu.get("type"),
+                    "org_name": pdu.get("name"),
+                    "channel_id": pdu.get("channel_id"),
+                    "pdu_size": pdu.get("pdu_size"),
+                })
+            entries.append({
+                "name": robot_name,
+                "shm_pdu_readers": io_entries,
+                "shm_pdu_writers": io_entries,
+            })
         return entries
 
     def load_from_json(self, path: str) -> Dict[str, Any]:
