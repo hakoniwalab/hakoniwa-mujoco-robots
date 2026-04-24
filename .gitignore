@@ -1,6 +1,12 @@
 # Prerequisites
 *.d
 
+.DS_Store
+__pycache__
+work
+cmake-build
+logs
+
 # Compiled Object files
 *.slo
 *.lo
