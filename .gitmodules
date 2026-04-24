@@ -4,3 +4,6 @@
 [submodule "thirdparty/hakoniwa-core-pro"]
 	path = thirdparty/hakoniwa-core-pro
 	url = https://github.com/hakoniwalab/hakoniwa-core-pro.git
+[submodule "thirdpartyhakoniwa-mbody-registry"]
+	path = thirdpartyhakoniwa-mbody-registry
+	url = https://github.com/hakoniwalab/hakoniwa-mbody-registry.git
