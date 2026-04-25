@@ -16,5 +16,11 @@
     "pdu_size": 72,
     "name": "base_scan_pos",
     "type": "geometry_msgs/Twist"
+  },
+  {
+    "channel_id": 3,
+    "pdu_size": 4096,
+    "name": "laser_scan",
+    "type": "sensor_msgs/LaserScan"
   }
 ]

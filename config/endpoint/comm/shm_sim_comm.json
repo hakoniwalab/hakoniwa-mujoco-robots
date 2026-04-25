@@ -10,7 +10,8 @@
         "pdu": [
           { "name": "hako_cmd_game", "notify_on_recv": false },
           { "name": "base_link_pos", "notify_on_recv": false },
-          { "name": "base_scan_pos", "notify_on_recv": false }
+          { "name": "base_scan_pos", "notify_on_recv": false },
+          { "name": "laser_scan", "notify_on_recv": false }
         ]
       }
     ]

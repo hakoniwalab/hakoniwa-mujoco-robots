@@ -1,9 +1,11 @@
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <cstddef>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -25,6 +27,8 @@
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "hakoniwa/pdu/hako_msgs/pdu_cpptype_GameControllerOperation.hpp"
 #include "hakoniwa/pdu/hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
+#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_LaserScan.hpp"
+#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_conv_LaserScan.hpp"
 #include "hakoniwa/pdu/type_endpoint.hpp"
 #include "physics/physics_impl.hpp"
 
@@ -69,7 +73,8 @@ double get_env_double(const char* name, double default_value)
 class Tb3Drive {
 public:
     explicit Tb3Drive(std::shared_ptr<hako::robots::physics::IWorld> world)
-        : base_(world->getRigidBody("base_link"))
+        : world_(world)
+        , base_(world->getRigidBody("base_link"))
         , base_scan_(world->getRigidBody("base_scan"))
         , left_motor_(world->getTorqueActuator("left_motor"))
         , right_motor_(world->getTorqueActuator("right_motor"))
@@ -107,7 +112,91 @@ public:
         return base_scan_->GetEuler();
     }
 
+    void fill_laser_scan(HakoCpp_LaserScan& scan, int ray_count, double angle_min, double angle_max, double range_min, double range_max, double yaw_offset, double origin_offset) const
+    {
+        auto* model = world_->getModel();
+        auto* data = world_->getData();
+        const int base_footprint_id = mj_name2id(model, mjOBJ_BODY, "base_footprint");
+        const int base_scan_id = mj_name2id(model, mjOBJ_BODY, "base_scan");
+        if (base_scan_id < 0) {
+            return;
+        }
+
+        const mjtNum* pos = &data->xpos[3 * base_scan_id];
+        const mjtNum* mat = &data->xmat[9 * base_scan_id];
+
+        static int debug_counter = 0;
+        if ((debug_counter++ % 20) == 0) {
+            const mjtNum dir_world_x[3] = {1.0, 0.0, 0.0};
+            int geomid = -1;
+            mjtNum normal[3] = {0.0, 0.0, 0.0};
+            mjtNum dist = mj_ray(
+                model,
+                data,
+                pos,
+                dir_world_x,
+                nullptr,
+                1,
+                base_footprint_id,
+                &geomid,
+                normal);
+            std::cout << "[LIDAR_DEBUG] world+X ray: dist=" << dist
+                      << " geomid=" << geomid << std::endl;
+            std::cout << "[LIDAR_DEBUG] scan_xaxis=("
+                      << mat[0] << "," << mat[1] << "," << mat[2] << ")"
+                      << " scan_yaxis=("
+                      << mat[3] << "," << mat[4] << "," << mat[5] << ")"
+                      << std::endl;
+        }
+
+        // MuJoCo xmat is row-major 3x3 body orientation in world coordinates.
+        const mjtNum xaxis[3] = {mat[0], mat[1], mat[2]};
+        const mjtNum yaxis[3] = {mat[3], mat[4], mat[5]};
+
+        std::vector<mjtNum> dirs(static_cast<size_t>(ray_count) * 3, 0.0);
+        std::vector<mjtNum> dist(static_cast<size_t>(ray_count), -1.0);
+        std::vector<mjtNum> ray_origin(3, 0.0);
+        for (int i = 0; i < ray_count; ++i) {
+            const double t = (ray_count == 1) ? 0.0 : static_cast<double>(i) / static_cast<double>(ray_count - 1);
+            const double angle = angle_min + (angle_max - angle_min) * t + yaw_offset;
+            dirs[3 * i + 0] = std::cos(angle) * xaxis[0] + std::sin(angle) * yaxis[0];
+            dirs[3 * i + 1] = std::cos(angle) * xaxis[1] + std::sin(angle) * yaxis[1];
+            dirs[3 * i + 2] = std::cos(angle) * xaxis[2] + std::sin(angle) * yaxis[2];
+        }
+        for (int i = 0; i < ray_count; ++i) {
+            ray_origin[0] = pos[0] + dirs[3 * i + 0] * origin_offset;
+            ray_origin[1] = pos[1] + dirs[3 * i + 1] * origin_offset;
+            ray_origin[2] = pos[2] + dirs[3 * i + 2] * origin_offset;
+            dist[static_cast<size_t>(i)] = mj_ray(
+                model,
+                data,
+                ray_origin.data(),
+                &dirs[3 * i],
+                nullptr,
+                1,
+                base_footprint_id,
+                nullptr,
+                nullptr);
+        }
+
+        scan.angle_min = static_cast<float>(angle_min);
+        scan.angle_max = static_cast<float>(angle_max);
+        scan.angle_increment = static_cast<float>((ray_count > 1) ? ((angle_max - angle_min) / static_cast<double>(ray_count - 1)) : 0.0);
+        scan.time_increment = 0.0F;
+        scan.scan_time = static_cast<float>(model->opt.timestep);
+        scan.range_min = static_cast<float>(range_min);
+        scan.range_max = static_cast<float>(range_max);
+        scan.ranges.assign(static_cast<size_t>(ray_count), static_cast<float>(range_max));
+        scan.intensities.assign(static_cast<size_t>(ray_count), 0.0F);
+        for (int i = 0; i < ray_count; ++i) {
+            if (dist[static_cast<size_t>(i)] >= range_min && dist[static_cast<size_t>(i)] <= range_max) {
+                scan.ranges[static_cast<size_t>(i)] = static_cast<float>(dist[static_cast<size_t>(i)]);
+            }
+        }
+    }
+
 private:
+    std::shared_ptr<hako::robots::physics::IWorld> world_;
     std::shared_ptr<hako::robots::physics::IRigidBody> base_;
     std::shared_ptr<hako::robots::physics::IRigidBody> base_scan_;
     std::shared_ptr<hako::robots::actuator::ITorqueActuator> left_motor_;
@@ -141,6 +230,14 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     const double drive_gain = get_env_double("HAKO_TB3_DRIVE_GAIN", 0.1);
     const double turn_gain = get_env_double("HAKO_TB3_TURN_GAIN", 0.15);
     const double max_torque = get_env_double("HAKO_TB3_MAX_TORQUE", 1.0);
+    const int lidar_ray_count = static_cast<int>(get_env_double("HAKO_TB3_LIDAR_RAY_COUNT", 181));
+    const double lidar_angle_min = get_env_double("HAKO_TB3_LIDAR_ANGLE_MIN", -1.57079632679);
+    const double lidar_angle_max = get_env_double("HAKO_TB3_LIDAR_ANGLE_MAX", 1.57079632679);
+    const double lidar_range_min = get_env_double("HAKO_TB3_LIDAR_RANGE_MIN", 0.05);
+    const double lidar_range_max = get_env_double("HAKO_TB3_LIDAR_RANGE_MAX", 5.0);
+    const double lidar_period_sec = get_env_double("HAKO_TB3_LIDAR_PERIOD_SEC", 0.1);
+    const double lidar_spin_rate = get_env_double("HAKO_TB3_LIDAR_SPIN_RATE", 6.28318530718);
+    const double lidar_origin_offset = get_env_double("HAKO_TB3_LIDAR_ORIGIN_OFFSET", 0.05);
     const std::string endpoint_name = get_env_string("HAKO_TB3_ENDPOINT_NAME", "tb3_sim_endpoint");
 
     Tb3Drive tb3(world);
@@ -150,14 +247,19 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     const hakoniwa::pdu::PduKey gamepad_key {"TB3", "hako_cmd_game"};
     const hakoniwa::pdu::PduKey base_pos_key {"TB3", "base_link_pos"};
     const hakoniwa::pdu::PduKey base_scan_pos_key {"TB3", "base_scan_pos"};
+    const hakoniwa::pdu::PduKey laser_scan_key {"TB3", "laser_scan"};
 
     endpoint.start();
     endpoint.post_start();
 
     hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> base_pos_ep(endpoint, base_pos_key);
     hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> base_scan_pos_ep(endpoint, base_scan_pos_key);
+    hakoniwa::pdu::TypedEndpoint<HakoCpp_LaserScan, hako::pdu::msgs::sensor_msgs::LaserScan> laser_scan_ep(endpoint, laser_scan_key);
     hako::pdu::msgs::hako_msgs::GameControllerOperation gamepad_conv;
     std::vector<std::byte> gamepad_buf(endpoint.get_pdu_size(gamepad_key), std::byte{0});
+    HakoCpp_LaserScan laser_scan {};
+    double lidar_elapsed_sec = lidar_period_sec;
+    double lidar_yaw_offset = 0.0;
 
     int step = 0;
     Tb3CommandState command_state {};
@@ -210,14 +312,45 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             base_scan_pos.linear.z = scan_pos.z;
             base_scan_pos.angular.x = scan_euler.x;
             base_scan_pos.angular.y = scan_euler.y;
-            base_scan_pos.angular.z = scan_euler.z;
+            base_scan_pos.angular.z = scan_euler.z + lidar_yaw_offset;
             (void)base_scan_pos_ep.send(base_scan_pos);
 
+            lidar_elapsed_sec += sim_timestep;
+            if (lidar_elapsed_sec >= lidar_period_sec) {
+                lidar_yaw_offset += lidar_spin_rate * lidar_elapsed_sec;
+                lidar_yaw_offset = std::atan2(std::sin(lidar_yaw_offset), std::cos(lidar_yaw_offset));
+                tb3.fill_laser_scan(
+                    laser_scan,
+                    std::max(1, lidar_ray_count),
+                    lidar_angle_min,
+                    lidar_angle_max,
+                    lidar_range_min,
+                    lidar_range_max,
+                    lidar_yaw_offset,
+                    lidar_origin_offset);
+                (void)laser_scan_ep.send(laser_scan);
+                lidar_elapsed_sec = 0.0;
+            }
+
             if ((step % 500) == 0) {
+                float lidar_min = std::numeric_limits<float>::infinity();
+                float lidar_max = 0.0F;
+                int lidar_hits = 0;
+                for (float value : laser_scan.ranges) {
+                    if (value >= laser_scan.range_min && value < laser_scan.range_max) {
+                        lidar_min = std::min(lidar_min, value);
+                        lidar_max = std::max(lidar_max, value);
+                        ++lidar_hits;
+                    }
+                }
                 std::cout << "[TB3] step=" << step
                           << " pos=(" << pos.x << ", " << pos.y << ", " << pos.z << ")"
                           << " body_vx=" << body_vel.x
                           << " torque=(" << left_torque << ", " << right_torque << ")"
+                          << " lidar_center=" << (laser_scan.ranges.empty() ? 0.0F : laser_scan.ranges[laser_scan.ranges.size() / 2])
+                          << " lidar_hits=" << lidar_hits
+                          << " lidar_min=" << (std::isfinite(lidar_min) ? lidar_min : -1.0F)
+                          << " lidar_max=" << lidar_max
                           << std::endl;
             }
             ++step;

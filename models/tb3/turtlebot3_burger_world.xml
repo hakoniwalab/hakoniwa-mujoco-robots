@@ -16,6 +16,18 @@
   <worldbody>
     <geom name="ground" type="plane" size="10 10 0.05" pos="0 0 0" material="grid" friction="1.0"/>
 
+    <body name="obstacle_front" pos="1.0 0.0 0.2">
+      <geom name="obstacle_front_geom" type="box" size="0.08 0.25 0.2" rgba="0.85 0.25 0.25 1"/>
+    </body>
+
+    <body name="obstacle_left" pos="0.7 0.45 0.15">
+      <geom name="obstacle_left_geom" type="box" size="0.12 0.12 0.15" rgba="0.25 0.55 0.85 1"/>
+    </body>
+
+    <body name="obstacle_right" pos="0.7 -0.45 0.15">
+      <geom name="obstacle_right_geom" type="cylinder" size="0.1 0.15" rgba="0.25 0.75 0.35 1"/>
+    </body>
+
     <body name="base_footprint" pos="0 0 0">
       <freejoint/>
       <body name="base_link" pos="0 0 0.01">
