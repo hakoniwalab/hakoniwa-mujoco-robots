@@ -70,6 +70,62 @@ double get_env_double(const char* name, double default_value)
     }
 }
 
+// Unity LiDAR2D.GetSensorValue() に相当
+// sensor の xmat から yaw 方向の ray を1本飛ばして距離を返す
+static float lidar_get_sensor_value(
+    const mjModel* model,
+    mjData* data,
+    const mjtNum* sensor_pos,   // base_scan の world位置
+    const mjtNum* sensor_xmat,  // base_scan の world姿勢(row-major 3x3)
+    int body_exclude,
+    double degree_yaw,
+    double range_min,
+    double range_max,
+    double origin_offset)       // self-hit 回避のため ray 始点をずらす量(m)
+{
+    // Unity: Quaternion.AngleAxis(degreeYaw, sensor.transform.up) * forward
+    // MuJoCo: xmat の行が各軸
+    //   row0 = xaxis (forward相当)
+    //   row1 = yaxis (left相当)
+    //   row2 = zaxis (up相当)
+    const double rad     = degree_yaw * M_PI / 180.0;
+    const double cos_yaw = std::cos(rad);
+    const double sin_yaw = std::sin(rad);
+
+    const mjtNum* xaxis = &sensor_xmat[0];
+    const mjtNum* yaxis = &sensor_xmat[3];
+
+    mjtNum dir[3] = {
+        cos_yaw * xaxis[0] + sin_yaw * yaxis[0],
+        cos_yaw * xaxis[1] + sin_yaw * yaxis[1],
+        cos_yaw * xaxis[2] + sin_yaw * yaxis[2],
+    };
+
+    // Unity: Physics.Raycast は自分の collider を無視するが
+    // MuJoCo: mj_ray は最近傍1点だけ返す。自己 geom (~6mm) が先にヒットすると
+    //         障害物まで届かない。origin_offset で自己 body を飛び越えてから ray を飛ばす。
+    mjtNum origin[3] = {
+        sensor_pos[0] + dir[0] * origin_offset,
+        sensor_pos[1] + dir[1] * origin_offset,
+        sensor_pos[2] + dir[2] * origin_offset,
+    };
+
+    int geomid = -1;
+    mjtNum normal[3] = {0.0, 0.0, 0.0};
+    mjtNum raw_dist = mj_ray(model, data, origin, dir,
+                             nullptr, 1, body_exclude, &geomid, normal);
+
+    // origin をずらした分を足し戻して真の距離にする
+    if (raw_dist < 0.0) {
+        return static_cast<float>(range_max); // no hit
+    }
+    const float true_dist = static_cast<float>(raw_dist + origin_offset);
+    if (true_dist < static_cast<float>(range_min) || true_dist > static_cast<float>(range_max)) {
+        return static_cast<float>(range_max);
+    }
+    return true_dist;
+}
+
 class Tb3Drive {
 public:
     explicit Tb3Drive(std::shared_ptr<hako::robots::physics::IWorld> world)
@@ -87,112 +143,60 @@ public:
         right_motor_->SetTorque(right);
     }
 
-    hako::robots::types::Position position() const
-    {
-        return base_->GetPosition();
-    }
+    hako::robots::types::Position position() const { return base_->GetPosition(); }
+    hako::robots::types::Euler euler() const { return base_->GetEuler(); }
+    hako::robots::types::BodyVelocity body_velocity() const { return base_->GetBodyVelocity(); }
+    hako::robots::types::Position base_scan_position() const { return base_scan_->GetPosition(); }
+    hako::robots::types::Euler base_scan_euler() const { return base_scan_->GetEuler(); }
 
-    hako::robots::types::Euler euler() const
-    {
-        return base_->GetEuler();
-    }
-
-    hako::robots::types::BodyVelocity body_velocity() const
-    {
-        return base_->GetBodyVelocity();
-    }
-
-    hako::robots::types::Position base_scan_position() const
-    {
-        return base_scan_->GetPosition();
-    }
-
-    hako::robots::types::Euler base_scan_euler() const
-    {
-        return base_scan_->GetEuler();
-    }
-
-    void fill_laser_scan(HakoCpp_LaserScan& scan, int ray_count, double angle_min, double angle_max, double range_min, double range_max, double yaw_offset, double origin_offset) const
+    // Unity LiDAR2D.Scan() + SetScanData() に相当
+    // angle_min_deg 〜 angle_max_deg を resolution_deg 刻みで一気にスキャン
+    void scan(HakoCpp_LaserScan& out,
+              double angle_min_deg,
+              double angle_max_deg,
+              double resolution_deg,
+              double range_min,
+              double range_max,
+              double origin_offset) const
     {
         auto* model = world_->getModel();
-        auto* data = world_->getData();
+        auto* data  = world_->getData();
+
+        const int base_scan_id      = mj_name2id(model, mjOBJ_BODY, "base_scan");
         const int base_footprint_id = mj_name2id(model, mjOBJ_BODY, "base_footprint");
-        const int base_scan_id = mj_name2id(model, mjOBJ_BODY, "base_scan");
-        if (base_scan_id < 0) {
-            return;
-        }
+        if (base_scan_id < 0) { return; }
 
         const mjtNum* pos = &data->xpos[3 * base_scan_id];
         const mjtNum* mat = &data->xmat[9 * base_scan_id];
 
-        static int debug_counter = 0;
-        if ((debug_counter++ % 20) == 0) {
-            const mjtNum dir_world_x[3] = {1.0, 0.0, 0.0};
-            int geomid = -1;
-            mjtNum normal[3] = {0.0, 0.0, 0.0};
-            mjtNum dist = mj_ray(
-                model,
-                data,
-                pos,
-                dir_world_x,
-                nullptr,
-                1,
+        // Unity: CalculateDistanceArraySize
+        const int ray_count = static_cast<int>(
+            std::ceil((angle_max_deg - angle_min_deg) / resolution_deg));
+
+        std::vector<float> ranges(static_cast<size_t>(ray_count));
+
+        // Unity: Scan() — for (float yaw = start_yaw; i < max_count; yaw += delta_yaw)
+        double yaw_deg = angle_min_deg;
+        for (int i = 0; i < ray_count; ++i, yaw_deg += resolution_deg) {
+            ranges[static_cast<size_t>(i)] = lidar_get_sensor_value(
+                model, data, pos, mat,
                 base_footprint_id,
-                &geomid,
-                normal);
-            std::cout << "[LIDAR_DEBUG] world+X ray: dist=" << dist
-                      << " geomid=" << geomid << std::endl;
-            std::cout << "[LIDAR_DEBUG] scan_xaxis=("
-                      << mat[0] << "," << mat[1] << "," << mat[2] << ")"
-                      << " scan_yaxis=("
-                      << mat[3] << "," << mat[4] << "," << mat[5] << ")"
-                      << std::endl;
+                yaw_deg,
+                range_min,
+                range_max,
+                origin_offset);
         }
 
-        // MuJoCo xmat is row-major 3x3 body orientation in world coordinates.
-        const mjtNum xaxis[3] = {mat[0], mat[1], mat[2]};
-        const mjtNum yaxis[3] = {mat[3], mat[4], mat[5]};
-
-        std::vector<mjtNum> dirs(static_cast<size_t>(ray_count) * 3, 0.0);
-        std::vector<mjtNum> dist(static_cast<size_t>(ray_count), -1.0);
-        std::vector<mjtNum> ray_origin(3, 0.0);
-        for (int i = 0; i < ray_count; ++i) {
-            const double t = (ray_count == 1) ? 0.0 : static_cast<double>(i) / static_cast<double>(ray_count - 1);
-            const double angle = angle_min + (angle_max - angle_min) * t + yaw_offset;
-            dirs[3 * i + 0] = std::cos(angle) * xaxis[0] + std::sin(angle) * yaxis[0];
-            dirs[3 * i + 1] = std::cos(angle) * xaxis[1] + std::sin(angle) * yaxis[1];
-            dirs[3 * i + 2] = std::cos(angle) * xaxis[2] + std::sin(angle) * yaxis[2];
-        }
-        for (int i = 0; i < ray_count; ++i) {
-            ray_origin[0] = pos[0] + dirs[3 * i + 0] * origin_offset;
-            ray_origin[1] = pos[1] + dirs[3 * i + 1] * origin_offset;
-            ray_origin[2] = pos[2] + dirs[3 * i + 2] * origin_offset;
-            dist[static_cast<size_t>(i)] = mj_ray(
-                model,
-                data,
-                ray_origin.data(),
-                &dirs[3 * i],
-                nullptr,
-                1,
-                base_footprint_id,
-                nullptr,
-                nullptr);
-        }
-
-        scan.angle_min = static_cast<float>(angle_min);
-        scan.angle_max = static_cast<float>(angle_max);
-        scan.angle_increment = static_cast<float>((ray_count > 1) ? ((angle_max - angle_min) / static_cast<double>(ray_count - 1)) : 0.0);
-        scan.time_increment = 0.0F;
-        scan.scan_time = static_cast<float>(model->opt.timestep);
-        scan.range_min = static_cast<float>(range_min);
-        scan.range_max = static_cast<float>(range_max);
-        scan.ranges.assign(static_cast<size_t>(ray_count), static_cast<float>(range_max));
-        scan.intensities.assign(static_cast<size_t>(ray_count), 0.0F);
-        for (int i = 0; i < ray_count; ++i) {
-            if (dist[static_cast<size_t>(i)] >= range_min && dist[static_cast<size_t>(i)] <= range_max) {
-                scan.ranges[static_cast<size_t>(i)] = static_cast<float>(dist[static_cast<size_t>(i)]);
-            }
-        }
+        // Unity: SetScanData()
+        out.angle_min      = static_cast<float>(angle_min_deg * M_PI / 180.0);
+        out.angle_max      = static_cast<float>(angle_max_deg * M_PI / 180.0);
+        out.angle_increment= static_cast<float>(resolution_deg * M_PI / 180.0);
+        out.time_increment = 0.0F;
+        out.scan_time      = static_cast<float>(model->opt.timestep);
+        out.range_min      = static_cast<float>(range_min);
+        out.range_max      = static_cast<float>(range_max);
+        out.ranges         = std::move(ranges);
+        out.intensities.assign(static_cast<size_t>(ray_count), 0.0F);
     }
 
 private:
@@ -208,146 +212,162 @@ struct Tb3CommandState {
     bool has_input {false};
 };
 
-static int my_on_initialize(hako_asset_context_t* context)
-{
-    (void)context;
-    return 0;
-}
-
-static int my_on_reset(hako_asset_context_t* context)
-{
-    (void)context;
-    return 0;
-}
+static int my_on_initialize(hako_asset_context_t* context) { (void)context; return 0; }
+static int my_on_reset(hako_asset_context_t* context)      { (void)context; return 0; }
 
 static int my_manual_timing_control(hako_asset_context_t* context)
 {
     (void)context;
 
-    const double sim_timestep = world->getModel()->opt.timestep;
+    const double sim_timestep  = world->getModel()->opt.timestep;
     const hako_time_t delta_time_usec = static_cast<hako_time_t>(sim_timestep * 1e6);
+
     const std::string endpoint_path = get_env_string("HAKO_TB3_ENDPOINT_CONFIG_PATH", endpoint_config_path);
-    const double drive_gain = get_env_double("HAKO_TB3_DRIVE_GAIN", 0.1);
-    const double turn_gain = get_env_double("HAKO_TB3_TURN_GAIN", 0.15);
-    const double max_torque = get_env_double("HAKO_TB3_MAX_TORQUE", 1.0);
-    const int lidar_ray_count = static_cast<int>(get_env_double("HAKO_TB3_LIDAR_RAY_COUNT", 181));
-    const double lidar_angle_min = get_env_double("HAKO_TB3_LIDAR_ANGLE_MIN", -1.57079632679);
-    const double lidar_angle_max = get_env_double("HAKO_TB3_LIDAR_ANGLE_MAX", 1.57079632679);
-    const double lidar_range_min = get_env_double("HAKO_TB3_LIDAR_RANGE_MIN", 0.05);
-    const double lidar_range_max = get_env_double("HAKO_TB3_LIDAR_RANGE_MAX", 5.0);
-    const double lidar_period_sec = get_env_double("HAKO_TB3_LIDAR_PERIOD_SEC", 0.1);
-    const double lidar_spin_rate = get_env_double("HAKO_TB3_LIDAR_SPIN_RATE", 6.28318530718);
+    const double drive_gain  = get_env_double("HAKO_TB3_DRIVE_GAIN",  0.1);
+    const double turn_gain   = get_env_double("HAKO_TB3_TURN_GAIN",   0.15);
+    const double max_torque  = get_env_double("HAKO_TB3_MAX_TORQUE",  1.0);
+
+    // Unity: AngleRange — 単位は degree
+    const double lidar_angle_min_deg  = get_env_double("HAKO_TB3_LIDAR_ANGLE_MIN_DEG",  0.0);
+    const double lidar_angle_max_deg  = get_env_double("HAKO_TB3_LIDAR_ANGLE_MAX_DEG",  360.0);
+    const double lidar_resolution_deg = get_env_double("HAKO_TB3_LIDAR_RESOLUTION_DEG", 1.0);
+    const int    lidar_scan_freq_hz   = static_cast<int>(get_env_double("HAKO_TB3_LIDAR_SCAN_FREQ_HZ", 10));
+
+    // Unity: DetectionDistance — 単位は mm → m 変換済みで渡す
+    const double lidar_range_min = get_env_double("HAKO_TB3_LIDAR_RANGE_MIN", 0.12);
+    const double lidar_range_max = get_env_double("HAKO_TB3_LIDAR_RANGE_MAX", 3.5);
+    // self-hit 回避: robot body (~6mm) を飛び越えてから ray を飛ばす
     const double lidar_origin_offset = get_env_double("HAKO_TB3_LIDAR_ORIGIN_OFFSET", 0.05);
+
+    // Unity: CalculateUpdateCycle(fixedDeltaTime, scanFrequency)
+    const double lidar_period_sec = 1.0 / lidar_scan_freq_hz;
+
     const std::string endpoint_name = get_env_string("HAKO_TB3_ENDPOINT_NAME", "tb3_sim_endpoint");
 
     Tb3Drive tb3(world);
     hakoniwa::pdu::Endpoint endpoint(endpoint_name, HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
     endpoint.open(endpoint_path);
 
-    const hakoniwa::pdu::PduKey gamepad_key {"TB3", "hako_cmd_game"};
-    const hakoniwa::pdu::PduKey base_pos_key {"TB3", "base_link_pos"};
-    const hakoniwa::pdu::PduKey base_scan_pos_key {"TB3", "base_scan_pos"};
-    const hakoniwa::pdu::PduKey laser_scan_key {"TB3", "laser_scan"};
+    const hakoniwa::pdu::PduKey gamepad_key      {"TB3", "hako_cmd_game"};
+    const hakoniwa::pdu::PduKey base_pos_key     {"TB3", "base_link_pos"};
+    const hakoniwa::pdu::PduKey base_scan_pos_key{"TB3", "base_scan_pos"};
+    const hakoniwa::pdu::PduKey laser_scan_key   {"TB3", "laser_scan"};
 
     endpoint.start();
     endpoint.post_start();
 
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> base_pos_ep(endpoint, base_pos_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> base_scan_pos_ep(endpoint, base_scan_pos_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_LaserScan, hako::pdu::msgs::sensor_msgs::LaserScan> laser_scan_ep(endpoint, laser_scan_key);
+    hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist>
+        base_pos_ep(endpoint, base_pos_key);
+    hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist>
+        base_scan_pos_ep(endpoint, base_scan_pos_key);
+    hakoniwa::pdu::TypedEndpoint<HakoCpp_LaserScan, hako::pdu::msgs::sensor_msgs::LaserScan>
+        laser_scan_ep(endpoint, laser_scan_key);
+
     hako::pdu::msgs::hako_msgs::GameControllerOperation gamepad_conv;
     std::vector<std::byte> gamepad_buf(endpoint.get_pdu_size(gamepad_key), std::byte{0});
+
     HakoCpp_LaserScan laser_scan {};
-    double lidar_elapsed_sec = lidar_period_sec;
-    double lidar_yaw_offset = 0.0;
+    double lidar_elapsed_sec = lidar_period_sec; // 初回すぐ実行
 
     int step = 0;
     Tb3CommandState command_state {};
+
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         {
             std::lock_guard<std::mutex> lock(data_mutex);
 
+            // --- gamepad 受信 ---
             HakoCpp_GameControllerOperation latest {};
             size_t gamepad_received = 0;
-            const auto gamepad_rc = endpoint.recv(gamepad_key, std::span<std::byte>(gamepad_buf.data(), gamepad_buf.size()), gamepad_received);
+            const auto gamepad_rc = endpoint.recv(
+                gamepad_key,
+                std::span<std::byte>(gamepad_buf.data(), gamepad_buf.size()),
+                gamepad_received);
             if ((gamepad_rc == HAKO_PDU_ERR_OK) && (gamepad_received > 0)) {
                 if (gamepad_conv.pdu2cpp(reinterpret_cast<char*>(gamepad_buf.data()), latest)) {
                     command_state.gamepad = latest;
                     command_state.has_input = true;
-                }
-                else {
+                } else {
+                    hako_asset_usleep(delta_time_usec * 1000);
+                    std::this_thread::sleep_for(std::chrono::duration<double>(1));
                     continue;
                 }
             }
 
-            double left_torque = 0.0;
+            // --- 制御 ---
+            double left_torque  = 0.0;
             double right_torque = 0.0;
             if (command_state.has_input && command_state.gamepad.axis.size() >= 4) {
-                const double turn = -1 * std::clamp(static_cast<double>(command_state.gamepad.axis[0]), -1.0, 1.0);
-                const double forward = std::clamp(-static_cast<double>(command_state.gamepad.axis[3]), -1.0, 1.0);
-                left_torque = std::clamp((forward - turn * turn_gain) * drive_gain, -max_torque, max_torque);
+                const double turn    = -1.0 * std::clamp(static_cast<double>(command_state.gamepad.axis[0]), -1.0, 1.0);
+                const double forward =        std::clamp(-static_cast<double>(command_state.gamepad.axis[3]), -1.0, 1.0);
+                left_torque  = std::clamp((forward - turn * turn_gain) * drive_gain, -max_torque, max_torque);
                 right_torque = std::clamp((forward + turn * turn_gain) * drive_gain, -max_torque, max_torque);
             }
             tb3.set_torque(left_torque, right_torque);
             world->advanceTimeStep();
 
-            HakoCpp_Twist base_pos {};
-            const auto pos = tb3.position();
-            const auto euler = tb3.euler();
-            const auto body_vel = tb3.body_velocity();
-            base_pos.linear.x = pos.x;
-            base_pos.linear.y = pos.y;
-            base_pos.linear.z = pos.z;
-            base_pos.angular.x = euler.x;
-            base_pos.angular.y = euler.y;
-            base_pos.angular.z = euler.z;
-            (void)base_pos_ep.send(base_pos);
-
-            HakoCpp_Twist base_scan_pos {};
-            const auto scan_pos = tb3.base_scan_position();
-            const auto scan_euler = tb3.base_scan_euler();
-            base_scan_pos.linear.x = scan_pos.x;
-            base_scan_pos.linear.y = scan_pos.y;
-            base_scan_pos.linear.z = scan_pos.z;
-            base_scan_pos.angular.x = scan_euler.x;
-            base_scan_pos.angular.y = scan_euler.y;
-            base_scan_pos.angular.z = scan_euler.z + lidar_yaw_offset;
-            (void)base_scan_pos_ep.send(base_scan_pos);
-
-            lidar_elapsed_sec += sim_timestep;
-            if (lidar_elapsed_sec >= lidar_period_sec) {
-                lidar_yaw_offset += lidar_spin_rate * lidar_elapsed_sec;
-                lidar_yaw_offset = std::atan2(std::sin(lidar_yaw_offset), std::cos(lidar_yaw_offset));
-                tb3.fill_laser_scan(
-                    laser_scan,
-                    std::max(1, lidar_ray_count),
-                    lidar_angle_min,
-                    lidar_angle_max,
-                    lidar_range_min,
-                    lidar_range_max,
-                    lidar_yaw_offset,
-                    lidar_origin_offset);
-                (void)laser_scan_ep.send(laser_scan);
-                lidar_elapsed_sec = 0.0;
+            // --- base_link_pos 送信（1ms周期） ---
+            {
+                HakoCpp_Twist base_pos {};
+                const auto pos      = tb3.position();
+                const auto euler    = tb3.euler();
+                base_pos.linear.x   = pos.x;
+                base_pos.linear.y   = pos.y;
+                base_pos.linear.z   = pos.z;
+                base_pos.angular.x  = euler.x;
+                base_pos.angular.y  = euler.y;
+                base_pos.angular.z  = euler.z;
+                (void)base_pos_ep.send(base_pos);
             }
 
+            // --- LiDAR スキャン（lidar_period_sec 周期） ---
+            // Unity: EventTick() — update_cycle ごとに Scan() → FlushNamedPdu()
+            lidar_elapsed_sec += sim_timestep;
+            if (lidar_elapsed_sec >= lidar_period_sec) {
+                lidar_elapsed_sec = 0.0;
+
+                // Unity: this.Scan() + SetScanData()
+                tb3.scan(laser_scan,
+                         lidar_angle_min_deg,
+                         lidar_angle_max_deg,
+                         lidar_resolution_deg,
+                         lidar_range_min,
+                         lidar_range_max,
+                         lidar_origin_offset);
+                (void)laser_scan_ep.send(laser_scan);
+
+                // base_scan_pos も同じタイミングでだけ送る
+                HakoCpp_Twist base_scan_pos {};
+                const auto scan_pos   = tb3.base_scan_position();
+                const auto scan_euler = tb3.base_scan_euler();
+                base_scan_pos.linear.x  = scan_pos.x;
+                base_scan_pos.linear.y  = scan_pos.y;
+                base_scan_pos.linear.z  = scan_pos.z;
+                base_scan_pos.angular.x = scan_euler.x;
+                base_scan_pos.angular.y = scan_euler.y;
+                base_scan_pos.angular.z = scan_euler.z;
+                (void)base_scan_pos_ep.send(base_scan_pos);
+            }
+
+            // --- デバッグログ（500ステップごと） ---
             if ((step % 500) == 0) {
-                float lidar_min = std::numeric_limits<float>::infinity();
-                float lidar_max = 0.0F;
-                int lidar_hits = 0;
-                for (float value : laser_scan.ranges) {
-                    if (value >= laser_scan.range_min && value < laser_scan.range_max) {
-                        lidar_min = std::min(lidar_min, value);
-                        lidar_max = std::max(lidar_max, value);
+                float lidar_min  = std::numeric_limits<float>::infinity();
+                float lidar_max  = 0.0F;
+                int   lidar_hits = 0;
+                for (float v : laser_scan.ranges) {
+                    if (v >= laser_scan.range_min && v < laser_scan.range_max) {
+                        lidar_min = std::min(lidar_min, v);
+                        lidar_max = std::max(lidar_max, v);
                         ++lidar_hits;
                     }
                 }
+                const auto pos      = tb3.position();
+                const auto body_vel = tb3.body_velocity();
                 std::cout << "[TB3] step=" << step
                           << " pos=(" << pos.x << ", " << pos.y << ", " << pos.z << ")"
                           << " body_vx=" << body_vel.x
                           << " torque=(" << left_torque << ", " << right_torque << ")"
-                          << " lidar_center=" << (laser_scan.ranges.empty() ? 0.0F : laser_scan.ranges[laser_scan.ranges.size() / 2])
                           << " lidar_hits=" << lidar_hits
                           << " lidar_min=" << (std::isfinite(lidar_min) ? lidar_min : -1.0F)
                           << " lidar_max=" << lidar_max
@@ -372,36 +392,36 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
 static hako_asset_callbacks_t my_callback;
 
-void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
+void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> w)
 {
-    my_callback.on_initialize = my_on_initialize;
-    my_callback.on_simulation_step = nullptr;
+    my_callback.on_initialize          = my_on_initialize;
+    my_callback.on_simulation_step     = nullptr;
     my_callback.on_manual_timing_control = my_manual_timing_control;
-    my_callback.on_reset = my_on_reset;
+    my_callback.on_reset               = my_on_reset;
 
-    const std::string asset_name = get_env_string("HAKO_ASSET_NAME", "tb3_sim");
+    const std::string asset_name  = get_env_string("HAKO_ASSET_NAME",        "tb3_sim");
     const std::string config_path = get_env_string("HAKO_ASSET_CONFIG_PATH", hako_config_path);
-    const hako_time_t delta_time_usec = static_cast<hako_time_t>(world->getModel()->opt.timestep * 1e6);
+    const hako_time_t delta_time_usec = static_cast<hako_time_t>(w->getModel()->opt.timestep * 1e6);
 
     hako_conductor_start(delta_time_usec, 100000);
-    int ret = hako_asset_register(asset_name.c_str(), config_path.c_str(), &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);
+    int ret = hako_asset_register(asset_name.c_str(), config_path.c_str(),
+                                  &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);
     if (ret != 0) {
         std::cerr << "ERROR: hako_asset_register() returns " << ret << std::endl;
         return;
     }
-
     ret = hako_asset_start();
     if (ret != 0) {
         std::cerr << "ERROR: hako_asset_start() returns " << ret << std::endl;
         return;
     }
 }
+
 } // namespace
 
 int main(int argc, const char* argv[])
 {
-    (void)argc;
-    (void)argv;
+    (void)argc; (void)argv;
 
     std::cout << "[INFO] Creating TB3 world and loading model..." << std::endl;
     world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
