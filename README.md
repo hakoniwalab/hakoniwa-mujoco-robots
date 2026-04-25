@@ -3,72 +3,68 @@
 English | [日本語](README-ja.md)
 
 ## TL;DR
-- This repository provides MuJoCo-based physics assets for Hakoniwa.
-- RD-light is implemented for single-node handoff: ownership release/activation + context save/restore + single-owner operation.
-- It connects a C++ MuJoCo simulator and Python controllers via PDU contracts.
-- It includes context save/restore for forklift state + control state.
-- RD-full control-plane semantics (commit-point finalization, epoch guarantee, `d_max` guarantee, bridge rewiring completion) are out of scope here.
+- This repository provides MuJoCo-based robot simulation assets for Hakoniwa.
+- It supports ROS/URDF-derived robot models, including TurtleBot3 Burger.
+- It connects C++ MuJoCo simulators and Python controllers / visualizers through Hakoniwa PDU.
+- It includes a TurtleBot3 sample with gamepad control and 2D LiDAR `LaserScan`-compatible PDU output.
+- It includes configurable LiDAR noise profiles such as `LDS-01`-like and `URG-04LX-UG01`-equivalent settings.
+- It includes forklift samples with context save/restore and RD-light handoff as advanced examples.
 - Compact JSON is the default for both C++ and Python (`hakoniwa-pdu >= 1.3.7`).
-- Fast start uses 3 terminals: simulator, controller, and `hako-cmd start`.
 
-## Demo Video
-- Runtime handoff demo (RD-lite, dual forklift assets):
+## Demo Videos
+- TurtleBot3 + 2D LiDAR / sensor noise demo:
+  - [![Watch the demo](https://img.youtube.com/vi/B5h-KKH4tpg/hqdefault.jpg)](https://www.youtube.com/watch?v=B5h-KKH4tpg)
+- Runtime handoff demo (RD-light, dual forklift assets):
   - [![Watch the demo](https://img.youtube.com/vi/xaJJ1wEgNR8/hqdefault.jpg)](https://www.youtube.com/watch?v=xaJJ1wEgNR8)
 
-### What This Video Demonstrates
-- The two MuJoCo viewers are two asset instances of the same logical EU (forklift).
-- The **1m forward point is defined as the world boundary**, and used as the handoff point.
-- This is **not** a reinforcement-learning demo; it is an **RD-lite ownership handoff demo**.
-- Normally, only one side is owner (active control + PDU publish), while the other side is standby.
-- At the switching threshold, owner updates `RuntimeStatus/RuntimeContext`; standby restores context and becomes owner.
-- Standby is shown as semi-transparent and non-interfering; after handoff, roles are swapped.
-- The two sides are **separate MuJoCo physics assets** (not a single shared simulator instance).
-- The key point is **seamless execution-right delegation** between independent assets while preserving motion continuity.
+### TurtleBot3 + 2D LiDAR Demo Notes
 
-### How to Read the Logs
-- `ownership release requested`: current owner requested handoff
-- `ownership activated`: peer restored context and became owner
-- `status step=... owner=yes/no`: local ownership state at that step
-- `dist_to_release`, `dist_to_home`: distance metrics for switch conditions
+This demo shows a TurtleBot3 Burger running on MuJoCo with a 2D LiDAR simulation connected through Hakoniwa PDU.
 
-### Scope of This Claim
-- This demo does **not** claim full RD control-plane implementation.
-- It demonstrates the MuJoCo asset-side prerequisite (data-plane continuity with context handoff).
+The point is not only to visualize LiDAR point clouds, but also to reproduce differences in sensor noise characteristics.
 
----
+- With TurtleBot3's standard `LDS-01`, the point cloud is visibly noisier
+- With the `URG-04LX-UG01`-like profile, obstacle contours appear much clearer
 
-## Why
+One important Sim2Real theme in Hakoniwa is to represent the practical difference users experience when changing sensors, not just robot motion alone.
 
-Hakoniwa is a PDU-based simulation platform for multi-process, multi-language, and distributed setups.
-This repository integrates MuJoCo as a high-fidelity physics asset inside that ecosystem.
+Configuration:
+- ROS-derived TurtleBot3 model executed on MuJoCo
+- 2D LiDAR simulated by raycast using the selected sensor profile
+- Scan frequency, angular range, angular resolution, and noise model are loaded from JSON
+- Output published as `LaserScan` PDU on Hakoniwa
+- Point cloud visualized by a Python visualizer
+- Noise differences reproduced for `LDS-01` and `URG-04LX-UG01`-equivalent settings
 
-Main goals:
-- Provide a high-fidelity physics execution layer in Hakoniwa.
-- Keep Python control logic decoupled from C++ simulation.
-- Support experiment continuity (save/restore), as a prerequisite for future RD integration.
+### Forklift RD-light Handoff Demo
 
-Why save/restore matters:
-- Resume long-running experiments.
-- Continue after manual stop/restart.
-- Recover from failures.
-- Prepare for future ownership transfer workflows.
+This is an advanced experimental demo.  
+It runs two MuJoCo forklift assets and performs single-node ownership handoff with context save/restore.
+
+- RD-light is an **advanced / experimental** handoff demo
+- It is not RD-full
+- See the later RD-light section and [rd-design.md](rd-design.md) for details
 
 ---
 
-## What
+## What This Repository Provides
 
 Included:
-- MuJoCo-based robot samples (forklift, TurtleBot3)
-- Hakoniwa-integrated C++ samples
-- Python controller samples
-- Docker environment (Ubuntu 24.04)
-- Forklift context save/restore (state file + audit logs)
+- MuJoCo robot models
+- Hakoniwa-integrated C++ simulators
+- Python controllers
+- Python visualizers
+- PDU configs
+- sensor configs
+- forklift context save/restore
+- RD-light as an advanced demo
 
 Directory map:
 - `models/`: MuJoCo XML models
 - `config/`: PDU JSON configs
+- `config/sensors/`: LiDAR / sensor spec JSON
 - `src/`: C++ simulator implementation
-- `python/`: Python controllers
+- `python/`: Python controllers / visualizers
 - `docker/`: Docker scripts
 - `logs/`: generated logs
 - `tmp/`: generated state files
@@ -77,201 +73,87 @@ Directory map:
 
 ## Architecture
 
-Hakoniwa works as the hub, and MuJoCo (C++) and Python controllers communicate over PDU.
+Hakoniwa PDU is the hub, and MuJoCo (C++) communicates with Python controllers / visualizers over that contract.
 
 - **Hakoniwa**: synchronization and PDU runtime
 - **MuJoCo C++ Asset**: physics stepping + PDU read/write
-- **Python Controller**: target-value control logic
+- **Python Controller / Visualizer**: input and inspection tools
 - **PDU JSON**: contract of channels/types/sizes
 
 ```text
-+-------------------+         PDU (shared contract)         +----------------------+
-| Python Controller |  <---------------------------------->  | MuJoCo C++ Simulator |
-| (forklift_* .py)  |                                        | (forklift*_sim)      |
-+---------+---------+                                        +----------+-----------+
-          |                                                            |
-          |                   Hakoniwa runtime                         |
-          +--------------------(sync / mmap / PDU)---------------------+
++-----------------------------+      PDU (shared contract)      +----------------------+
+| Python Controller / Viewer  |  <----------------------------> | MuJoCo C++ Simulator |
+| (gamepad / visualizer)      |                                  | (tb3_sim / forklift) |
++--------------+--------------+                                  +----------+-----------+
+               |                                                            |
+               |                        Hakoniwa runtime                     |
+               +------------------------(sync / mmap / PDU)-----------------+
 ```
 
 ---
 
-## Hakoniwa Core Summary (Reading Guide)
+## Quick Start: TurtleBot3 + 2D LiDAR
 
-Read this repository with the following 3 layers in mind:
+This is the shortest path to verify **MuJoCo + Hakoniwa + TurtleBot3 + gamepad + LiDAR**.
 
-- `hakoniwa-core-cpp` (simulation hub core)
-  - Shared memory (`mmap`) and synchronization core
-  - `hako-master` manages runtime state and PDU areas
-- `hakoniwa-core-pro` (runtime/API layer)
-  - Asset APIs, command tools, and execution control
-  - Typical APIs: `hako_conductor_start()`, `hako_asset_register()`, `hako_asset_start()`, `hako_asset_pdu_read()`, `hako_asset_pdu_write()`
-- `hakoniwa-pdu-registry` (PDU type/size artifacts)
-  - Generated type/offset/size/converter artifacts derived from ROS msg
-  - Binary layout: `[MetaData(24B)] + [BaseData] + [HeapData]`
-  - MetaData is fixed-length 24B in the current PDU spec (ref: [`hakoniwa-pdu-registry` README](thirdparty/hakoniwa-core-pro/hakoniwa-pdu-registry/README.md))
+Prepare 4 terminals.
 
-Minimum knowledge for reading samples:
-- `pdu_size` is total PDU buffer size (including metadata), not raw type size.
-  - Example: `Int32` payload is 8B, but config uses `24 + 8 = 32`.
-- Config format:
-  - C++/Python: compact (`pdudef + pdutypes`)
-  - Minimum Python package: `hakoniwa-pdu >= 1.3.7`
-- Runtime shared files are typically under `/var/lib/hakoniwa/mmap`.
+1. simulator
+```bash
+./src/cmake-build/main_for_sample/tb3/tb3_sim
+```
 
-Recommended reading order:
-1. `src/main_for_sample/forklift/main_unit.cpp`
-2. `python/forklift_simple_auto.py`
-3. `config/forklift-unit*.json` and `config/safety-forklift-pdu*.json`
+2. gamepad controller
+```bash
+python python/tb3_gamepad.py
+```
 
----
+3. LiDAR visualizer
+```bash
+python python/lidar_visualizer.py
+```
 
-## Position in RD Architecture (Current)
+4. start trigger
+```bash
+hako-cmd start
+```
 
-This repository does not implement RD control-plane logic itself.
-It provides the **data-plane physics execution base** required for RD.
+To switch LiDAR spec:
+```bash
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-02.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/urg-04lx-ug01.json
+```
 
-Responsibilities:
-- `hakoniwa-rd-core`
-  - Ownership transitions (Owner/NonOwner)
-  - Epoch/commit-point control
-  - Bridge rewiring and control-plane consistency
-- `hakoniwa-mujoco-robots`
-  - High-fidelity EU execution with MuJoCo
-  - PDU I/O
-  - Context save/restore (continuity prerequisite)
+## Quick Start: Forklift
 
-Key boundaries:
-- This repository is a **prerequisite implementation**, not complete RD.
-- Ownership transition and commit-point decisions remain RD-core responsibility.
-- This repository currently has no RD control API (ownership transfer request/accept).
-  Integration is planned in the roadmap via context handoff design.
+This is the shortest path for the forklift unit sample.
 
-### Guarantees / Non-goals / Interfaces
+Prepare 3 terminals.
 
-Guarantees (this repository):
-- Data Plane execution for MuJoCo EU in Hakoniwa
-- RD-light minimal handoff on single node:
-  - ownership release / activation
-  - RuntimeContext save/restore continuity
-  - single-owner operation
-  - standby non-interference operation
+1. simulator
+```bash
+./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
+```
 
-Non-goals (out of scope in this repository):
-- RD-full Control Plane semantics finalization
-- commit-point meaning finalization and global decision authority
-- epoch consistency guarantee across distributed nodes
-- `d_max` guarantee and drift repair
-- bridge rewiring completion confirmation
+2. Python controller
+```bash
+python -m python.forklift_simple_auto config/forklift-unit-compact.json \
+  --forward-distance 2.0 --backward-distance 2.0 --move-speed 0.7
+```
 
-Interfaces:
-- PDU interface (RuntimeStatus / RuntimeContext / robot PDUs)
-- Callback boundary for context save/restore payload
-- Asset-level ownership status (`owner=yes/no`) and handoff logging
+3. start trigger
+```bash
+hako-cmd start
+```
 
-### RD Summary (ExecutionUnit / Ownership / commit-point / d_max)
-
-RD is a control model for safe execution ownership transfer of an ExecutionUnit (EU) in distributed runs.
-An ExecutionUnit is a logical unit; an ExecutionUnitInstance is its concrete runtime instance per node.
-Ownership must remain unique at all times.
-
-Switching is explicit and state-driven. Epoch identifies generations, and next owner activation is coordinated after bridge rewiring is confirmed.
-A commit-point is a semantic boundary for responsibility/causality, not a physical simultaneous-start point.
-
-Time consistency assumes bounded drift and uses design limits (`d_max`, or `2*d_max` in distributed paths).
-Automatic repair for `d_max` violation and failure recovery is out of scope and handled operationally.
-
-**Note:** RD provides bounded-drift semantics, but automatic repair/failure recovery beyond `d_max` is out of scope.
-
-This README is implementation/operations guidance (**Informative**).
-Final RD semantics are defined in (**Normative**):
-- **Normative**: final specification of semantics
-- **Informative**: implementation/operations guidance (this README)
-- [Hakoniwa Design Docs](https://github.com/hakoniwalab/hakoniwa-design-docs)
-- [Core Functions (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/architecture/core-functions-ja.md)
-- [Glossary (JA)](https://github.com/hakoniwalab/hakoniwa-design-docs/blob/main/src/glossary-ja.md)
-
-### RD-Light (Implemented Here)
-
-This repository includes **RD-Light**, a lightweight single-node ownership handoff implementation for experiments.  
-It is not a replacement for the full RD control plane; it is a practical asset-side prerequisite implementation.
-
-- Purpose:
-  - switch ownership between two independent MuJoCo assets
-  - hand off state via `RuntimeStatus` / `RuntimeContext`
-  - validate motion continuity after handoff (data-plane continuity)
-- Scope:
-  - single-node experimental setup
-  - final commit-point semantics and distributed rewiring remain in `hakoniwa-rd-core`
-- Entry points:
-  - `forklift-1.bash` (initial owner)
-  - `forklift-2.bash` (initial standby)
-- Design details:
-  - [`rd-design.md`](rd-design.md)
-  - Quick links:
-    - [State transition rules](rd-design.md#rd-state-transition-rules)
-    - [Context specification](rd-design.md#rd-context-specification)
-    - [Switch trigger](rd-design.md#rd-switch-trigger)
-    - [Stabilization features](rd-design.md#rd-stabilization-features)
-    - [Failure behavior](rd-design.md#rd-failure-behavior)
-    - [Class design](rd-design.md#14-クラス設計実装反映)
-    - [TODO](rd-design.md#rd-todo)
-
-## Safe Handoff Condition (User Responsibility)
-
-Handoff timing is a user / upper-layer responsibility.
-RD-light does not automatically certify physical safety at arbitrary handoff instants.
-
-The position of this project is explicit.  
-**The responsibility for how far to push high-fidelity complex physics belongs to the user (scenario designer / upper-layer control)**,  
-while this repository provides the Data Plane and handoff mechanism.  
-Therefore, **preconditions before entering truly critical simulation phases (handoff boundary, velocity constraints, contact-state constraints, etc.) must be defined by the user side**.
-
-MUST NOT:
-- do not handoff during active contact/collision
-- do not handoff immediately before predicted collision
-- do not handoff during grasp/constraint-active states
-- do not handoff when strong external-object contact constraints are active
-
-SHOULD:
-- handoff in free space
-- handoff under stable motion (small acceleration / bounded angular rate / low contact count)
-- use explicit safe boundary design in scenario definition
-
-Failure semantics when violated:
-- physical continuity is **not guaranteed**
-- divergence / bounce / sudden transients are within supported failure behavior
-
-Current demo interpretation:
-- the 1m boundary is a **safe-boundary design example** for handoff timing.
-- this is a scenario-level policy, not an automatic RD-full safety proof.
-
-### Design Principle: Explicitly Decide What Not to Guarantee
-
-This repository does not attempt to guarantee full physical continuity for every possible situation.  
-Instead, it assumes **ownership handoff before entering high-risk contact/collision zones**.
-
-- Expanding guarantees into contact-heavy edge cases too early causes implementation and operational complexity to explode.
-- Therefore, boundaries are fixed first: what is guaranteed here, and what is delegated to upper-layer control/operations.
-- This is not a weakness; it is an intentional boundary design for scalable distributed simulation.
-
----
-
-## Config Rule (Important)
-
-### compact only (must read)
-
-- C++ simulator / Python controller: **compact JSON**
-  - e.g. `forklift-unit-compact.json`, `custom-compact.json`, `safety-forklift-pdu-compact.json`
-- Python runtime requirement: `hakoniwa-pdu >= 1.3.7`
-
-If runtime `hakoniwa-pdu` is older, startup may succeed but PDU resolution can fail (`channel=-1`, `size=-1`).
+For compatibility, `controll.bash` is temporarily kept and internally calls `control.bash`.
 
 ---
 
 ## Prerequisites
 
-## 1) Install hakoniwa-core-pro (required)
+### 1) Install hakoniwa-core-pro (required)
 
 ```bash
 git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
@@ -294,7 +176,7 @@ export PATH=/usr/local/hakoniwa/bin:$PATH
 export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
 ```
 
-## 2) OS notes
+### 2) OS notes
 
 - macOS: `brew install glfw`
 - Ubuntu:
@@ -308,7 +190,7 @@ sudo apt-get install -y libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils libglfw3-
 ## Setup
 
 ```bash
-git clone https://github.com/toppers/hakoniwa-mujoco-robots.git
+git clone https://github.com/hakoniwalab/hakoniwa-mujoco-robots.git
 cd hakoniwa-mujoco-robots
 git submodule update --init --recursive
 ./build.bash
@@ -320,36 +202,9 @@ git submodule update --init --recursive
 ./build.bash clean
 ```
 
----
+## Detailed Run Commands
 
-## Quick Start
-
-Use host execution as the shortest path.
-Prepare 3 terminals.
-
-1. Simulator
-```bash
-./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
-```
-
-2. Python controller (compact)
-```bash
-python -m python.forklift_simple_auto config/forklift-unit-compact.json \
-  --forward-distance 2.0 --backward-distance 2.0 --move-speed 0.7
-```
-
-3. Start trigger
-```bash
-hako-cmd start
-```
-
-For compatibility, `controll.bash` is temporarily kept and internally calls `control.bash`.
-
----
-
-## How (Detailed Run Commands)
-
-## C++ samples
+### C++ samples
 
 - Forklift:
 ```bash
@@ -361,12 +216,19 @@ For compatibility, `controll.bash` is temporarily kept and internally calls `con
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
-- TurtleBot3 (sample skeleton, endpoint integration planned):
+- TurtleBot3 (Hakoniwa asset + endpoint gamepad + 2D LiDAR):
 ```bash
 ./src/cmake-build/main_for_sample/tb3/tb3_sim
 ```
 
-## Python samples
+- TurtleBot3 (switch LiDAR spec):
+```bash
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-02.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/urg-04lx-ug01.json
+```
+
+### Python samples
 
 - Minimal auto control:
 ```bash
@@ -388,7 +250,61 @@ python -m python.forklift_api_control config/safety-forklift-pdu-compact.json co
 python -m python.forklift_gamepad config/custom-compact.json
 ```
 
+- TurtleBot3 gamepad control:
+```bash
+python python/tb3_gamepad.py
+```
+
+- LiDAR visualizer:
+```bash
+python python/lidar_visualizer.py
+```
+
 ---
+
+## TurtleBot3 2D LiDAR
+
+The TurtleBot3 Burger sample includes a MuJoCo-based 2D LiDAR implementation.
+
+- 360-degree raycast
+- scan-frame generation based on the selected sensor profile
+  - e.g. 10 Hz / 100 ms for `urg-04lx-ug01.json`
+  - e.g. 5 Hz / 200 ms for `lds-01.json` and `lds-02.json`
+- `LaserScan`-compatible PDU published on Hakoniwa
+- Point cloud inspection via Python visualizer
+
+To avoid MuJoCo ray self / near-body interference around the LiDAR mount, the implementation detects self-geometry hits and retries raycasting just beyond the hit point. This avoids relying on a large fixed origin offset and keeps close obstacle perception more natural.
+
+## Sensor Noise Profiles
+
+LiDAR behavior can be switched by sensor config JSON.
+
+- `config/sensors/lds-01.json`
+  - noisy profile close to TurtleBot3 standard `LDS-01`
+  - range: 0.12-3.5 m
+  - scan: 5 Hz, 1.0 deg resolution
+  - spec: https://emanual.robotis.com/docs/en/platform/turtlebot3/appendix_lds_01/
+
+- `config/sensors/lds-02.json`
+  - longer-range profile close to TurtleBot3 `LDS-02`
+  - range: 0.16-8.0 m
+  - scan: 5 Hz, 1.0 deg resolution
+  - spec: https://emanual.robotis.com/docs/en/platform/turtlebot3/appendix_lds_02/
+
+- `config/sensors/urg-04lx-ug01.json`
+  - cleaner profile based on Hokuyo `URG-04LX-UG01`
+  - range: 0.02-5.56 m
+  - scan: 10 Hz, 0.3515625 deg resolution
+  - useful for comparing clearer obstacle contours against LDS-style profiles
+
+Switch example:
+```bash
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-02.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/urg-04lx-ug01.json
+```
+
+This is intended to capture a practical Sim2Real point: changing sensors changes perception quality.
 
 ## Docker (Ubuntu 24.04)
 
@@ -416,16 +332,21 @@ HAKO_DOCKER_GUI=off bash docker/run.bash
 
 ---
 
-## Context Save/Restore (MuJoCo)
+## Advanced: Forklift / Context Save-Restore
 
-## Goal
+The forklift sample includes advanced MuJoCo context save/restore support.  
+It is positioned as an advanced sample for long-running experiments, stop/resume workflows, failure recovery, and future handoff experiments.
+
+## Advanced: Context Save/Restore (MuJoCo)
+
+### Goal
 
 - Long-run continuity
 - Better stop/resume operations
 - Failure recovery support
 - Prerequisite for future RD ownership handoff
 
-## Boundary design (saved scope)
+### Boundary design (saved scope)
 
 Saved via `HakoniwaMujocoContext` (`include/hakoniwa_mujoco_context.hpp`):
 - Forklift subtree physical state (not full-world)
@@ -463,14 +384,14 @@ Restore behavior (`main_unit.cpp`):
 - apply restored `target_linear_velocity` / `target_yaw_rate`
 - keep `phase=2` latch in-session to avoid unintended phase flip
 
-## Boundary design (not saved)
+### Boundary design (not saved)
 
 - External object states (cargo/shelf/etc.)
 - Internal states of external processes (e.g., Python internal state)
 
 This is intentionally **not** a full-world snapshot.
 
-## Save / Restore
+### Save / Restore
 
 - Save:
   - periodic autosave
@@ -496,12 +417,12 @@ HAKO_FORKLIFT_STATE_AUTOSAVE_STEPS=1000 \
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
-## phase handling
+### phase handling
 
 - `phase=2` (return path) is latched in-session
 - restored target values are applied for stable post-resume behavior
 
-## Log checks
+### Log checks
 
 - `logs/forklift-unit-run.log`: C++ run log
 - `logs/control-run.log`: Python run log
@@ -657,6 +578,158 @@ Graph interpretation is documented in:
 
 ---
 
+## Advanced: RD-light Handoff
+
+RD-light is an advanced / experimental single-node ownership handoff demo for forklift assets.  
+It is not RD-full, and final control-plane semantics remain out of scope here.
+
+### Position in RD Architecture (Current)
+
+This repository does not implement RD control-plane logic itself.
+It provides the **data-plane physics execution base** required for RD.
+
+Responsibilities:
+- `hakoniwa-rd-core`
+  - Ownership transitions (Owner/NonOwner)
+  - Epoch/commit-point control
+  - Bridge rewiring and control-plane consistency
+- `hakoniwa-mujoco-robots`
+  - High-fidelity EU execution with MuJoCo
+  - PDU I/O
+  - Context save/restore (continuity prerequisite)
+
+Key boundaries:
+- This repository is a **prerequisite implementation**, not complete RD.
+- Ownership transition and commit-point decisions remain RD-core responsibility.
+- This repository currently has no RD control API (ownership transfer request/accept).
+  Integration is planned in the roadmap via context handoff design.
+
+### Guarantees / Non-goals / Interfaces
+
+Guarantees (this repository):
+- Data Plane execution for MuJoCo EU in Hakoniwa
+- RD-light minimal handoff on single node:
+  - ownership release / activation
+  - RuntimeContext save/restore continuity
+  - single-owner operation
+  - standby non-interference operation
+
+Non-goals (out of scope in this repository):
+- RD-full Control Plane semantics finalization
+- commit-point meaning finalization and global decision authority
+- epoch consistency guarantee across distributed nodes
+- `d_max` guarantee and drift repair
+- bridge rewiring completion confirmation
+
+Interfaces:
+- PDU interface (RuntimeStatus / RuntimeContext / robot PDUs)
+- Callback boundary for context save/restore payload
+- Asset-level ownership status (`owner=yes/no`) and handoff logging
+
+### RD-light (Implemented Here)
+
+This repository includes **RD-light**, a lightweight single-node ownership handoff implementation for experiments.  
+It is not a replacement for the full RD control plane; it is a practical asset-side prerequisite implementation.
+
+- Purpose:
+  - switch ownership between two independent MuJoCo assets
+  - hand off state via `RuntimeStatus` / `RuntimeContext`
+  - validate motion continuity after handoff (data-plane continuity)
+- Scope:
+  - single-node experimental setup
+  - final commit-point semantics and distributed rewiring remain in `hakoniwa-rd-core`
+- Entry points:
+  - `forklift-1.bash` (initial owner)
+  - `forklift-2.bash` (initial standby)
+- Design details:
+  - [`rd-design.md`](rd-design.md)
+  - Quick links:
+    - [State transition rules](rd-design.md#rd-state-transition-rules)
+    - [Context specification](rd-design.md#rd-context-specification)
+    - [Switch trigger](rd-design.md#rd-switch-trigger)
+    - [Stabilization features](rd-design.md#rd-stabilization-features)
+    - [Failure behavior](rd-design.md#rd-failure-behavior)
+    - [Class design](rd-design.md#14-クラス設計実装反映)
+    - [TODO](rd-design.md#rd-todo)
+
+### Safe Handoff Condition (User Responsibility)
+
+Handoff timing is a user / upper-layer responsibility.
+RD-light does not automatically certify physical safety at arbitrary handoff instants.
+
+The position of this project is explicit.  
+**The responsibility for how far to push high-fidelity complex physics belongs to the user (scenario designer / upper-layer control)**,  
+while this repository provides the Data Plane and handoff mechanism.  
+Therefore, **preconditions before entering truly critical simulation phases (handoff boundary, velocity constraints, contact-state constraints, etc.) must be defined by the user side**.
+
+MUST NOT:
+- do not handoff during active contact/collision
+- do not handoff immediately before predicted collision
+- do not handoff during grasp/constraint-active states
+- do not handoff when strong external-object contact constraints are active
+
+SHOULD:
+- handoff in free space
+- handoff under stable motion (small acceleration / bounded angular rate / low contact count)
+- use explicit safe boundary design in scenario definition
+
+Failure semantics when violated:
+- physical continuity is **not guaranteed**
+- divergence / bounce / sudden transients are within supported failure behavior
+
+Current demo interpretation:
+- the 1m boundary is a **safe-boundary design example** for handoff timing.
+- this is a scenario-level policy, not an automatic RD-full safety proof.
+
+### Design Principle: Explicitly Decide What Not to Guarantee
+
+This repository does not attempt to guarantee full physical continuity for every possible situation.  
+Instead, it assumes **ownership handoff before entering high-risk contact/collision zones**.
+
+- Expanding guarantees into contact-heavy edge cases too early causes implementation and operational complexity to explode.
+- Therefore, boundaries are fixed first: what is guaranteed here, and what is delegated to upper-layer control/operations.
+- This is not a weakness; it is an intentional boundary design for scalable distributed simulation.
+
+## Advanced Reading: Hakoniwa Core Summary
+
+Read this repository with the following 3 layers in mind:
+
+- `hakoniwa-core-cpp` (simulation hub core)
+  - Shared memory (`mmap`) and synchronization core
+  - `hako-master` manages runtime state and PDU areas
+- `hakoniwa-core-pro` (runtime/API layer)
+  - Asset APIs, command tools, and execution control
+  - Typical APIs: `hako_conductor_start()`, `hako_asset_register()`, `hako_asset_start()`, `hako_asset_pdu_read()`, `hako_asset_pdu_write()`
+- `hakoniwa-pdu-registry` (PDU type/size artifacts)
+  - Generated type/offset/size/converter artifacts derived from ROS msg
+  - Binary layout: `[MetaData(24B)] + [BaseData] + [HeapData]`
+  - MetaData is fixed-length 24B in the current PDU spec (ref: [`hakoniwa-pdu-registry` README](thirdparty/hakoniwa-core-pro/hakoniwa-pdu-registry/README.md))
+
+Minimum knowledge for reading samples:
+- `pdu_size` is total PDU buffer size (including metadata), not raw type size.
+  - Example: `Int32` payload is 8B, but config uses `24 + 8 = 32`.
+- Config format:
+  - C++/Python: compact (`pdudef + pdutypes`)
+  - Minimum Python package: `hakoniwa-pdu >= 1.3.7`
+- Runtime shared files are typically under `/var/lib/hakoniwa/mmap`.
+
+Recommended reading order:
+1. `src/main_for_sample/forklift/main_unit.cpp`
+2. `python/forklift_simple_auto.py`
+3. `config/forklift-unit*.json` and `config/safety-forklift-pdu*.json`
+
+## Advanced Reading: Config Rule
+
+### compact only (must read)
+
+- C++ simulator / Python controller: **compact JSON**
+  - e.g. `forklift-unit-compact.json`, `custom-compact.json`, `safety-forklift-pdu-compact.json`
+- Python runtime requirement: `hakoniwa-pdu >= 1.3.7`
+
+If runtime `hakoniwa-pdu` is older, startup may succeed but PDU resolution can fail (`channel=-1`, `size=-1`).
+
+---
+
 ## FAQ
 
 ### Q1. Does this repository implement RD itself?
@@ -741,7 +814,12 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 
 - `src/main_for_sample/forklift/main.cpp`: forklift basic integration
 - `src/main_for_sample/forklift/main_unit.cpp`: unit model verification
-- `src/main_for_sample/tb3/main.cpp`: TurtleBot3 sample skeleton
+- `src/main_for_sample/tb3/main.cpp`: TurtleBot3 sample (Hakoniwa asset / endpoint / 2D LiDAR)
+- `python/tb3_gamepad.py`: TurtleBot3 Python controller asset (PS4/DualSense)
+- `python/lidar_visualizer.py`: generic LiDAR visualizer (world view)
+- `config/sensors/lds-01.json`: TurtleBot3 LDS-01-like noisy LiDAR profile
+- `config/sensors/lds-02.json`: TurtleBot3 LDS-02-like longer-range LiDAR profile
+- `config/sensors/urg-04lx-ug01.json`: Hokuyo URG-04LX-UG01-like cleaner LiDAR profile
 
 ---
 
