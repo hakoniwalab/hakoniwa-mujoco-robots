@@ -93,6 +93,8 @@ namespace hako::robots::sensor::noise
         double                               current_bias_ {0.0};
         std::mt19937                         rng_;
         std::normal_distribution<double>     dist_normal_ {0.0, 1.0};
+        double static_bias_       {0.0};
+        bool   bias_initialized_  {false};
 
         double SampleGaussian(double mean, double stddev);
         double UpdateDynamicBias(const NoiseParams& params);

@@ -4,9 +4,6 @@
 
 namespace hako::robots::sensor::noise
 {
-    // -----------------------------------------------------------------------
-    // ファクトリ
-    // -----------------------------------------------------------------------
     std::unique_ptr<INoiseModel> CreateNoiseModel(NoiseType type, double dt_sec)
     {
         switch (type) {
@@ -20,17 +17,12 @@ namespace hako::robots::sensor::noise
         }
     }
 
-    // -----------------------------------------------------------------------
-    // GaussianNoiseModel
-    // -----------------------------------------------------------------------
     double GaussianNoiseModel::UpdateDynamicBias(const NoiseParams& params)
     {
         if (params.dynamic_bias_stddev <= 0.0 ||
             params.dynamic_bias_correlation_time <= 0.0) {
             return 0.0;
         }
-        // OU過程（Ornstein–Uhlenbeck）でドリフトを更新
-        // dB = -B/tau * dt + sigma_b * sqrt(2/tau * dt) * N(0,1)
         const double tau   = params.dynamic_bias_correlation_time;
         const double sigma = params.dynamic_bias_stddev;
         const double decay = std::exp(-dt_ / tau);
@@ -52,28 +44,6 @@ namespace hako::robots::sensor::noise
         return std::round(value / precision) * precision;
     }
 
-    double GaussianNoiseModel::Apply(double value, const NoiseParams& params)
-    {
-        if (params.type == NoiseType::None) return value;
-
-        // 静的バイアス
-        const double static_bias = SampleGaussian(params.bias_mean, params.bias_stddev);
-        // dynamic_bias（OU過程）
-        const double dynamic_bias = UpdateDynamicBias(params);
-        // ガウスノイズ本体
-        const double noise = SampleGaussian(params.mean, params.stddev);
-
-        double result = value + noise + static_bias + dynamic_bias;
-
-        if (params.type == NoiseType::GaussianQuantized) {
-            result = Quantize(result, params.precision);
-        }
-        return result;
-    }
-
-    // -----------------------------------------------------------------------
-    // AxisNoisePipeline
-    // -----------------------------------------------------------------------
     AxisNoisePipeline::AxisNoisePipeline(const AxisNoiseParams& params, double dt_sec)
         : params_(params)
         , model_x_(CreateNoiseModel(params.x.type, dt_sec))
