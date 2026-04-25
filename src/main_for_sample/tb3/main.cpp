@@ -221,8 +221,8 @@ static int my_manual_timing_control(hako_asset_context_t* context)
             double left_torque  = 0.0;
             double right_torque = 0.0;
             if (command_state.has_input && command_state.gamepad.axis.size() >= 4) {
-                const double turn    = -1.0 * std::clamp(static_cast<double>(command_state.gamepad.axis[0]), -1.0, 1.0);
-                const double forward =        std::clamp(-static_cast<double>(command_state.gamepad.axis[3]), -1.0, 1.0);
+                const double turn    = -1.5 * std::clamp(static_cast<double>(command_state.gamepad.axis[0]), -1.0, 1.0);
+                const double forward =  0.5 * std::clamp(-static_cast<double>(command_state.gamepad.axis[3]), -1.0, 1.0);
                 left_torque  = std::clamp((forward - turn * turn_gain) * drive_gain, -max_torque, max_torque);
                 right_torque = std::clamp((forward + turn * turn_gain) * drive_gain, -max_torque, max_torque);
             }

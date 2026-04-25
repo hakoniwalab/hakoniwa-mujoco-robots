@@ -207,5 +207,6 @@ else()
 endif()
 
 
+add_subdirectory(sensors)
 add_subdirectory(main_for_sample/forklift)
 add_subdirectory(main_for_sample/tb3)
