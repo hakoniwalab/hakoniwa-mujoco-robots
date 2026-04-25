@@ -168,6 +168,7 @@ set(HAKO_CORE_LIBRARY_DIR "${HAKONIWA_INSTALL_PREFIX}/lib")
 
 list(APPEND CMAKE_PREFIX_PATH "${HAKONIWA_INSTALL_PREFIX}")
 find_package(hakoniwa-core CONFIG QUIET)
+find_package(hakoniwa_pdu_endpoint CONFIG QUIET)
 if(hakoniwa-core_FOUND)
     message(STATUS "Using installed hakoniwa-core package: ${HAKONIWA_INSTALL_PREFIX}")
     set(HAKO_ASSETS_LINK_TARGET hakoniwa-core::assets)
@@ -178,6 +179,12 @@ else()
     find_library(HAKO_CONDUCTOR_LIB NAMES conductor PATHS "${HAKO_CORE_LIBRARY_DIR}" REQUIRED NO_DEFAULT_PATH)
     set(HAKO_ASSETS_LINK_TARGET "${HAKO_ASSETS_LIB}")
     set(HAKO_CONDUCTOR_LINK_TARGET "${HAKO_CONDUCTOR_LIB}")
+endif()
+
+if(hakoniwa_pdu_endpoint_FOUND)
+    set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
+else()
+    message(FATAL_ERROR "hakoniwa_pdu_endpoint package config not found under ${HAKONIWA_INSTALL_PREFIX}")
 endif()
 
 option(USE_VIEWER "Enable MuJoCo viewer" ON)
@@ -201,4 +208,4 @@ endif()
 
 
 add_subdirectory(main_for_sample/forklift)
-add_subdirectory(main_for_sample/rover)
+add_subdirectory(main_for_sample/tb3)

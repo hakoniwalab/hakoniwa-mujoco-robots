@@ -114,9 +114,13 @@ void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex&
     mjv_makeScene(model, &scn, 2000);
     mjr_makeContext(model, &con, mjFONTSCALE_150);
 
-    mjrRect viewport = {0, 0, 800, 600};
     std::cout << "[INFO] Viewer thread started." << std::endl;
     while (!glfwWindowShouldClose(window)) {
+        int framebuffer_width = 0;
+        int framebuffer_height = 0;
+        glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
+        mjrRect viewport = {0, 0, framebuffer_width, framebuffer_height};
+
         {
             std::lock_guard<std::mutex> lock(mutex);
             mjv_updateScene(model, data, &opt, NULL, &cam, mjCAT_ALL, &scn);

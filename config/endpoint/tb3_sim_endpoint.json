@@ -1,0 +1,6 @@
+{
+  "name": "tb3_sim_endpoint",
+  "pdu_def_path": "../tb3-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_sim_comm.json"
+}

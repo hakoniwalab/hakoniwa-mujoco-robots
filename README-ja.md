@@ -59,7 +59,7 @@ Hakoniwaは、PDUベースのI/Fで複数プロセス・複数言語・分散構
 
 ## What（何が入っているか）
 
-- MuJoCoモデル（フォークリフト、ローバー）
+- MuJoCoベースのロボットサンプル（フォークリフト、TurtleBot3）
 - Hakoniwa連携C++サンプル
 - PythonコントローラAPI/サンプル
 - Docker実行環境（Ubuntu 24.04）
@@ -167,7 +167,7 @@ Hakoniwaをハブとして、MuJoCo（C++）とPython制御がPDUで接続され
 ### Guarantees / Non-goals / Interfaces
 
 Guarantees（本リポジトリが提供するもの）:
-- MuJoCo EU（forklift/rover）の Data Plane 実行基盤
+- MuJoCo EU の Data Plane 実行基盤
 - 単一ノード RD-light 最小 handoff:
   - ownership release / activation
   - RuntimeContext save/restore による継続実行
@@ -389,9 +389,9 @@ hako-cmd start
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
-- ローバー:
+- TurtleBot3（サンプル骨格、endpoint 統合は今後追加）:
 ```bash
-./src/cmake-build/main_for_sample/rover/rover_sim
+./src/cmake-build/main_for_sample/tb3/tb3_sim
 ```
 
 ## Pythonサンプル
@@ -772,7 +772,7 @@ A. この懸念は妥当です。
 
 - `src/main_for_sample/forklift/main.cpp` フォークリフト基本連携
 - `src/main_for_sample/forklift/main_unit.cpp` 単体モデル検証向け
-- `src/main_for_sample/rover/main.cpp` ローバー例
+- `src/main_for_sample/tb3/main.cpp` TurtleBot3 サンプル骨格
 
 ---
 

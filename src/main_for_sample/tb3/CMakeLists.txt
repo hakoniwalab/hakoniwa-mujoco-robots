@@ -1,13 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
 add_executable(
-    rover_sim 
+    tb3_sim
     main.cpp
 )
+target_compile_features(tb3_sim PRIVATE cxx_std_20)
 
-#MESSAGE(STATUS "CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
-
-target_include_directories(rover_sim 
+target_include_directories(tb3_sim
     PRIVATE ${MUJOCO_SOURCE_DIR}
     PRIVATE ${PROJECT_ROOT_DIR}/src/mujoco-common
     PRIVATE ${PROJECT_ROOT_DIR}/src
@@ -16,13 +15,13 @@ target_include_directories(rover_sim
     PRIVATE ${HAKO_CORE_INCLUDE_BASE}
     PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
     PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
-    )
+)
 
-# MuJoCoライブラリをリンク
-target_link_libraries(rover_sim 
+target_link_libraries(tb3_sim
     ${LIBMUJOCO}
     mujoco-common
     ${HAKO_ASSETS_LINK_TARGET}
     ${HAKO_CONDUCTOR_LINK_TARGET}
+    ${HAKO_PDU_ENDPOINT_LINK_TARGET}
 )
-target_compile_definitions(rover_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)
+target_compile_definitions(tb3_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)

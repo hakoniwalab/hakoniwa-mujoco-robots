@@ -58,7 +58,7 @@ Why save/restore matters:
 ## What
 
 Included:
-- MuJoCo models (forklift, rover)
+- MuJoCo-based robot samples (forklift, TurtleBot3)
 - Hakoniwa-integrated C++ samples
 - Python controller samples
 - Docker environment (Ubuntu 24.04)
@@ -150,7 +150,7 @@ Key boundaries:
 ### Guarantees / Non-goals / Interfaces
 
 Guarantees (this repository):
-- Data Plane execution for MuJoCo EU (forklift/rover) in Hakoniwa
+- Data Plane execution for MuJoCo EU in Hakoniwa
 - RD-light minimal handoff on single node:
   - ownership release / activation
   - RuntimeContext save/restore continuity
@@ -361,9 +361,9 @@ For compatibility, `controll.bash` is temporarily kept and internally calls `con
 ./src/cmake-build/main_for_sample/forklift/forklift_unit_sim
 ```
 
-- Rover:
+- TurtleBot3 (sample skeleton, endpoint integration planned):
 ```bash
-./src/cmake-build/main_for_sample/rover/rover_sim
+./src/cmake-build/main_for_sample/tb3/tb3_sim
 ```
 
 ## Python samples
@@ -741,7 +741,7 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 
 - `src/main_for_sample/forklift/main.cpp`: forklift basic integration
 - `src/main_for_sample/forklift/main_unit.cpp`: unit model verification
-- `src/main_for_sample/rover/main.cpp`: rover sample
+- `src/main_for_sample/tb3/main.cpp`: TurtleBot3 sample skeleton
 
 ---
 

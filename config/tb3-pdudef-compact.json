@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "tb3-endpoint",
+      "path": "tb3-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "TB3",
+      "pdutypes_id": "tb3-endpoint"
+    }
+  ]
+}

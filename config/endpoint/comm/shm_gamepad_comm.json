@@ -1,0 +1,16 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "tb3_gamepad_shm",
+  "direction": "out",
+  "io": {
+    "robots": [
+      {
+        "name": "TB3",
+        "pdu": [
+          { "name": "hako_cmd_game", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

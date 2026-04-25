@@ -1,0 +1,20 @@
+[
+  {
+    "channel_id": 0,
+    "pdu_size": 136,
+    "name": "hako_cmd_game",
+    "type": "hako_msgs/GameControllerOperation"
+  },
+  {
+    "channel_id": 1,
+    "pdu_size": 72,
+    "name": "base_link_pos",
+    "type": "geometry_msgs/Twist"
+  },
+  {
+    "channel_id": 2,
+    "pdu_size": 72,
+    "name": "base_scan_pos",
+    "type": "geometry_msgs/Twist"
+  }
+]

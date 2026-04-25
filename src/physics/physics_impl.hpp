@@ -13,8 +13,6 @@ namespace hako::robots::physics::impl
         mjModel* model;
         mjData* data;
         int body_id;
-        int jnt_id;
-        int dof_index;
         std::unordered_map<std::string, int> joint_id_map;
         int getJointId(const std::string& joint_name) {
             auto it = joint_id_map.find(joint_name);
@@ -83,14 +81,6 @@ namespace hako::robots::physics::impl
             if (body_id < 0) {
                 throw std::runtime_error("Body not found: " + model_name);
             }
-            jnt_id = model->body_jntadr[body_id];
-            if (jnt_id < 0) {
-                throw std::runtime_error("jnt_id not found: " + model_name);
-            }
-            dof_index = model->jnt_dofadr[jnt_id];
-            if (dof_index < 0) {
-                throw std::runtime_error("dof_index not found: " + model_name);
-            }
         }
         virtual ~RigidBodyImpl() override {}
 
@@ -111,10 +101,12 @@ namespace hako::robots::physics::impl
         }
         hako::robots::types::Velocity GetVelocity() override
         {
+            mjtNum object_velocity[6] = {};
+            mj_objectVelocity(model, data, mjOBJ_BODY, body_id, object_velocity, 0);
             hako::robots::types::Velocity vel;
-            vel.x = data->qvel[dof_index + 0];
-            vel.y = data->qvel[dof_index + 1];
-            vel.z = data->qvel[dof_index + 2];
+            vel.x = object_velocity[3];
+            vel.y = object_velocity[4];
+            vel.z = object_velocity[5];
             return vel;
         }
         hako::robots::types::EulerRate GetEulerRate() override
@@ -125,16 +117,22 @@ namespace hako::robots::physics::impl
         }
         hako::robots::types::BodyVelocity GetBodyVelocity() override
         {
-            auto vel = GetVelocity();
-            auto euler = GetEuler();
-            return transformWorldToBody(vel, euler);
+            mjtNum object_velocity[6] = {};
+            mj_objectVelocity(model, data, mjOBJ_BODY, body_id, object_velocity, 1);
+            hako::robots::types::BodyVelocity body_vel;
+            body_vel.x = object_velocity[3];
+            body_vel.y = object_velocity[4];
+            body_vel.z = object_velocity[5];
+            return body_vel;
         }
         hako::robots::types::BodyAngularVelocity GetBodyAngularVelocity() override
         {
+            mjtNum object_velocity[6] = {};
+            mj_objectVelocity(model, data, mjOBJ_BODY, body_id, object_velocity, 1);
             hako::robots::types::BodyAngularVelocity angular_vel;
-            angular_vel.x = data->qvel[dof_index + 3];
-            angular_vel.y = data->qvel[dof_index + 4];
-            angular_vel.z = data->qvel[dof_index + 5];
+            angular_vel.x = object_velocity[0];
+            angular_vel.y = object_velocity[1];
+            angular_vel.z = object_velocity[2];
             return angular_vel;
         }
         void SetTorque(const std::string& joint_name, double torque) override
