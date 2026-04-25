@@ -48,12 +48,6 @@ namespace hako::robots::sensor
         std::string source_body {};
     };
 
-    struct JointBinding
-    {
-        std::string name {};
-        std::string mjcf_joint {};
-    };
-
     struct TransformBinding
     {
         std::string parent_frame_id {};
@@ -80,11 +74,6 @@ namespace hako::robots::sensor
         NoiseModelConfig z {};
     };
 
-    struct ImuNoiseConfig
-    {
-        AxisNoiseConfig angular_velocity {};
-        AxisNoiseConfig linear_acceleration {};
-    };
 
     struct DetectionDistance
     {
@@ -142,72 +131,6 @@ namespace hako::robots::sensor
         std::vector<float> intensities {};
     };
 
-    struct ImuConfig
-    {
-        OutputBinding output {};
-        LinkBinding link {};
-        std::string mode {"ground_truth"};
-        ImuNoiseConfig noise {};
-    };
-
-    struct ImuFrame
-    {
-        MessageHeader header {};
-        Quaternion orientation {};
-        hako::robots::types::Vector3 angular_velocity {};
-        hako::robots::types::Vector3 linear_acceleration {};
-    };
-
-    struct JointStateConfig
-    {
-        OutputBinding output {};
-        std::vector<JointBinding> joints {};
-    };
-
-    struct JointStateFrame
-    {
-        MessageHeader header {};
-        std::vector<std::string> names {};
-        std::vector<double> position {};
-        std::vector<double> velocity {};
-        std::vector<double> effort {};
-    };
-
-    struct OdometryConfig
-    {
-        OutputBinding output {};
-        std::string frame_id {"odom"};
-        std::string child_frame_id {"base_footprint"};
-        std::string source_body {};
-        std::string mode {"ground_truth"};
-    };
-
-    struct OdometryFrame
-    {
-        MessageHeader header {};
-        std::string child_frame_id {"base_footprint"};
-        Pose3D pose {};
-        Twist3D twist {};
-    };
-
-    struct TfConfig
-    {
-        OutputBinding output {};
-        std::vector<TransformBinding> transforms {};
-    };
-
-    struct TransformFrame
-    {
-        MessageHeader header {};
-        std::string child_frame_id {};
-        Pose3D transform {};
-    };
-
-    struct TfFrame
-    {
-        std::vector<TransformFrame> transforms {};
-    };
-
     class ISensor
     {
     public:
@@ -226,56 +149,4 @@ namespace hako::robots::sensor
         virtual bool ShouldUpdate(double delta_sec) = 0;
     };
 
-    class ILidarSensor2D : public ISensor
-    {
-    public:
-        virtual ~ILidarSensor2D() = default;
-
-        virtual bool LoadConfig(const std::string& config_path) = 0;
-        virtual void SetRuntimeOptions(double yaw_bias_deg, double origin_offset_m) = 0;
-        virtual const LiDAR2DConfig& GetConfig() const = 0;
-
-        // Capture one full scan frame according to the current config.
-        virtual void Scan(LaserScanFrame& out) = 0;
-    };
-
-    class IImuSensor : public ISensor
-    {
-    public:
-        virtual ~IImuSensor() = default;
-
-        virtual bool LoadConfig(const std::string& config_path) = 0;
-        virtual const ImuConfig& GetConfig() const = 0;
-        virtual void Read(ImuFrame& out) = 0;
-    };
-
-    class IJointStateSensor : public ISensor
-    {
-    public:
-        virtual ~IJointStateSensor() = default;
-
-        virtual bool LoadConfig(const std::string& config_path) = 0;
-        virtual const JointStateConfig& GetConfig() const = 0;
-        virtual void Read(JointStateFrame& out) = 0;
-    };
-
-    class IOdometryPublisher : public IStatePublisher
-    {
-    public:
-        virtual ~IOdometryPublisher() = default;
-
-        virtual bool LoadConfig(const std::string& config_path) = 0;
-        virtual const OdometryConfig& GetConfig() const = 0;
-        virtual void Build(OdometryFrame& out) = 0;
-    };
-
-    class ITfPublisher : public IStatePublisher
-    {
-    public:
-        virtual ~ITfPublisher() = default;
-
-        virtual bool LoadConfig(const std::string& config_path) = 0;
-        virtual const TfConfig& GetConfig() const = 0;
-        virtual void Build(TfFrame& out) = 0;
-    };
 }

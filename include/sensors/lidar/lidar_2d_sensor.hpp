@@ -9,7 +9,20 @@
 
 namespace hako::robots::sensor::lidar
 {
-    class LiDAR2DSensor : public ILidarSensor2D
+    class ILidar2DSensor : public ISensor
+    {
+    public:
+        virtual ~ILidar2DSensor() = default;
+
+        virtual bool LoadConfig(const std::string& config_path) = 0;
+        virtual void SetRuntimeOptions(double yaw_bias_deg, double origin_offset_m) = 0;
+        virtual const LiDAR2DConfig& GetConfig() const = 0;
+
+        // Capture one full scan frame according to the current config.
+        virtual void Scan(LaserScanFrame& out) = 0;
+    };
+
+    class LiDAR2DSensor : public ILidar2DSensor
     {
     public:
         LiDAR2DSensor(
