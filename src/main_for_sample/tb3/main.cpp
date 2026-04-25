@@ -467,10 +467,20 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 }
                 const auto pos      = tb3.position();
                 const auto body_vel = tb3.body_velocity();
+                const double left_joint_pos =
+                    (joint_state_frame.position.size() > 0) ? joint_state_frame.position[0] : 0.0;
+                const double right_joint_pos =
+                    (joint_state_frame.position.size() > 1) ? joint_state_frame.position[1] : 0.0;
+                const double left_joint_vel =
+                    (joint_state_frame.velocity.size() > 0) ? joint_state_frame.velocity[0] : 0.0;
+                const double right_joint_vel =
+                    (joint_state_frame.velocity.size() > 1) ? joint_state_frame.velocity[1] : 0.0;
                 std::cout << "[TB3] step=" << step
                           << " pos=(" << pos.x << ", " << pos.y << ", " << pos.z << ")"
                           << " body_vx=" << body_vel.x
                           << " torque=(" << left_torque << ", " << right_torque << ")"
+                          << " joint_pos=(" << left_joint_pos << ", " << right_joint_pos << ")"
+                          << " joint_vel=(" << left_joint_vel << ", " << right_joint_vel << ")"
                           << " lidar_hits=" << lidar_hits
                           << " lidar_min=" << (std::isfinite(lidar_min) ? lidar_min : -1.0F)
                           << " lidar_max=" << lidar_max
