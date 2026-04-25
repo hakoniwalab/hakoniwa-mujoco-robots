@@ -69,63 +69,66 @@ double get_env_double(const char* name, double default_value)
         return default_value;
     }
 }
-
 // Unity LiDAR2D.GetSensorValue() に相当
 // sensor の xmat から yaw 方向の ray を1本飛ばして距離を返す
+// 2D LiDAR: base_scan の yaw だけを使い、world XY 平面に ray を飛ばす
 static float lidar_get_sensor_value(
     const mjModel* model,
     mjData* data,
-    const mjtNum* sensor_pos,   // base_scan の world位置
-    const mjtNum* sensor_xmat,  // base_scan の world姿勢(row-major 3x3)
+    const mjtNum* sensor_pos,
     int body_exclude,
+    double base_yaw_rad,
     double degree_yaw,
+    double yaw_bias_deg,
     double range_min,
     double range_max,
-    double origin_offset)       // self-hit 回避のため ray 始点をずらす量(m)
+    double origin_offset)
 {
-    // Unity: Quaternion.AngleAxis(degreeYaw, sensor.transform.up) * forward
-    // MuJoCo: xmat の行が各軸
-    //   row0 = xaxis (forward相当)
-    //   row1 = yaxis (left相当)
-    //   row2 = zaxis (up相当)
-    const double rad     = degree_yaw * M_PI / 180.0;
-    const double cos_yaw = std::cos(rad);
-    const double sin_yaw = std::sin(rad);
+    const double local_yaw_rad = (degree_yaw + yaw_bias_deg) * M_PI / 180.0;
+    const double world_yaw_rad = base_yaw_rad + local_yaw_rad;
 
-    const mjtNum* xaxis = &sensor_xmat[0];
-    const mjtNum* yaxis = &sensor_xmat[3];
-
+    // 2D LiDAR なので z 成分は必ず 0 にする
     mjtNum dir[3] = {
-        cos_yaw * xaxis[0] + sin_yaw * yaxis[0],
-        cos_yaw * xaxis[1] + sin_yaw * yaxis[1],
-        cos_yaw * xaxis[2] + sin_yaw * yaxis[2],
+        std::cos(world_yaw_rad),
+        std::sin(world_yaw_rad),
+        0.0,
     };
+    //std::cout << "DEBUG: lidar ray dir: " << dir[0] << ", " << dir[1] << ", " << dir[2] << std::endl;
 
-    // Unity: Physics.Raycast は自分の collider を無視するが
-    // MuJoCo: mj_ray は最近傍1点だけ返す。自己 geom (~6mm) が先にヒットすると
-    //         障害物まで届かない。origin_offset で自己 body を飛び越えてから ray を飛ばす。
     mjtNum origin[3] = {
         sensor_pos[0] + dir[0] * origin_offset,
         sensor_pos[1] + dir[1] * origin_offset,
-        sensor_pos[2] + dir[2] * origin_offset,
+        sensor_pos[2],
     };
+    //std::cout << "DEBUG: lidar ray origin: " << origin[0] << ", " << origin[1] << ", " << origin[2] << std::endl;
 
     int geomid = -1;
     mjtNum normal[3] = {0.0, 0.0, 0.0};
-    mjtNum raw_dist = mj_ray(model, data, origin, dir,
-                             nullptr, 1, body_exclude, &geomid, normal);
 
-    // origin をずらした分を足し戻して真の距離にする
+    const mjtNum raw_dist = mj_ray(
+        model,
+        data,
+        origin,
+        dir,
+        nullptr,
+        1,
+        body_exclude,
+        &geomid,
+        normal);
+    //std::cout << "DEBUG: lidar ray raw_dist: " << raw_dist << std::endl;
     if (raw_dist < 0.0) {
-        return static_cast<float>(range_max); // no hit
-    }
-    const float true_dist = static_cast<float>(raw_dist + origin_offset);
-    if (true_dist < static_cast<float>(range_min) || true_dist > static_cast<float>(range_max)) {
         return static_cast<float>(range_max);
     }
+
+    const float true_dist = static_cast<float>(raw_dist + origin_offset);
+
+    if (true_dist < static_cast<float>(range_min) ||
+        true_dist > static_cast<float>(range_max)) {
+        return static_cast<float>(range_max);
+    }
+
     return true_dist;
 }
-
 class Tb3Drive {
 public:
     explicit Tb3Drive(std::shared_ptr<hako::robots::physics::IWorld> world)
@@ -152,52 +155,64 @@ public:
     // Unity LiDAR2D.Scan() + SetScanData() に相当
     // angle_min_deg 〜 angle_max_deg を resolution_deg 刻みで一気にスキャン
     void scan(HakoCpp_LaserScan& out,
-              double angle_min_deg,
-              double angle_max_deg,
-              double resolution_deg,
-              double range_min,
-              double range_max,
-              double origin_offset) const
+          double angle_min_deg,
+          double angle_max_deg,
+          double resolution_deg,
+          double yaw_bias_deg,
+          double range_min,
+          double range_max,
+          double origin_offset,
+          double scan_time_sec) const
     {
         auto* model = world_->getModel();
         auto* data  = world_->getData();
 
         const int base_scan_id      = mj_name2id(model, mjOBJ_BODY, "base_scan");
         const int base_footprint_id = mj_name2id(model, mjOBJ_BODY, "base_footprint");
-        if (base_scan_id < 0) { return; }
+        if (base_scan_id < 0) {
+            return;
+        }
+        if (resolution_deg <= 0.0) {
+            return;
+        }
 
         const mjtNum* pos = &data->xpos[3 * base_scan_id];
-        const mjtNum* mat = &data->xmat[9 * base_scan_id];
 
-        // Unity: CalculateDistanceArraySize
-        const int ray_count = static_cast<int>(
-            std::ceil((angle_max_deg - angle_min_deg) / resolution_deg));
+        // 2D LiDAR では roll/pitch を使わず、base_scan の yaw だけ使う
+        const auto scan_euler = base_scan_->GetEuler();
+        const double base_yaw_rad = scan_euler.z;
 
-        std::vector<float> ranges(static_cast<size_t>(ray_count));
+        const int ray_count = std::max(
+            1,
+            static_cast<int>(std::ceil((angle_max_deg - angle_min_deg) / resolution_deg)));
 
-        // Unity: Scan() — for (float yaw = start_yaw; i < max_count; yaw += delta_yaw)
+        std::vector<float> ranges(static_cast<size_t>(ray_count), static_cast<float>(range_max));
+
         double yaw_deg = angle_min_deg;
         for (int i = 0; i < ray_count; ++i, yaw_deg += resolution_deg) {
             ranges[static_cast<size_t>(i)] = lidar_get_sensor_value(
-                model, data, pos, mat,
+                model,
+                data,
+                pos,
                 base_footprint_id,
+                base_yaw_rad,
                 yaw_deg,
+                yaw_bias_deg,
                 range_min,
                 range_max,
                 origin_offset);
         }
 
-        // Unity: SetScanData()
-        out.angle_min      = static_cast<float>(angle_min_deg * M_PI / 180.0);
-        out.angle_max      = static_cast<float>(angle_max_deg * M_PI / 180.0);
-        out.angle_increment= static_cast<float>(resolution_deg * M_PI / 180.0);
-        out.time_increment = 0.0F;
-        out.scan_time      = static_cast<float>(model->opt.timestep);
-        out.range_min      = static_cast<float>(range_min);
-        out.range_max      = static_cast<float>(range_max);
-        out.ranges         = std::move(ranges);
+        out.angle_min       = static_cast<float>(angle_min_deg * M_PI / 180.0);
+        out.angle_max       = static_cast<float>(angle_max_deg * M_PI / 180.0);
+        out.angle_increment = static_cast<float>(resolution_deg * M_PI / 180.0);
+        out.time_increment  = 0.0F;
+        out.scan_time       = static_cast<float>(scan_time_sec);
+        out.range_min       = static_cast<float>(range_min);
+        out.range_max       = static_cast<float>(range_max);
+        out.ranges          = std::move(ranges);
         out.intensities.assign(static_cast<size_t>(ray_count), 0.0F);
-    }
+    }    
 
 private:
     std::shared_ptr<hako::robots::physics::IWorld> world_;
@@ -232,12 +247,13 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     const double lidar_angle_max_deg  = get_env_double("HAKO_TB3_LIDAR_ANGLE_MAX_DEG",  360.0);
     const double lidar_resolution_deg = get_env_double("HAKO_TB3_LIDAR_RESOLUTION_DEG", 1.0);
     const int    lidar_scan_freq_hz   = static_cast<int>(get_env_double("HAKO_TB3_LIDAR_SCAN_FREQ_HZ", 10));
-
+    const double lidar_yaw_bias_deg =
+        get_env_double("HAKO_TB3_LIDAR_YAW_BIAS_DEG", 0.0);
     // Unity: DetectionDistance — 単位は mm → m 変換済みで渡す
-    const double lidar_range_min = get_env_double("HAKO_TB3_LIDAR_RANGE_MIN", 0.12);
+    const double lidar_range_min = get_env_double("HAKO_TB3_LIDAR_RANGE_MIN", 0.1);
     const double lidar_range_max = get_env_double("HAKO_TB3_LIDAR_RANGE_MAX", 3.5);
     // self-hit 回避: robot body (~6mm) を飛び越えてから ray を飛ばす
-    const double lidar_origin_offset = get_env_double("HAKO_TB3_LIDAR_ORIGIN_OFFSET", 0.05);
+    const double lidar_origin_offset = get_env_double("HAKO_TB3_LIDAR_ORIGIN_OFFSET", 0.12);
 
     // Unity: CalculateUpdateCycle(fixedDeltaTime, scanFrequency)
     const double lidar_period_sec = 1.0 / lidar_scan_freq_hz;
@@ -329,12 +345,14 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
                 // Unity: this.Scan() + SetScanData()
                 tb3.scan(laser_scan,
-                         lidar_angle_min_deg,
-                         lidar_angle_max_deg,
-                         lidar_resolution_deg,
-                         lidar_range_min,
-                         lidar_range_max,
-                         lidar_origin_offset);
+                        lidar_angle_min_deg,
+                        lidar_angle_max_deg,
+                        lidar_resolution_deg,
+                        lidar_yaw_bias_deg,
+                        lidar_range_min,
+                        lidar_range_max,
+                        lidar_origin_offset,
+                        lidar_period_sec);
                 (void)laser_scan_ep.send(laser_scan);
 
                 // base_scan_pos も同じタイミングでだけ送る
