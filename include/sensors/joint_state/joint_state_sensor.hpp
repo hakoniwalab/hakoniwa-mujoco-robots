@@ -5,6 +5,7 @@
 
 #include "physics.hpp"
 #include "sensor.hpp"
+#include "sensors/common/update_scheduler.hpp"
 
 namespace hako::robots::sensor
 {
@@ -54,6 +55,6 @@ namespace hako::robots::sensor
         std::shared_ptr<hako::robots::physics::IWorld> world_;
         JointStateConfig config_ {};
         std::vector<int> joint_ids_ {};
-        double elapsed_sec_ {0.0};
+        common::UpdateScheduler scheduler_ {};
     };
 }

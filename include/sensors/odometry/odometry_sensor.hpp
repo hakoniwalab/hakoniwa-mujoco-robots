@@ -4,6 +4,7 @@
 
 #include "physics.hpp"
 #include "sensor.hpp"
+#include "sensors/common/update_scheduler.hpp"
 
 namespace hako::robots::sensor
 {
@@ -50,6 +51,6 @@ namespace hako::robots::sensor
         std::shared_ptr<hako::robots::physics::IWorld> world_;
         std::shared_ptr<hako::robots::physics::IRigidBody> source_body_;
         OdometryConfig config_ {};
-        double elapsed_sec_ {0.0};
+        common::UpdateScheduler scheduler_ {};
     };
 }

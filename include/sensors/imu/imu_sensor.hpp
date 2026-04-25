@@ -4,6 +4,7 @@
 
 #include "physics.hpp"
 #include "sensor.hpp"
+#include "sensors/common/update_scheduler.hpp"
 #include "sensors/noise/noise.hpp"
 #include "sensors/noise/noise_config.hpp"
 
@@ -61,7 +62,7 @@ namespace hako::robots::sensor
         std::shared_ptr<hako::robots::physics::IWorld> world_;
         std::shared_ptr<hako::robots::physics::IRigidBody> source_body_;
         ImuConfig config_ {};
-        double elapsed_sec_ {0.0};
+        common::UpdateScheduler scheduler_ {};
         hako::robots::types::BodyVelocity prev_body_velocity_ {};
         bool has_prev_velocity_ {false};
         noise::AxisNoisePipeline angular_velocity_noise_;

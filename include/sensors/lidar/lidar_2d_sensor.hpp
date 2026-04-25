@@ -6,6 +6,7 @@
 
 #include "physics.hpp"
 #include "sensor.hpp"
+#include "sensors/common/update_scheduler.hpp"
 #include "sensors/noise/noise.hpp"
 
 namespace hako::robots::sensor::lidar
@@ -113,7 +114,7 @@ namespace hako::robots::sensor::lidar
         std::string sensor_body_name_;
         std::string exclude_body_name_;
         LiDAR2DConfig config_ {};
-        double elapsed_sec_ {0.0};
+        common::UpdateScheduler scheduler_ {};
         noise::RangeNoisePipeline noise_pipeline_;
     };
 }

@@ -1,19 +1,15 @@
 #include "sensors/lidar/lidar_2d_sensor.hpp"
 
 #include <cmath>
-#include <fstream>
 #include <limits>
 #include <utility>
 #include <vector>
-
-#include <nlohmann/json.hpp>
+#include "sensors/common/json_utils.hpp"
 
 namespace hako::robots::sensor::lidar
 {
 namespace
 {
-using json = nlohmann::json;
-
 noise::NoiseType parse_noise_type(const std::string& value)
 {
     if (value == "none" || value == "None") {
@@ -27,22 +23,6 @@ noise::NoiseType parse_noise_type(const std::string& value)
         return noise::NoiseType::GaussianQuantized;
     }
     return noise::NoiseType::Gaussian;
-}
-
-double get_json_number(const json& j, const char* key, double default_value)
-{
-    if (!j.contains(key) || !j.at(key).is_number()) {
-        return default_value;
-    }
-    return j.at(key).get<double>();
-}
-
-int get_json_int(const json& j, const char* key, int default_value)
-{
-    if (!j.contains(key) || !j.at(key).is_number_integer()) {
-        return default_value;
-    }
-    return j.at(key).get<int>();
 }
 }
 
@@ -59,37 +39,34 @@ LiDAR2DSensor::LiDAR2DSensor(
 
 bool LiDAR2DSensor::LoadConfig(const std::string& config_path)
 {
-    std::ifstream ifs(config_path);
-    if (!ifs.is_open()) {
+    common::json root;
+    if (!common::load_json_file(config_path, root)) {
         return false;
     }
-
-    json root;
-    ifs >> root;
 
     config_ = LiDAR2DConfig {};
     config_.frame_id = root.value("frame_id", std::string("laser"));
 
     if (root.contains("DetectionDistance")) {
         const auto& det = root.at("DetectionDistance");
-        config_.detection_distance.min = get_json_number(det, "Min", config_.detection_distance.min) / 1000.0;
-        config_.detection_distance.max = get_json_number(det, "Max", config_.detection_distance.max) / 1000.0;
+        config_.detection_distance.min = common::get_json_number(det, "Min", config_.detection_distance.min) / 1000.0;
+        config_.detection_distance.max = common::get_json_number(det, "Max", config_.detection_distance.max) / 1000.0;
     }
 
     if (root.contains("AngleRange")) {
         const auto& angle = root.at("AngleRange");
-        config_.angle_range.min_deg = get_json_number(angle, "Min", config_.angle_range.min_deg);
-        config_.angle_range.max_deg = get_json_number(angle, "Max", config_.angle_range.max_deg);
+        config_.angle_range.min_deg = common::get_json_number(angle, "Min", config_.angle_range.min_deg);
+        config_.angle_range.max_deg = common::get_json_number(angle, "Max", config_.angle_range.max_deg);
         if (angle.contains("AscendingOrderOfData") && angle.at("AscendingOrderOfData").is_boolean()) {
             config_.angle_range.ascending_order_of_data = angle.at("AscendingOrderOfData").get<bool>();
         }
-        config_.angle_range.resolution_deg = get_json_number(angle, "Resolution", config_.angle_range.resolution_deg);
-        config_.angle_range.scan_frequency_hz = get_json_int(angle, "ScanFrequency", config_.angle_range.scan_frequency_hz);
+        config_.angle_range.resolution_deg = common::get_json_number(angle, "Resolution", config_.angle_range.resolution_deg);
+        config_.angle_range.scan_frequency_hz = common::get_json_int(angle, "ScanFrequency", config_.angle_range.scan_frequency_hz);
         if (angle.contains("BlindPaddingRange") && angle.at("BlindPaddingRange").is_object()) {
             const auto& blind = angle.at("BlindPaddingRange");
             config_.angle_range.blind_padding.enabled = true;
-            config_.angle_range.blind_padding.size = get_json_int(blind, "Size", 0);
-            config_.angle_range.blind_padding.value = get_json_number(blind, "Value", 0.0);
+            config_.angle_range.blind_padding.size = common::get_json_int(blind, "Size", 0);
+            config_.angle_range.blind_padding.value = common::get_json_number(blind, "Value", 0.0);
         }
     }
 
@@ -99,8 +76,8 @@ bool LiDAR2DSensor::LoadConfig(const std::string& config_path)
             DistanceAccuracy accuracy {};
             if (entry.contains("Range") && entry.at("Range").is_object()) {
                 const auto& range = entry.at("Range");
-                accuracy.range.min = get_json_number(range, "Min", 0.0) / 1000.0;
-                accuracy.range.max = get_json_number(range, "Max", 0.0) / 1000.0;
+                accuracy.range.min = common::get_json_number(range, "Min", 0.0) / 1000.0;
+                accuracy.range.max = common::get_json_number(range, "Max", 0.0) / 1000.0;
             }
             std::string type = entry.value("type", std::string(""));
             if (type.empty()) {
@@ -110,35 +87,35 @@ bool LiDAR2DSensor::LoadConfig(const std::string& config_path)
             if (accuracy.distance_dependent) {
                 if (entry.contains("DistanceDependentAccuracy")) {
                     const auto& dep = entry.at("DistanceDependentAccuracy");
-                    accuracy.percentage = get_json_number(dep, "Percentage", 0.0);
+                    accuracy.percentage = common::get_json_number(dep, "Percentage", 0.0);
                     accuracy.noise_distribution = dep.value("NoiseDistribution", std::string("Gaussian"));
-                    accuracy.precision = get_json_number(dep, "Precision", 0.0);
+                    accuracy.precision = common::get_json_number(dep, "Precision", 0.0);
                 }
                 else if (entry.contains("DistanceDepedentAccuracy")) {
                     const auto& dep = entry.at("DistanceDepedentAccuracy");
-                    accuracy.percentage = get_json_number(dep, "Percentage", 0.0);
+                    accuracy.percentage = common::get_json_number(dep, "Percentage", 0.0);
                     accuracy.noise_distribution = dep.value("NoiseDistribution", std::string("Gaussian"));
-                    accuracy.precision = get_json_number(dep, "Precision", 0.0);
+                    accuracy.precision = common::get_json_number(dep, "Precision", 0.0);
                 }
             } else {
                 if (entry.contains("DistanceIndependentAccuracy")) {
                     const auto& indep = entry.at("DistanceIndependentAccuracy");
-                    accuracy.stddev = get_json_number(indep, "StdDev", 0.0);
+                    accuracy.stddev = common::get_json_number(indep, "StdDev", 0.0);
                     accuracy.noise_distribution = indep.value("NoiseDistribution", std::string("Gaussian"));
-                    accuracy.precision = get_json_number(indep, "Precision", 0.0);
+                    accuracy.precision = common::get_json_number(indep, "Precision", 0.0);
                 }
                 else if (entry.contains("DistanceIndepedentAccuracy")) {
                     const auto& indep = entry.at("DistanceIndepedentAccuracy");
-                    accuracy.stddev = get_json_number(indep, "StdDev", 0.0);
+                    accuracy.stddev = common::get_json_number(indep, "StdDev", 0.0);
                     accuracy.noise_distribution = indep.value("NoiseDistribution", std::string("Gaussian"));
-                    accuracy.precision = get_json_number(indep, "Precision", 0.0);
+                    accuracy.precision = common::get_json_number(indep, "Precision", 0.0);
                 }
             }
             config_.distance_accuracy.push_back(std::move(accuracy));
         }
     }
 
-    elapsed_sec_ = GetUpdatePeriodSec();
+    scheduler_.StartReady(GetUpdatePeriodSec());
     RebuildNoisePipeline();
     return true;
 }
@@ -156,7 +133,7 @@ const LiDAR2DConfig& LiDAR2DSensor::GetConfig() const
 
 void LiDAR2DSensor::Reset()
 {
-    elapsed_sec_ = 0.0;
+    scheduler_.Reset();
 }
 
 double LiDAR2DSensor::GetUpdatePeriodSec() const
@@ -169,16 +146,7 @@ double LiDAR2DSensor::GetUpdatePeriodSec() const
 
 bool LiDAR2DSensor::ShouldUpdate(double delta_sec)
 {
-    elapsed_sec_ += delta_sec;
-    const double period = GetUpdatePeriodSec();
-    if (elapsed_sec_ + 1.0e-9 < period) {
-        return false;
-    }
-    elapsed_sec_ -= period;
-    if (elapsed_sec_ < 0.0) {
-        elapsed_sec_ = 0.0;
-    }
-    return true;
+    return scheduler_.ShouldUpdate(delta_sec, GetUpdatePeriodSec());
 }
 
 float LiDAR2DSensor::CastRay(

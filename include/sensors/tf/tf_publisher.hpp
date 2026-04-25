@@ -6,6 +6,7 @@
 #include "physics.hpp"
 #include "sensor.hpp"
 #include "sensors/binding/frame_binding.hpp"
+#include "sensors/common/update_scheduler.hpp"
 
 namespace hako::robots::sensor
 {
@@ -52,7 +53,7 @@ namespace hako::robots::sensor
     private:
         std::shared_ptr<hako::robots::physics::IWorld> world_;
         TfConfig config_ {};
-        double elapsed_sec_ {0.0};
+        common::UpdateScheduler scheduler_ {};
         std::unordered_map<std::string, std::shared_ptr<hako::robots::physics::IRigidBody>> body_cache_ {};
         std::unordered_map<std::string, std::string> child_to_body_ {};
     };

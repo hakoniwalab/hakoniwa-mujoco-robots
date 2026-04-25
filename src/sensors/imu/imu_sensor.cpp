@@ -1,32 +1,12 @@
 #include "sensors/imu/imu_sensor.hpp"
 
-#include <fstream>
 #include <utility>
-
-#include <nlohmann/json.hpp>
+#include "sensors/common/json_utils.hpp"
 
 namespace hako::robots::sensor
 {
 namespace
 {
-using json = nlohmann::json;
-
-double get_json_number(const json& j, const char* key, double default_value)
-{
-    if (!j.contains(key) || !j.at(key).is_number()) {
-        return default_value;
-    }
-    return j.at(key).get<double>();
-}
-
-std::string get_json_string(const json& j, const char* key, const std::string& default_value)
-{
-    if (!j.contains(key) || !j.at(key).is_string()) {
-        return default_value;
-    }
-    return j.at(key).get<std::string>();
-}
-
 noise::NoiseType parse_noise_type(const std::string& value)
 {
     if (value == "gaussian") {
@@ -38,22 +18,22 @@ noise::NoiseType parse_noise_type(const std::string& value)
     return noise::NoiseType::None;
 }
 
-noise::NoiseModelConfig parse_noise_model_config(const json& j)
+noise::NoiseModelConfig parse_noise_model_config(const common::json& j)
 {
     noise::NoiseModelConfig config {};
-    config.type = get_json_string(j, "type", config.type);
-    config.mean = get_json_number(j, "mean", config.mean);
-    config.stddev = get_json_number(j, "stddev", config.stddev);
-    config.bias_mean = get_json_number(j, "bias_mean", config.bias_mean);
-    config.bias_stddev = get_json_number(j, "bias_stddev", config.bias_stddev);
-    config.dynamic_bias_stddev = get_json_number(j, "dynamic_bias_stddev", config.dynamic_bias_stddev);
+    config.type = common::get_json_string(j, "type", config.type);
+    config.mean = common::get_json_number(j, "mean", config.mean);
+    config.stddev = common::get_json_number(j, "stddev", config.stddev);
+    config.bias_mean = common::get_json_number(j, "bias_mean", config.bias_mean);
+    config.bias_stddev = common::get_json_number(j, "bias_stddev", config.bias_stddev);
+    config.dynamic_bias_stddev = common::get_json_number(j, "dynamic_bias_stddev", config.dynamic_bias_stddev);
     config.dynamic_bias_correlation_time =
-        get_json_number(j, "dynamic_bias_correlation_time", config.dynamic_bias_correlation_time);
-    config.precision = get_json_number(j, "precision", config.precision);
+        common::get_json_number(j, "dynamic_bias_correlation_time", config.dynamic_bias_correlation_time);
+    config.precision = common::get_json_number(j, "precision", config.precision);
     return config;
 }
 
-noise::AxisNoiseConfig parse_axis_noise_config(const json& j)
+noise::AxisNoiseConfig parse_axis_noise_config(const common::json& j)
 {
     noise::AxisNoiseConfig config {};
     if (j.contains("x") && j.at("x").is_object()) {
@@ -110,22 +90,19 @@ ImuSensor::ImuSensor(std::shared_ptr<hako::robots::physics::IWorld> world)
 
 bool ImuSensor::LoadConfig(const std::string& config_path)
 {
-    std::ifstream ifs(config_path);
-    if (!ifs.is_open()) {
+    common::json root;
+    if (!common::load_json_file(config_path, root)) {
         return false;
     }
 
-    json root;
-    ifs >> root;
-
     config_ = ImuConfig {};
-    config_.output.name = get_json_string(root, "name", "imu");
-    config_.output.pdu_name = get_json_string(root, "pdu_name", "imu");
-    config_.output.update_rate_hz = get_json_number(root, "update_rate_hz", 100.0);
-    config_.frame_id = get_json_string(root, "frame_id", "imu_link");
-    config_.parent_body = get_json_string(root, "parent_body", "");
-    config_.source_body = get_json_string(root, "source_body", config_.parent_body);
-    config_.mode = get_json_string(root, "mode", "ground_truth");
+    config_.output.name = common::get_json_string(root, "name", "imu");
+    config_.output.pdu_name = common::get_json_string(root, "pdu_name", "imu");
+    config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", 100.0);
+    config_.frame_id = common::get_json_string(root, "frame_id", "imu_link");
+    config_.parent_body = common::get_json_string(root, "parent_body", "");
+    config_.source_body = common::get_json_string(root, "source_body", config_.parent_body);
+    config_.mode = common::get_json_string(root, "mode", "ground_truth");
 
     if (root.contains("noise") && root.at("noise").is_object()) {
         const auto& noise_root = root.at("noise");
@@ -138,7 +115,7 @@ bool ImuSensor::LoadConfig(const std::string& config_path)
     }
 
     source_body_ = world_->getRigidBody(config_.source_body);
-    elapsed_sec_ = GetUpdatePeriodSec();
+    scheduler_.StartReady(GetUpdatePeriodSec());
     has_prev_velocity_ = false;
     RebuildNoisePipeline();
     return true;
@@ -186,7 +163,7 @@ void ImuSensor::Build(ImuFrame& out)
 
 void ImuSensor::Reset()
 {
-    elapsed_sec_ = 0.0;
+    scheduler_.Reset();
     has_prev_velocity_ = false;
     prev_body_velocity_ = {};
     angular_velocity_noise_.Reset();
@@ -200,16 +177,7 @@ double ImuSensor::GetUpdatePeriodSec() const
 
 bool ImuSensor::ShouldUpdate(double delta_sec)
 {
-    elapsed_sec_ += delta_sec;
-    const double period = GetUpdatePeriodSec();
-    if (elapsed_sec_ + 1.0e-9 < period) {
-        return false;
-    }
-    elapsed_sec_ -= period;
-    if (elapsed_sec_ < 0.0) {
-        elapsed_sec_ = 0.0;
-    }
-    return true;
+    return scheduler_.ShouldUpdate(delta_sec, GetUpdatePeriodSec());
 }
 
 void ImuSensor::RebuildNoisePipeline()
