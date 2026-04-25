@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/noise-model.schema.json",
+  "title": "Hakoniwa generic noise model",
+  "description": "Reusable SDF-like noise model block for sensor outputs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type"
+  ],
+  "properties": {
+    "type": {
+      "enum": [
+        "none",
+        "gaussian",
+        "gaussian_quantized"
+      ]
+    },
+    "mean": {
+      "type": "number"
+    },
+    "stddev": {
+      "type": "number",
+      "minimum": 0
+    },
+    "bias_mean": {
+      "type": "number"
+    },
+    "bias_stddev": {
+      "type": "number",
+      "minimum": 0
+    },
+    "dynamic_bias_stddev": {
+      "type": "number",
+      "minimum": 0
+    },
+    "dynamic_bias_correlation_time": {
+      "type": "number",
+      "minimum": 0
+    },
+    "precision": {
+      "type": "number",
+      "minimum": 0
+    }
+  }
+}

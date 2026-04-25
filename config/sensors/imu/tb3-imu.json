@@ -7,5 +7,17 @@
   "parent_body": "base_link",
   "source_body": "base_link",
   "update_rate_hz": 100.0,
-  "mode": "ground_truth"
+  "mode": "ground_truth",
+  "noise": {
+    "angular_velocity": {
+      "x": { "type": "none" },
+      "y": { "type": "none" },
+      "z": { "type": "none" }
+    },
+    "linear_acceleration": {
+      "x": { "type": "none" },
+      "y": { "type": "none" },
+      "z": { "type": "none" }
+    }
+  }
 }

@@ -36,6 +36,22 @@
           "enum": [
             "ground_truth"
           ]
+        },
+        "noise": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "angular_velocity",
+            "linear_acceleration"
+          ],
+          "properties": {
+            "angular_velocity": {
+              "$ref": "./axis-noise.schema.json"
+            },
+            "linear_acceleration": {
+              "$ref": "./axis-noise.schema.json"
+            }
+          }
         }
       }
     }
