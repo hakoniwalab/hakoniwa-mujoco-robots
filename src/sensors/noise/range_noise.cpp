@@ -1,32 +1,53 @@
-#include "sensors/noise/range_noise.hpp"
+#include "sensors/noise/noise.hpp"
 
 #include <algorithm>
 
 namespace hako::robots::sensor::noise
 {
-GaussianNoiseModel::GaussianNoiseModel()
-    : rng_(std::random_device{}())
+void GaussianNoiseModel::Reset()
+{
+    current_bias_ = 0.0;
+}
+GaussianNoiseModel::GaussianNoiseModel(double dt_sec)
+    : dt_(dt_sec), current_bias_(0.0)
 {
 }
 
-float GaussianNoiseModel::Apply(float value, const RangeNoiseRule& rule)
+double RangeNoisePipeline::Apply(double value) const
 {
-    double sigma = rule.stddev;
+    for (const auto& rule : rules_) {
+        if (value >= rule.range.min && value <= rule.range.max) {
+            return model_->ApplyRangeRule(value, rule);
+        }
+    }
+    return value;
+}
+double GaussianNoiseModel::Apply(double value, const NoiseParams& params)
+{
+    if (params.stddev <= 0.0) {
+        return value;
+    }
+    std::normal_distribution<double> dist(params.mean, params.stddev);
+    return value + dist(rng_);
+}
+double GaussianNoiseModel::ApplyRangeRule(double value, const RangeNoiseRule& rule)
+{
+    double sigma = rule.noise.stddev;
     if (rule.distance_dependent) {
-        sigma = static_cast<double>(value) * (rule.percentage / 100.0);
+        sigma = value * (rule.percentage / 100.0);
     }
     if (sigma <= 0.0) {
         return value;
     }
     std::normal_distribution<double> dist(0.0, sigma);
-    return static_cast<float>(static_cast<double>(value) + dist(rng_));
+    return value + dist(rng_);
 }
 
-RangeNoisePipeline::RangeNoisePipeline(std::unique_ptr<INoiseModel> default_model)
-    : default_model_(std::move(default_model))
+RangeNoisePipeline::RangeNoisePipeline(std::unique_ptr<INoiseModel> model)
+    : model_(std::move(model))
 {
-    if (!default_model_) {
-        default_model_ = std::make_unique<GaussianNoiseModel>();
+    if (!model_) {
+        model_ = std::make_unique<GaussianNoiseModel>();
     }
 }
 
@@ -40,17 +61,4 @@ void RangeNoisePipeline::AddRule(const RangeNoiseRule& rule)
     rules_.push_back(rule);
 }
 
-float RangeNoisePipeline::Apply(float value) const
-{
-    for (const auto& rule : rules_) {
-        if (value < rule.range.min || value >= rule.range.max) {
-            continue;
-        }
-        if (rule.distribution != "Gaussian") {
-            return value;
-        }
-        return default_model_->Apply(value, rule);
-    }
-    return value;
-}
 }

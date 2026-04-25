@@ -249,8 +249,8 @@ void LiDAR2DSensor::RebuildNoisePipeline()
         rule.range.max = accuracy.range.max;
         rule.distance_dependent = accuracy.distance_dependent;
         rule.percentage = accuracy.percentage;
-        rule.stddev = accuracy.stddev;
-        rule.distribution = accuracy.noise_distribution;
+        rule.noise.stddev = accuracy.stddev;
+        rule.noise.type    = noise::NoiseType::Gaussian;
         noise_pipeline_.AddRule(rule);
     }
 }

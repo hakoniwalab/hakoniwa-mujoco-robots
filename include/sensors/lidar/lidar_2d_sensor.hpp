@@ -5,7 +5,7 @@
 
 #include "physics.hpp"
 #include "sensor.hpp"
-#include "sensors/noise/range_noise.hpp"
+#include "sensors/noise/noise.hpp"
 
 namespace hako::robots::sensor::lidar
 {
