@@ -19,7 +19,7 @@
   },
   {
     "channel_id": 3,
-    "pdu_size": 4096,
+    "pdu_size": 8192,
     "name": "laser_scan",
     "type": "sensor_msgs/LaserScan"
   }
