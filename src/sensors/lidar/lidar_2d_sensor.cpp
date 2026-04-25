@@ -165,34 +165,66 @@ float LiDAR2DSensor::CastRay(
         std::sin(world_yaw_rad),
         0.0,
     };
-    mjtNum origin[3] = {
-        sensor_pos[0] + dir[0] * config_.origin_offset_m,
-        sensor_pos[1] + dir[1] * config_.origin_offset_m,
-        sensor_pos[2],
-    };
+    mjtNum origin[3] = {sensor_pos[0], sensor_pos[1], sensor_pos[2]};
+    const mjtNum epsilon = std::max<mjtNum>(1.0e-4, static_cast<mjtNum>(config_.origin_offset_m * 0.1));
+    mjtNum traveled = 0.0;
 
-    int geomid = -1;
-    mjtNum normal[3] = {0.0, 0.0, 0.0};
-    const mjtNum raw_dist = mj_ray(
-        model,
-        data,
-        origin,
-        dir,
-        nullptr,
-        1,
-        body_exclude,
-        &geomid,
-        normal);
-    if (raw_dist < 0.0) {
-        return static_cast<float>(config_.detection_distance.max);
+    for (int attempt = 0; attempt < 16; ++attempt) {
+        int geomid = -1;
+        mjtNum normal[3] = {0.0, 0.0, 0.0};
+        const mjtNum hit_dist = mj_ray(
+            model,
+            data,
+            origin,
+            dir,
+            nullptr,
+            1,
+            -1,
+            &geomid,
+            normal);
+        if (hit_dist < 0.0) {
+            return static_cast<float>(config_.detection_distance.max);
+        }
+
+        if (!IsSelfGeom(model, body_exclude, geomid)) {
+            const float true_dist = static_cast<float>(traveled + hit_dist);
+            if (true_dist < static_cast<float>(config_.detection_distance.min) ||
+                true_dist > static_cast<float>(config_.detection_distance.max)) {
+                return static_cast<float>(config_.detection_distance.max);
+            }
+            return true_dist;
+        }
+
+        const mjtNum step = hit_dist + epsilon;
+        traveled += step;
+        if (traveled >= static_cast<mjtNum>(config_.detection_distance.max)) {
+            return static_cast<float>(config_.detection_distance.max);
+        }
+        origin[0] += dir[0] * step;
+        origin[1] += dir[1] * step;
+        origin[2] += dir[2] * step;
     }
 
-    const float true_dist = static_cast<float>(raw_dist + config_.origin_offset_m);
-    if (true_dist < static_cast<float>(config_.detection_distance.min) ||
-        true_dist > static_cast<float>(config_.detection_distance.max)) {
-        return static_cast<float>(config_.detection_distance.max);
+    return static_cast<float>(config_.detection_distance.max);
+}
+
+bool LiDAR2DSensor::IsSelfGeom(const mjModel* model, int body_exclude, int geom_id) const
+{
+    if (geom_id < 0 || body_exclude < 0) {
+        return false;
     }
-    return true_dist;
+    int body_id = model->geom_bodyid[geom_id];
+    while (body_id >= 0) {
+        if (body_id == body_exclude) {
+            return true;
+        }
+        const int parent_id = model->body_parentid[body_id];
+        if (parent_id == body_id) {
+            break;
+        }
+        body_id = parent_id;
+    }
+    return false;
 }
 
 void LiDAR2DSensor::ApplyBlindPadding(std::vector<float>& ranges) const

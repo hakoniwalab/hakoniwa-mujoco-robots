@@ -33,7 +33,7 @@ namespace hako::robots::sensor::lidar
             int body_exclude,
             double base_yaw_rad,
             double degree_yaw) const;
-        float ApplyNoise(float distance_m);
+        bool IsSelfGeom(const mjModel* model, int body_exclude, int geom_id) const;
         void ApplyBlindPadding(std::vector<float>& ranges) const;
         void RebuildNoisePipeline();
 

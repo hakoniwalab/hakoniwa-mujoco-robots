@@ -154,7 +154,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     const double max_torque  = get_env_double("HAKO_TB3_MAX_TORQUE",  1.0);
     const double lidar_yaw_bias_deg =
         get_env_double("HAKO_TB3_LIDAR_YAW_BIAS_DEG", 0.0);
-    const double lidar_origin_offset = get_env_double("HAKO_TB3_LIDAR_ORIGIN_OFFSET", 0.12);
+    const double lidar_origin_offset = get_env_double("HAKO_TB3_LIDAR_ORIGIN_OFFSET", 0.0);
     const std::string endpoint_name = get_env_string("HAKO_TB3_ENDPOINT_NAME", "tb3_sim_endpoint");
 
     Tb3Drive tb3(world);
