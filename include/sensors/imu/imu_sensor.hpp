@@ -1,13 +1,14 @@
 #pragma once
 
 #include "sensor.hpp"
+#include "sensors/noise/noise_config.hpp"
 
 namespace hako::robots::sensor
 {
     struct ImuNoiseConfig
     {
-        AxisNoiseConfig angular_velocity {};
-        AxisNoiseConfig linear_acceleration {};
+        noise::AxisNoiseConfig angular_velocity {};
+        noise::AxisNoiseConfig linear_acceleration {};
     };
 
     struct ImuConfig

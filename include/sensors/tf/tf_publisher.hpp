@@ -1,13 +1,14 @@
 #pragma once
 
 #include "sensor.hpp"
+#include "sensors/binding/frame_binding.hpp"
 
 namespace hako::robots::sensor
 {
     struct TfConfig
     {
         OutputBinding output {};
-        std::vector<TransformBinding> transforms {};
+        std::vector<binding::TransformBinding> transforms {};
     };
 
     struct TransformFrame

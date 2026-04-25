@@ -118,7 +118,7 @@ struct Tb3CommandState {
     bool has_input {false};
 };
 
-HakoCpp_LaserScan to_hako_scan(const hako::robots::sensor::LaserScanFrame& frame)
+HakoCpp_LaserScan to_hako_scan(const hako::robots::sensor::lidar::LaserScanFrame& frame)
 {
     HakoCpp_LaserScan out {};
     out.angle_min = frame.angle_min;
@@ -189,7 +189,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     lidar_sensor.SetRuntimeOptions(lidar_yaw_bias_deg, lidar_origin_offset);
 
     HakoCpp_LaserScan laser_scan {};
-    hako::robots::sensor::LaserScanFrame laser_scan_frame {};
+    hako::robots::sensor::lidar::LaserScanFrame laser_scan_frame {};
 
     int step = 0;
     Tb3CommandState command_state {};
