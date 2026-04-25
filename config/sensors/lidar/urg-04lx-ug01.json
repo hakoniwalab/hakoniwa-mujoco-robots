@@ -12,7 +12,7 @@
                 "Max": 1000
             },
             "type": "independent",
-            "DistanceIndepedentAccuracy": {
+            "DistanceIndependentAccuracy": {
                 "StdDev": 0.003,
                 "NoiseDistribution": "Gaussian"
             }
@@ -23,7 +23,7 @@
                 "Max": 5560
             },
             "type": "independent",
-            "DistanceIndepedentAccuracy": {
+            "DistanceIndependentAccuracy": {
                 "StdDev": 0.00505,
                 "NoiseDistribution": "Gaussian"
             }

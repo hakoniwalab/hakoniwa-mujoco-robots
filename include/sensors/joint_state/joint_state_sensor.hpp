@@ -22,6 +22,13 @@ namespace hako::robots::sensor
         std::vector<double> velocity {};
         std::vector<double> effort {};
     };
+    class IJointStateSensor : public ISensor
+    {
+    public:
+        virtual ~IJointStateSensor() = default;
 
-
+        virtual bool LoadConfig(const std::string& config_path) = 0;
+        virtual const JointStateConfig& GetConfig() const = 0;
+        virtual void Build(JointStateFrame& out) = 0;
+    };
 }

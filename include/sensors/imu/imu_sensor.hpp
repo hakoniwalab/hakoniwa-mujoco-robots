@@ -9,10 +9,13 @@ namespace hako::robots::sensor
         AxisNoiseConfig angular_velocity {};
         AxisNoiseConfig linear_acceleration {};
     };
+
     struct ImuConfig
     {
         OutputBinding output {};
-        LinkBinding link {};
+        std::string frame_id {"imu_link"};
+        std::string parent_body {};
+        std::string source_body {};
         std::string mode {"ground_truth"};
         ImuNoiseConfig noise {};
     };
@@ -24,6 +27,7 @@ namespace hako::robots::sensor
         hako::robots::types::Vector3 angular_velocity {};
         hako::robots::types::Vector3 linear_acceleration {};
     };
+
     class IImuSensor : public ISensor
     {
     public:
@@ -31,17 +35,6 @@ namespace hako::robots::sensor
 
         virtual bool LoadConfig(const std::string& config_path) = 0;
         virtual const ImuConfig& GetConfig() const = 0;
-        virtual void Read(ImuFrame& out) = 0;
+        virtual void Build(ImuFrame& out) = 0;
     };
-
-    class IJointStateSensor : public ISensor
-    {
-    public:
-        virtual ~IJointStateSensor() = default;
-
-        virtual bool LoadConfig(const std::string& config_path) = 0;
-        virtual const JointStateConfig& GetConfig() const = 0;
-        virtual void Read(JointStateFrame& out) = 0;
-    };
-
 }

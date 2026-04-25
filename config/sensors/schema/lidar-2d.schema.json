@@ -74,6 +74,10 @@
           "type": "number",
           "minimum": 0
         },
+        "Precision": {
+          "type": "number",
+          "minimum": 0
+        },
         "NoiseDistribution": {
           "type": "string",
           "minLength": 1
@@ -89,6 +93,10 @@
       ],
       "properties": {
         "Percentage": {
+          "type": "number",
+          "minimum": 0
+        },
+        "Precision": {
           "type": "number",
           "minimum": 0
         },
@@ -119,6 +127,12 @@
             "independent",
             "dependent"
           ]
+        },
+        "DistanceIndependentAccuracy": {
+          "$ref": "#/$defs/independentAccuracy"
+        },
+        "DistanceDependentAccuracy": {
+          "$ref": "#/$defs/dependentAccuracy"
         },
         "DistanceIndepedentAccuracy": {
           "$ref": "#/$defs/independentAccuracy"
@@ -169,7 +183,7 @@
           },
           "then": {
             "required": [
-              "DistanceIndepedentAccuracy"
+              "DistanceIndependentAccuracy"
             ]
           }
         },
@@ -200,7 +214,7 @@
           },
           "then": {
             "required": [
-              "DistanceDepedentAccuracy"
+              "DistanceDependentAccuracy"
             ]
           }
         }

@@ -105,6 +105,7 @@ namespace hako::robots::sensor
         double percentage {0.0};
         double stddev {0.0};
         std::string noise_distribution {"Gaussian"};
+        double precision {0.0};
     };
 
     struct LiDAR2DConfig

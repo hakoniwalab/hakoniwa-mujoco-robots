@@ -14,6 +14,21 @@ namespace
 {
 using json = nlohmann::json;
 
+noise::NoiseType parse_noise_type(const std::string& value)
+{
+    if (value == "none" || value == "None") {
+        return noise::NoiseType::None;
+    }
+    if (value == "gaussian_quantized" ||
+        value == "GaussianQuantized" ||
+        value == "gaussian-quantized" ||
+        value == "Gaussian-Quantized")
+    {
+        return noise::NoiseType::GaussianQuantized;
+    }
+    return noise::NoiseType::Gaussian;
+}
+
 double get_json_number(const json& j, const char* key, double default_value)
 {
     if (!j.contains(key) || !j.at(key).is_number()) {
@@ -93,15 +108,31 @@ bool LiDAR2DSensor::LoadConfig(const std::string& config_path)
             }
             accuracy.distance_dependent = (type == "dependent");
             if (accuracy.distance_dependent) {
-                if (entry.contains("DistanceDepedentAccuracy")) {
+                if (entry.contains("DistanceDependentAccuracy")) {
+                    const auto& dep = entry.at("DistanceDependentAccuracy");
+                    accuracy.percentage = get_json_number(dep, "Percentage", 0.0);
+                    accuracy.noise_distribution = dep.value("NoiseDistribution", std::string("Gaussian"));
+                    accuracy.precision = get_json_number(dep, "Precision", 0.0);
+                }
+                else if (entry.contains("DistanceDepedentAccuracy")) {
                     const auto& dep = entry.at("DistanceDepedentAccuracy");
                     accuracy.percentage = get_json_number(dep, "Percentage", 0.0);
                     accuracy.noise_distribution = dep.value("NoiseDistribution", std::string("Gaussian"));
+                    accuracy.precision = get_json_number(dep, "Precision", 0.0);
                 }
-            } else if (entry.contains("DistanceIndepedentAccuracy")) {
-                const auto& indep = entry.at("DistanceIndepedentAccuracy");
-                accuracy.stddev = get_json_number(indep, "StdDev", 0.0);
-                accuracy.noise_distribution = indep.value("NoiseDistribution", std::string("Gaussian"));
+            } else {
+                if (entry.contains("DistanceIndependentAccuracy")) {
+                    const auto& indep = entry.at("DistanceIndependentAccuracy");
+                    accuracy.stddev = get_json_number(indep, "StdDev", 0.0);
+                    accuracy.noise_distribution = indep.value("NoiseDistribution", std::string("Gaussian"));
+                    accuracy.precision = get_json_number(indep, "Precision", 0.0);
+                }
+                else if (entry.contains("DistanceIndepedentAccuracy")) {
+                    const auto& indep = entry.at("DistanceIndepedentAccuracy");
+                    accuracy.stddev = get_json_number(indep, "StdDev", 0.0);
+                    accuracy.noise_distribution = indep.value("NoiseDistribution", std::string("Gaussian"));
+                    accuracy.precision = get_json_number(indep, "Precision", 0.0);
+                }
             }
             config_.distance_accuracy.push_back(std::move(accuracy));
         }
@@ -250,7 +281,8 @@ void LiDAR2DSensor::RebuildNoisePipeline()
         rule.distance_dependent = accuracy.distance_dependent;
         rule.percentage = accuracy.percentage;
         rule.noise.stddev = accuracy.stddev;
-        rule.noise.type    = noise::NoiseType::Gaussian;
+        rule.noise.precision = accuracy.precision;
+        rule.noise.type = parse_noise_type(accuracy.noise_distribution);
         noise_pipeline_.AddRule(rule);
     }
 }

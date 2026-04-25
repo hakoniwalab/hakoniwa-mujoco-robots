@@ -45,6 +45,8 @@ double GaussianNoiseModel::Apply(double value, const NoiseParams& params)
 
 double GaussianNoiseModel::ApplyRangeRule(double value, const RangeNoiseRule& rule)
 {
+    if (rule.noise.type == NoiseType::None) return value;
+
     double sigma = rule.noise.stddev;
     if (rule.distance_dependent) {
         sigma = value * (rule.percentage / 100.0);
