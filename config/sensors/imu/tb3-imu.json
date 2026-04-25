@@ -1,0 +1,11 @@
+{
+  "$schema": "../schema/imu-output.schema.json",
+  "type": "imu",
+  "name": "imu",
+  "pdu_name": "imu",
+  "frame_id": "imu_link",
+  "parent_body": "base_link",
+  "source_body": "base_link",
+  "update_rate_hz": 100.0,
+  "mode": "ground_truth"
+}

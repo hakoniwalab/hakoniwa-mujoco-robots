@@ -1,4 +1,5 @@
 {
+    "$schema": "../schema/lidar-2d.schema.json",
     "frame_id": "laser",
     "DetectionDistance": {
         "Min": 160,

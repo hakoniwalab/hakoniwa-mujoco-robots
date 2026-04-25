@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/lidar-2d.schema.json",
+  "title": "Hakoniwa 2D LiDAR sensor profile",
+  "description": "SDF-like but MJCF-resolved JSON config for 2D LiDAR profiles used by Hakoniwa MuJoCo sensors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "frame_id",
+    "DetectionDistance",
+    "DistanceAccuracy",
+    "AngleRange"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "frame_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "DetectionDistance": {
+      "$ref": "#/$defs/detectionDistance"
+    },
+    "DistanceAccuracy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/distanceAccuracy"
+      }
+    },
+    "AngleRange": {
+      "$ref": "#/$defs/angleRange"
+    },
+    "RuntimeBinding": {
+      "$ref": "#/$defs/runtimeBinding"
+    }
+  },
+  "$defs": {
+    "distanceRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Min",
+        "Max"
+      ],
+      "properties": {
+        "Min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "Max": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "detectionDistance": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/distanceRange"
+        }
+      ]
+    },
+    "independentAccuracy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "StdDev",
+        "NoiseDistribution"
+      ],
+      "properties": {
+        "StdDev": {
+          "type": "number",
+          "minimum": 0
+        },
+        "NoiseDistribution": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "dependentAccuracy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Percentage",
+        "NoiseDistribution"
+      ],
+      "properties": {
+        "Percentage": {
+          "type": "number",
+          "minimum": 0
+        },
+        "NoiseDistribution": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "distanceAccuracy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Range"
+      ],
+      "properties": {
+        "Range": {
+          "$ref": "#/$defs/distanceRange"
+        },
+        "type": {
+          "enum": [
+            "independent",
+            "dependent"
+          ]
+        },
+        "Type": {
+          "enum": [
+            "independent",
+            "dependent"
+          ]
+        },
+        "DistanceIndepedentAccuracy": {
+          "$ref": "#/$defs/independentAccuracy"
+        },
+        "DistanceDepedentAccuracy": {
+          "$ref": "#/$defs/dependentAccuracy"
+        }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "type"
+              ]
+            },
+            {
+              "required": [
+                "Type"
+              ]
+            }
+          ]
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "type": {
+                    "const": "independent"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              {
+                "properties": {
+                  "Type": {
+                    "const": "independent"
+                  }
+                },
+                "required": [
+                  "Type"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "DistanceIndepedentAccuracy"
+            ]
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "type": {
+                    "const": "dependent"
+                  }
+                },
+                "required": [
+                  "type"
+                ]
+              },
+              {
+                "properties": {
+                  "Type": {
+                    "const": "dependent"
+                  }
+                },
+                "required": [
+                  "Type"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "required": [
+              "DistanceDepedentAccuracy"
+            ]
+          }
+        }
+      ]
+    },
+    "blindPaddingRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Size",
+        "Value"
+      ],
+      "properties": {
+        "Size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "Value": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "angleRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Min",
+        "Max",
+        "AscendingOrderOfData",
+        "Resolution",
+        "ScanFrequency"
+      ],
+      "properties": {
+        "Min": {
+          "type": "number"
+        },
+        "Max": {
+          "type": "number"
+        },
+        "AscendingOrderOfData": {
+          "type": "boolean"
+        },
+        "BlindPaddingRange": {
+          "$ref": "#/$defs/blindPaddingRange"
+        },
+        "Resolution": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ScanFrequency": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "runtimeBinding": {
+      "type": "object",
+      "description": "Optional Hakoniwa runtime binding fields for MJCF-based resolution.",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "parent_body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame_id_override": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "../schema/odometry-output.schema.json",
+  "type": "odometry",
+  "name": "odom",
+  "pdu_name": "odom",
+  "frame_id": "odom",
+  "child_frame_id": "base_footprint",
+  "source_body": "base_footprint",
+  "update_rate_hz": 50.0,
+  "mode": "ground_truth"
+}

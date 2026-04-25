@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/tb3-basic-sensors.schema.json",
+  "title": "Hakoniwa TB3 basic sensor outputs",
+  "description": "SDF-like but MJCF-resolved JSON config for TurtleBot3 basic ROS-compatible sensor/state outputs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "config_style",
+    "runtime_source",
+    "model",
+    "outputs"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "config_style": {
+      "const": "hakoniwa-sdf-like"
+    },
+    "runtime_source": {
+      "const": "mjcf"
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "base_body"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_body": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "./imu-output.schema.json"
+          },
+          {
+            "$ref": "./joint-state-output.schema.json"
+          },
+          {
+            "$ref": "./odometry-output.schema.json"
+          },
+          {
+            "$ref": "./tf-output.schema.json"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/common-output.schema.json",
+  "title": "Hakoniwa common output binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "name",
+    "pdu_name",
+    "update_rate_hz"
+  ],
+  "properties": {
+    "type": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pdu_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "update_rate_hz": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
+  }
+}

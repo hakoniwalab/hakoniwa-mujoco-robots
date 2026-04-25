@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/imu-output.schema.json",
+  "title": "Hakoniwa IMU output",
+  "allOf": [
+    {
+      "$ref": "./common-output.schema.json"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "frame_id",
+        "parent_body",
+        "source_body",
+        "mode"
+      ],
+      "properties": {
+        "type": {
+          "const": "imu"
+        },
+        "frame_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent_body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "ground_truth"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "../schema/joint-state-output.schema.json",
+  "type": "joint_state",
+  "name": "joint_states",
+  "pdu_name": "joint_states",
+  "update_rate_hz": 50.0,
+  "joints": [
+    {
+      "name": "wheel_left_joint",
+      "mjcf_joint": "wheel_left_joint"
+    },
+    {
+      "name": "wheel_right_joint",
+      "mjcf_joint": "wheel_right_joint"
+    }
+  ]
+}

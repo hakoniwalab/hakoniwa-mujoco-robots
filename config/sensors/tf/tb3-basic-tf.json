@@ -1,0 +1,29 @@
+{
+  "$schema": "../schema/tf-output.schema.json",
+  "type": "tf",
+  "name": "tf",
+  "pdu_name": "tf",
+  "update_rate_hz": 50.0,
+  "transforms": [
+    {
+      "parent_frame_id": "odom",
+      "child_frame_id": "base_footprint",
+      "source_body": "base_footprint"
+    },
+    {
+      "parent_frame_id": "base_footprint",
+      "child_frame_id": "base_link",
+      "source_body": "base_link"
+    },
+    {
+      "parent_frame_id": "base_link",
+      "child_frame_id": "base_scan",
+      "source_body": "base_scan"
+    },
+    {
+      "parent_frame_id": "base_link",
+      "child_frame_id": "imu_link",
+      "source_body": "base_link"
+    }
+  ]
+}

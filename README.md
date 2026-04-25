@@ -120,9 +120,9 @@ hako-cmd start
 
 To switch LiDAR spec:
 ```bash
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-01.json
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-02.json
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/urg-04lx-ug01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/lds-01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/lds-02.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/urg-04lx-ug01.json
 ```
 
 ## Quick Start: Forklift
@@ -223,9 +223,9 @@ git submodule update --init --recursive
 
 - TurtleBot3 (switch LiDAR spec):
 ```bash
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-01.json
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-02.json
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/urg-04lx-ug01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/lds-01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/lds-02.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/urg-04lx-ug01.json
 ```
 
 ### Python samples
@@ -279,19 +279,19 @@ To avoid MuJoCo ray self / near-body interference around the LiDAR mount, the im
 
 LiDAR behavior can be switched by sensor config JSON.
 
-- `config/sensors/lds-01.json`
+- `config/sensors/lidar/lds-01.json`
   - noisy profile close to TurtleBot3 standard `LDS-01`
   - range: 0.12-3.5 m
   - scan: 5 Hz, 1.0 deg resolution
   - spec: https://emanual.robotis.com/docs/en/platform/turtlebot3/appendix_lds_01/
 
-- `config/sensors/lds-02.json`
+- `config/sensors/lidar/lds-02.json`
   - longer-range profile close to TurtleBot3 `LDS-02`
   - range: 0.16-8.0 m
   - scan: 5 Hz, 1.0 deg resolution
   - spec: https://emanual.robotis.com/docs/en/platform/turtlebot3/appendix_lds_02/
 
-- `config/sensors/urg-04lx-ug01.json`
+- `config/sensors/lidar/urg-04lx-ug01.json`
   - cleaner profile based on Hokuyo `URG-04LX-UG01`
   - range: 0.02-5.56 m
   - scan: 10 Hz, 0.3515625 deg resolution
@@ -299,9 +299,9 @@ LiDAR behavior can be switched by sensor config JSON.
 
 Switch example:
 ```bash
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-01.json
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lds-02.json
-./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/urg-04lx-ug01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/lds-01.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/lds-02.json
+./src/cmake-build/main_for_sample/tb3/tb3_sim config/sensors/lidar/urg-04lx-ug01.json
 ```
 
 This is intended to capture a practical Sim2Real point: changing sensors changes perception quality.
@@ -817,9 +817,9 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 - `src/main_for_sample/tb3/main.cpp`: TurtleBot3 sample (Hakoniwa asset / endpoint / 2D LiDAR)
 - `python/tb3_gamepad.py`: TurtleBot3 Python controller asset (PS4/DualSense)
 - `python/lidar_visualizer.py`: generic LiDAR visualizer (world view)
-- `config/sensors/lds-01.json`: TurtleBot3 LDS-01-like noisy LiDAR profile
-- `config/sensors/lds-02.json`: TurtleBot3 LDS-02-like longer-range LiDAR profile
-- `config/sensors/urg-04lx-ug01.json`: Hokuyo URG-04LX-UG01-like cleaner LiDAR profile
+- `config/sensors/lidar/lds-01.json`: TurtleBot3 LDS-01-like noisy LiDAR profile
+- `config/sensors/lidar/lds-02.json`: TurtleBot3 LDS-02-like longer-range LiDAR profile
+- `config/sensors/lidar/urg-04lx-ug01.json`: Hokuyo URG-04LX-UG01-like cleaner LiDAR profile
 
 ---
 

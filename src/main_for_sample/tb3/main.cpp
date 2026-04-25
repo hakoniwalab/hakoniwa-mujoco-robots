@@ -50,7 +50,7 @@ const std::string model_path =
 const std::string hako_config_path = (repo_root_path() / "config/tb3-pdudef-compact.json").string();
 const std::string endpoint_config_path = (repo_root_path() / "config/endpoint/tb3_sim_endpoint.json").string();
 const std::string lidar_config_path =
-    (repo_root_path() / "config/sensors/lds-02.json").string();
+    (repo_root_path() / "config/sensors/lidar/lds-02.json").string();
 
 std::string resolve_repo_path(const std::string& path)
 {
