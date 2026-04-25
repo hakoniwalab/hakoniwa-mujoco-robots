@@ -1,5 +1,9 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
+#include "physics.hpp"
 #include "sensor.hpp"
 
 namespace hako::robots::sensor
@@ -30,5 +34,26 @@ namespace hako::robots::sensor
         virtual bool LoadConfig(const std::string& config_path) = 0;
         virtual const JointStateConfig& GetConfig() const = 0;
         virtual void Build(JointStateFrame& out) = 0;
+    };
+
+    class JointStateSensor : public IJointStateSensor
+    {
+    public:
+        explicit JointStateSensor(std::shared_ptr<hako::robots::physics::IWorld> world);
+
+        bool LoadConfig(const std::string& config_path) override;
+        const JointStateConfig& GetConfig() const override;
+        void Build(JointStateFrame& out) override;
+        void Reset() override;
+        double GetUpdatePeriodSec() const override;
+        bool ShouldUpdate(double delta_sec) override;
+
+    private:
+        void ResolveJointIds();
+
+        std::shared_ptr<hako::robots::physics::IWorld> world_;
+        JointStateConfig config_ {};
+        std::vector<int> joint_ids_ {};
+        double elapsed_sec_ {0.0};
     };
 }

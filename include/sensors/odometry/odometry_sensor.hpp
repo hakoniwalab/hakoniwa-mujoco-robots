@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+
+#include "physics.hpp"
 #include "sensor.hpp"
 
 namespace hako::robots::sensor
@@ -20,6 +23,7 @@ namespace hako::robots::sensor
         Pose3D pose {};
         Twist3D twist {};
     };
+
     class IOdometryPublisher : public IStatePublisher
     {
     public:
@@ -30,8 +34,22 @@ namespace hako::robots::sensor
         virtual void Build(OdometryFrame& out) = 0;
     };
 
+    class OdometryPublisher : public IOdometryPublisher
+    {
+    public:
+        explicit OdometryPublisher(std::shared_ptr<hako::robots::physics::IWorld> world);
 
+        bool LoadConfig(const std::string& config_path) override;
+        const OdometryConfig& GetConfig() const override;
+        void Build(OdometryFrame& out) override;
+        void Reset() override;
+        double GetUpdatePeriodSec() const override;
+        bool ShouldUpdate(double delta_sec) override;
 
-
-
+    private:
+        std::shared_ptr<hako::robots::physics::IWorld> world_;
+        std::shared_ptr<hako::robots::physics::IRigidBody> source_body_;
+        OdometryConfig config_ {};
+        double elapsed_sec_ {0.0};
+    };
 }

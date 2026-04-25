@@ -22,5 +22,29 @@
     "pdu_size": 8192,
     "name": "laser_scan",
     "type": "sensor_msgs/LaserScan"
+  },
+  {
+    "channel_id": 4,
+    "pdu_size": 456,
+    "name": "imu",
+    "type": "sensor_msgs/Imu"
+  },
+  {
+    "channel_id": 5,
+    "pdu_size": 1024,
+    "name": "joint_states",
+    "type": "sensor_msgs/JointState"
+  },
+  {
+    "channel_id": 6,
+    "pdu_size": 1024,
+    "name": "odom",
+    "type": "nav_msgs/Odometry"
+  },
+  {
+    "channel_id": 7,
+    "pdu_size": 2048,
+    "name": "tf",
+    "type": "tf2_msgs/TFMessage"
   }
 ]

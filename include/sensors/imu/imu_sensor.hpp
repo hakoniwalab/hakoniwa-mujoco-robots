@@ -1,6 +1,10 @@
 #pragma once
 
+#include <memory>
+
+#include "physics.hpp"
 #include "sensor.hpp"
+#include "sensors/noise/noise.hpp"
 #include "sensors/noise/noise_config.hpp"
 
 namespace hako::robots::sensor
@@ -37,5 +41,30 @@ namespace hako::robots::sensor
         virtual bool LoadConfig(const std::string& config_path) = 0;
         virtual const ImuConfig& GetConfig() const = 0;
         virtual void Build(ImuFrame& out) = 0;
+    };
+
+    class ImuSensor : public IImuSensor
+    {
+    public:
+        explicit ImuSensor(std::shared_ptr<hako::robots::physics::IWorld> world);
+
+        bool LoadConfig(const std::string& config_path) override;
+        const ImuConfig& GetConfig() const override;
+        void Build(ImuFrame& out) override;
+        void Reset() override;
+        double GetUpdatePeriodSec() const override;
+        bool ShouldUpdate(double delta_sec) override;
+
+    private:
+        void RebuildNoisePipeline();
+
+        std::shared_ptr<hako::robots::physics::IWorld> world_;
+        std::shared_ptr<hako::robots::physics::IRigidBody> source_body_;
+        ImuConfig config_ {};
+        double elapsed_sec_ {0.0};
+        hako::robots::types::BodyVelocity prev_body_velocity_ {};
+        bool has_prev_velocity_ {false};
+        noise::AxisNoisePipeline angular_velocity_noise_;
+        noise::AxisNoisePipeline linear_acceleration_noise_;
     };
 }

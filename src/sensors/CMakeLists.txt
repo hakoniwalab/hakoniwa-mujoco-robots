@@ -2,9 +2,13 @@ cmake_minimum_required(VERSION 3.20)
 
 add_library(
     msensors
+    imu/imu_sensor.cpp
+    joint_state/joint_state_sensor.cpp
     lidar/lidar_2d_sensor.cpp
     noise/range_noise.cpp
     noise/axis_noise.cpp
+    odometry/odometry_sensor.cpp
+    tf/tf_publisher.cpp
 )
 target_compile_features(msensors PRIVATE cxx_std_20)
 
