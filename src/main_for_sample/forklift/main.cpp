@@ -144,8 +144,8 @@ private:
     PduChannel<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist> pos_;
 
 public:
-    HakoObject(const std::string& name, std::shared_ptr<hako::robots::physics::IWorld> world)
-        : obj(world, name)
+    HakoObject(const std::string& name, std::shared_ptr<hako::robots::physics::IWorld> simulation_world)
+        : obj(simulation_world, name)
         , pos_(name, "pos")
     {}
 
@@ -275,7 +275,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     return 0;
 }
 static hako_asset_callbacks_t my_callback;
-void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
+void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> simulation_world)
 {
      my_callback.on_initialize = my_on_initialize;
      my_callback.on_simulation_step = nullptr;
@@ -284,7 +284,7 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
 
 
     const char* asset_name = "forklift";
-    double simulation_timestep = world->getModel()->opt.timestep;
+    double simulation_timestep = simulation_world->getModel()->opt.timestep;
     hako_time_t delta_time_usec = static_cast<hako_time_t>(simulation_timestep * 1e6);
     hako_conductor_start(delta_time_usec, 100000);
     int ret = hako_asset_register(asset_name, config_path, &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);

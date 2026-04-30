@@ -6,17 +6,20 @@ add_executable(
     ${PROJECT_ROOT_DIR}/src/robots/tb3/tb3_robot.cpp
 )
 target_compile_features(tb3_sim PRIVATE cxx_std_20)
+hako_configure_target_warnings(tb3_sim)
 
 target_include_directories(tb3_sim
-    PRIVATE ${MUJOCO_SOURCE_DIR}
     PRIVATE ${PROJECT_ROOT_DIR}/src/mujoco-common
     PRIVATE ${PROJECT_ROOT_DIR}/src
     PRIVATE ${PROJECT_ROOT_DIR}/include
-    PRIVATE ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
     PRIVATE ${GLFW_DIR}
     PRIVATE ${HAKO_CORE_INCLUDE_BASE}
     PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
     PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
+)
+target_include_directories(tb3_sim SYSTEM PRIVATE
+    ${MUJOCO_SOURCE_DIR}
+    ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
 )
 
 target_link_libraries(tb3_sim

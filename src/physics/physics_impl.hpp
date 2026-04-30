@@ -2,10 +2,15 @@
 
 #include "physics.hpp"
 #include "actuator/actuator_impl.hpp"
+
+#include <cmath>
+#include <stdexcept>
 #include <unordered_map>
 
-namespace hako::robots::physics::impl
-{
+namespace hako {
+namespace robots {
+namespace physics {
+namespace impl {
 
     class RigidBodyImpl : public IRigidBody
     {
@@ -29,17 +34,17 @@ namespace hako::robots::physics::impl
 
         void mat2euler(const mjtNum* R, hako::robots::types::Euler& euler) {
             // R is 3x3 row-major
-            euler.y = asin(R[6]);  // pitch = asin(R20)
+            euler.y = std::asin(R[6]);  // pitch = asin(R20)
         
-            double cos_pitch = cos(euler.y);
-            if (fabs(cos_pitch) > 1e-6) {
-                euler.x = atan2(-R[7], R[8]);  // roll = atan2(-R21, R22)
-                euler.z = atan2(R[3], R[0]);   // yaw = atan2(R10, R00) ← 符号修正！
+            double cos_pitch = std::cos(euler.y);
+            if (std::fabs(cos_pitch) > 1e-6) {
+                euler.x = std::atan2(-R[7], R[8]);  // roll = atan2(-R21, R22)
+                euler.z = std::atan2(R[3], R[0]);   // yaw = atan2(R10, R00)
             }
             else {
                 // gimbal lock fallback
                 euler.x = 0;
-                euler.z = atan2(-R[1], R[4]);  // yaw fallback = atan2(-R01, R11)
+                euler.z = std::atan2(-R[1], R[4]);  // yaw fallback = atan2(-R01, R11)
             }
         }
         
@@ -48,11 +53,9 @@ namespace hako::robots::physics::impl
             const hako::robots::types::Vector3& vel,
             const hako::robots::types::Euler& angle)
         {
-            using std::cos; using std::sin;
-    
-            double c_phi   = cos(angle.x), s_phi = sin(angle.x);
-            double c_theta = cos(angle.y), s_theta = sin(angle.y);
-            double c_psi   = cos(angle.z), s_psi = sin(angle.z);
+            double c_phi   = std::cos(angle.x), s_phi = std::sin(angle.x);
+            double c_theta = std::cos(angle.y), s_theta = std::sin(angle.y);
+            double c_psi   = std::cos(angle.z), s_psi = std::sin(angle.z);
     
             double x_e = vel.x;
             double y_e = vel.y;
@@ -174,4 +177,7 @@ namespace hako::robots::physics::impl
         }
         
     };
-}
+}  // namespace impl
+}  // namespace physics
+}  // namespace robots
+}  // namespace hako

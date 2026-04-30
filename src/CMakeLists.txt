@@ -5,6 +5,19 @@ project(hakoniwa-mujoco-robots-root
     DESCRIPTION "hakoniwa-mujoco-robots project"
     LANGUAGES C CXX
 )
+
+function(hako_configure_target_warnings target_name)
+    if(MSVC)
+        target_compile_options(${target_name} PRIVATE
+            /W4
+            /external:W0
+            /wd4710
+            /wd4711
+            /wd5220
+            /wd5247
+        )
+    endif()
+endfunction()
 if (DEFINED HAKO_CMAKE_OPTION_FILEPATH)
     message(STATUS "HAKO_CMAKE_OPTION_FILEPATH=${HAKO_CMAKE_OPTION_FILEPATH}")
     include(${HAKO_CMAKE_OPTION_FILEPATH})
@@ -226,7 +239,8 @@ else()
     message(FATAL_ERROR
         "hakoniwa_pdu_endpoint package config not found.\n"
         "Checked CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
-        "Set HAKONIWA_PDU_ENDPOINT_PREFIX to the install root that contains lib/cmake/hakoniwa_pdu_endpoint."
+        "Set HAKONIWA_PDU_ENDPOINT_PREFIX to the install root that contains lib/cmake/hakoniwa_pdu_endpoint.\n"
+        "Passing a build directory such as build-win or build-shared is not supported here; run cmake --install for hakoniwa-pdu-endpoint first."
     )
 endif()
 
@@ -238,6 +252,8 @@ if(USE_VIEWER)
     find_package(glfw3 REQUIRED)
     add_library(mujoco-common STATIC mujoco-common/mujoco_viewer.cpp mujoco-common/mujoco_debug.cpp)
     target_include_directories(mujoco-common PUBLIC mujoco-common)
+    target_include_directories(mujoco-common SYSTEM PUBLIC "${MUJOCO_SOURCE_DIR}")
+    hako_configure_target_warnings(mujoco-common)
     if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         target_link_libraries(mujoco-common PUBLIC ${OpenGL_LIBRARIES} "-framework OpenGL" glfw)
     else()
@@ -247,6 +263,8 @@ else()
     MESSAGE(STATUS "MuJoCo viewer disabled")
     add_library(mujoco-common STATIC mujoco-common/mujoco_debug.cpp)
     target_include_directories(mujoco-common PUBLIC mujoco-common)
+    target_include_directories(mujoco-common SYSTEM PUBLIC "${MUJOCO_SOURCE_DIR}")
+    hako_configure_target_warnings(mujoco-common)
 endif()
 
 

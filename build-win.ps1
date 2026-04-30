@@ -34,6 +34,7 @@ function Resolve-ExistingPath {
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SourceDir = Join-Path $RepoRoot "src"
 $BuildDir = Join-Path $RepoRoot $BuildDirName
+$UseViewerValue = if ($DisableViewer) { "OFF" } else { "ON" }
 
 if ($Clean -and (Test-Path -LiteralPath $BuildDir)) {
     Write-Host "Cleaning build directory: $BuildDir"
@@ -44,7 +45,7 @@ $ConfigureArgs = @(
     "-S", $SourceDir,
     "-B", $BuildDir,
     "-G", $Generator,
-    "-DUSE_VIEWER=" + $(if ($DisableViewer) { "OFF" } else { "ON" })
+    "-DUSE_VIEWER=$UseViewerValue"
 )
 
 if (-not [string]::IsNullOrWhiteSpace($Platform)) {

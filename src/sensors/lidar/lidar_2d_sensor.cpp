@@ -10,6 +10,8 @@ namespace hako::robots::sensor::lidar
 {
 namespace
 {
+constexpr double kPi = 3.14159265358979323846;
+
 noise::NoiseType parse_noise_type(const std::string& value)
 {
     if (value == "none" || value == "None") {
@@ -157,7 +159,7 @@ float LiDAR2DSensor::CastRay(
     double base_yaw_rad,
     double degree_yaw) const
 {
-    const double local_yaw_rad = (degree_yaw + config_.yaw_bias_deg) * M_PI / 180.0;
+    const double local_yaw_rad = (degree_yaw + config_.yaw_bias_deg) * kPi / 180.0;
     const double world_yaw_rad = base_yaw_rad + local_yaw_rad;
     mjtNum dir[3] = {
         std::cos(world_yaw_rad),
@@ -293,9 +295,9 @@ void LiDAR2DSensor::Scan(LaserScanFrame& out)
     ApplyBlindPadding(ranges);
 
     out.frame_id = config_.frame_id;
-    out.angle_min = static_cast<float>(config_.angle_range.min_deg * M_PI / 180.0);
-    out.angle_max = static_cast<float>(config_.angle_range.max_deg * M_PI / 180.0);
-    out.angle_increment = static_cast<float>(config_.angle_range.resolution_deg * M_PI / 180.0);
+    out.angle_min = static_cast<float>(config_.angle_range.min_deg * kPi / 180.0);
+    out.angle_max = static_cast<float>(config_.angle_range.max_deg * kPi / 180.0);
+    out.angle_increment = static_cast<float>(config_.angle_range.resolution_deg * kPi / 180.0);
     out.scan_time = static_cast<float>(GetUpdatePeriodSec());
     out.range_min = static_cast<float>(config_.detection_distance.min);
     out.range_max = static_cast<float>(config_.detection_distance.max);

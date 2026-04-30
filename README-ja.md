@@ -200,22 +200,47 @@ git submodule update --init --recursive
 
 ### Windows (MSVC + PowerShell)
 
-Windows ですでに `hakoniwa-core-pro` と `hakoniwa-pdu-endpoint` がインストール済みであれば、`build-win.ps1` にそれぞれの install root を渡してビルドできます。
+Windows 版は、`hakoniwa-core-pro` と `hakoniwa-pdu-endpoint` を先に Windows 上で build/install してから使う前提です。
+
+前提:
+- `hakoniwa-core-pro` が `C:\project\hakoniwa-core-pro\install` のような prefix に install 済み
+- `hakoniwa-pdu-endpoint` が `C:\project\hakoniwa-pdu-endpoint\install` のような prefix に install 済み
+- `vcpkg` の Windows package が `C:\project\vcpkg\installed\x64-windows` に入っている
+- 可能なら Windows PowerShell から直接ビルドする
+
+PowerShell:
 
 ```powershell
 .\build-win.ps1 -Clean `
-  -BuildDirName build-win `
   -HakoniwaCoreRoot C:\project\hakoniwa-core-pro\install `
   -HakoniwaPduEndpointRoot C:\project\hakoniwa-pdu-endpoint\install `
-  -ExtraPrefixPaths C:\project\vcpkg\installed\x64-windows `
-  -ToolchainFile C:\project\vcpkg\scripts\buildsystems\vcpkg.cmake
+  -ExtraPrefixPaths C:\project\vcpkg\installed\x64-windows
+```
+
+WSL / Git Bash ラッパー:
+
+```bash
+./build-win.bash
 ```
 
 メモ:
 - 既存の Unix ビルドと同じく、`-S src` を使って configure します。
 - `HakoniwaCoreRoot` は `HAKONIWA_INSTALL_PREFIX` に渡されます。
 - `HakoniwaPduEndpointRoot` は `HAKONIWA_PDU_ENDPOINT_PREFIX` に渡されます。
-- `ExtraPrefixPaths` は任意で、`glfw3` などの追加 package 探索に使えます。
+- `ExtraPrefixPaths` は、`glfw3` や `hakoniwa_pdu_endpoint` の依存解決に使います。
+- `HakoniwaPduEndpointRoot` には `build-win` や `build-shared` ではなく、`cmake --install` 済みの install root を指定してください。`hakoniwa-pdu-endpoint` の build tree 直下にある `hakoniwa_pdu_endpointConfig.cmake` は、このリポジトリからそのままは使えません。
+- `hakoniwa-pdu-endpoint` を自分で build した場合は、先に install tree を作ってください:
+
+```powershell
+cmake --install C:\project\hakoniwa-pdu-endpoint\build-win --config Release --prefix C:\project\hakoniwa-pdu-endpoint\install
+```
+
+- 成功時は `build-win/Release/mujoco-common.lib` が生成されます。
+- 成功時は `build-win/sensors/Release/msensors.lib` が生成されます。
+- 成功時は `build-win/main_for_sample/forklift/Release/forklift_sim.exe` が生成されます。
+- 成功時は `build-win/main_for_sample/forklift/Release/forklift_unit_sim.exe` が生成されます。
+- 成功時は `build-win/main_for_sample/tb3/Release/tb3_sim.exe` が生成されます。
+- `forklift_simulation_loop.obj: Permission denied` が出る場合はコードではなく Windows のファイルロックです。`MSBuild.exe`、`cl.exe`、`devenv.exe` を閉じて再ビルドしてください。
 
 ---
 

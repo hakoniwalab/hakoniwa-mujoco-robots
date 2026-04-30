@@ -2,7 +2,8 @@
 
 #include "physics.hpp"
 
-namespace hako::robots {
+namespace hako {
+namespace robots {
     class PhysicsObject {
     protected:
         std::shared_ptr<hako::robots::physics::IRigidBody> base;
@@ -37,4 +38,5 @@ namespace hako::robots {
             return base->GetBodyAngularVelocity();
         }
     };
-}
+}  // namespace robots
+}  // namespace hako

@@ -204,22 +204,47 @@ git submodule update --init --recursive
 
 ### Windows (MSVC + PowerShell)
 
-If `hakoniwa-core-pro` and `hakoniwa-pdu-endpoint` are already installed on Windows, pass their install roots to `build-win.ps1`.
+The Windows build is intended to run after `hakoniwa-core-pro` and `hakoniwa-pdu-endpoint` have already been built and installed on Windows.
+
+Prerequisites:
+- `hakoniwa-core-pro` is installed under a prefix such as `C:\project\hakoniwa-core-pro\install`
+- `hakoniwa-pdu-endpoint` is installed under a prefix such as `C:\project\hakoniwa-pdu-endpoint\install`
+- `vcpkg` packages for Windows are available under `C:\project\vcpkg\installed\x64-windows`
+- Run the build from Windows PowerShell when possible
+
+PowerShell:
 
 ```powershell
 .\build-win.ps1 -Clean `
-  -BuildDirName build-win `
   -HakoniwaCoreRoot C:\project\hakoniwa-core-pro\install `
   -HakoniwaPduEndpointRoot C:\project\hakoniwa-pdu-endpoint\install `
-  -ExtraPrefixPaths C:\project\vcpkg\installed\x64-windows `
-  -ToolchainFile C:\project\vcpkg\scripts\buildsystems\vcpkg.cmake
+  -ExtraPrefixPaths C:\project\vcpkg\installed\x64-windows
+```
+
+WSL / Git Bash wrapper:
+
+```bash
+./build-win.bash
 ```
 
 Notes:
 - The script configures with `-S src`, matching the existing Unix build layout.
 - `HakoniwaCoreRoot` is forwarded to `HAKONIWA_INSTALL_PREFIX`.
 - `HakoniwaPduEndpointRoot` is forwarded to `HAKONIWA_PDU_ENDPOINT_PREFIX`.
-- `ExtraPrefixPaths` is optional and can be used for packages such as `glfw3`.
+- `ExtraPrefixPaths` is used to resolve Windows packages such as `glfw3` and transitive dependencies required by `hakoniwa_pdu_endpoint`.
+- `HakoniwaPduEndpointRoot` must point to an installed prefix created by `cmake --install`, not a build directory such as `build-win` or `build-shared`. The `hakoniwa_pdu_endpointConfig.cmake` generated in the build tree is not directly consumable by this project.
+- If you build `hakoniwa-pdu-endpoint` yourself, install it first:
+
+```powershell
+cmake --install C:\project\hakoniwa-pdu-endpoint\build-win --config Release --prefix C:\project\hakoniwa-pdu-endpoint\install
+```
+
+- Successful outputs are generated under `build-win/Release/mujoco-common.lib`.
+- Successful outputs are generated under `build-win/sensors/Release/msensors.lib`.
+- Successful outputs are generated under `build-win/main_for_sample/forklift/Release/forklift_sim.exe`.
+- Successful outputs are generated under `build-win/main_for_sample/forklift/Release/forklift_unit_sim.exe`.
+- Successful outputs are generated under `build-win/main_for_sample/tb3/Release/tb3_sim.exe`.
+- If Windows reports `forklift_simulation_loop.obj: Permission denied`, that is a file lock issue, not a source code issue. Close `MSBuild.exe`, `cl.exe`, or `devenv.exe` and rebuild.
 
 ## Detailed Run Commands
 

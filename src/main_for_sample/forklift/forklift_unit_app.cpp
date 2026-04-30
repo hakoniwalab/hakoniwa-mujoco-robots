@@ -57,7 +57,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
 static hako_asset_callbacks_t my_callback;
 
-void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
+void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> simulation_world)
 {
     my_callback.on_initialize = my_on_initialize;
     my_callback.on_simulation_step = nullptr;
@@ -68,7 +68,7 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> world)
     const std::string config_path_env = get_env_string("HAKO_ASSET_CONFIG_PATH", config_path);
     const bool rd_lite_enabled = RdLightIntegration::is_enabled_from_env();
     const bool rd_lite_initial_owner = RdLightIntegration::is_initial_owner_from_env();
-    double simulation_timestep = world->getModel()->opt.timestep;
+    double simulation_timestep = simulation_world->getModel()->opt.timestep;
     hako_time_t delta_time_usec = static_cast<hako_time_t>(simulation_timestep * 1e6);
     if (!rd_lite_enabled || rd_lite_initial_owner) {
         hako_conductor_start(delta_time_usec, 100000);

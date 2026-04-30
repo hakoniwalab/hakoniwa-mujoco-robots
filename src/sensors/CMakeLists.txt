@@ -11,17 +11,20 @@ add_library(
     tf/tf_publisher.cpp
 )
 target_compile_features(msensors PRIVATE cxx_std_20)
+hako_configure_target_warnings(msensors)
 
 target_include_directories(msensors
-    PRIVATE ${MUJOCO_SOURCE_DIR}
     PRIVATE ${PROJECT_ROOT_DIR}/src/mujoco-common
     PRIVATE ${PROJECT_ROOT_DIR}/src
     PRIVATE ${PROJECT_ROOT_DIR}/include
-    PRIVATE ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
     PRIVATE ${GLFW_DIR}
     PRIVATE ${HAKO_CORE_INCLUDE_BASE}
     PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
     PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
+)
+target_include_directories(msensors SYSTEM PRIVATE
+    ${MUJOCO_SOURCE_DIR}
+    ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
 )
 
 target_link_libraries(msensors

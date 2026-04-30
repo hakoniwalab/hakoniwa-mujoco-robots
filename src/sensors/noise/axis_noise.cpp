@@ -2,8 +2,11 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace hako::robots::sensor::noise
-{
+namespace hako {
+namespace robots {
+namespace sensor {
+namespace noise {
+
     std::unique_ptr<INoiseModel> CreateNoiseModel(NoiseType type, double dt_sec)
     {
         switch (type) {
@@ -15,6 +18,20 @@ namespace hako::robots::sensor::noise
         default:
             throw std::invalid_argument("Unknown NoiseType");
         }
+    }
+
+    double PassthroughNoiseModel::Apply(double value, const NoiseParams&)
+    {
+        return value;
+    }
+
+    double PassthroughNoiseModel::ApplyRangeRule(double value, const RangeNoiseRule&)
+    {
+        return value;
+    }
+
+    void PassthroughNoiseModel::Reset()
+    {
     }
 
     double GaussianNoiseModel::UpdateDynamicBias(const NoiseParams& params)
@@ -68,4 +85,7 @@ namespace hako::robots::sensor::noise
         model_z_->Reset();
     }
 
-} // namespace hako::robots::sensor::noise
+}  // namespace noise
+}  // namespace sensor
+}  // namespace robots
+}  // namespace hako

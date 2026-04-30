@@ -2,14 +2,18 @@
 
 #include <algorithm>
 
-namespace hako::robots::sensor::noise
-{
+namespace hako {
+namespace robots {
+namespace sensor {
+namespace noise {
+
 void GaussianNoiseModel::Reset()
 {
     current_bias_     = 0.0;
     static_bias_      = 0.0;
     bias_initialized_ = false;
 }
+
 GaussianNoiseModel::GaussianNoiseModel(double dt_sec)
     : dt_(dt_sec), current_bias_(0.0)
 {
@@ -79,4 +83,7 @@ void RangeNoisePipeline::AddRule(const RangeNoiseRule& rule)
     rules_.push_back(rule);
 }
 
-}
+}  // namespace noise
+}  // namespace sensor
+}  // namespace robots
+}  // namespace hako

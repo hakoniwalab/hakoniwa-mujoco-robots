@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cmath>
+#include <string>
+
 #include <mujoco/mujoco.h>
 #include <sstream>
 #include <iomanip>

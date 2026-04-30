@@ -4,6 +4,8 @@ add_executable(
     forklift_sim 
     main.cpp
 )
+target_compile_features(forklift_sim PRIVATE cxx_std_20)
+hako_configure_target_warnings(forklift_sim)
 
 add_executable(
     forklift_unit_sim
@@ -16,11 +18,12 @@ add_executable(
     forklift_pdu_runtime.cpp
     forklift_simulation_loop.cpp
 )
+target_compile_features(forklift_unit_sim PRIVATE cxx_std_20)
+hako_configure_target_warnings(forklift_unit_sim)
 
 #MESSAGE(STATUS "CMAKE_SOURCE_DIR: " ${CMAKE_SOURCE_DIR})
 
 target_include_directories(forklift_sim 
-    PRIVATE ${MUJOCO_SOURCE_DIR}
     PRIVATE ${PROJECT_ROOT_DIR}/src/mujoco-common
     PRIVATE ${PROJECT_ROOT_DIR}/src
     PRIVATE ${PROJECT_ROOT_DIR}/include
@@ -29,6 +32,7 @@ target_include_directories(forklift_sim
     PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
     PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
     )
+target_include_directories(forklift_sim SYSTEM PRIVATE ${MUJOCO_SOURCE_DIR})
 
 # MuJoCoライブラリをリンク
 target_link_libraries(forklift_sim 
@@ -40,7 +44,6 @@ target_link_libraries(forklift_sim
 target_compile_definitions(forklift_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)
 
 target_include_directories(forklift_unit_sim
-    PRIVATE ${MUJOCO_SOURCE_DIR}
     PRIVATE ${PROJECT_ROOT_DIR}/src/mujoco-common
     PRIVATE ${PROJECT_ROOT_DIR}/src
     PRIVATE ${PROJECT_ROOT_DIR}/include
@@ -49,6 +52,7 @@ target_include_directories(forklift_unit_sim
     PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
     PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
     )
+target_include_directories(forklift_unit_sim SYSTEM PRIVATE ${MUJOCO_SOURCE_DIR})
 
 target_link_libraries(forklift_unit_sim
     ${LIBMUJOCO}
