@@ -31,3 +31,4 @@ target_link_libraries(tb3_sim
     ${HAKO_PDU_ENDPOINT_LINK_TARGET}
 )
 target_compile_definitions(tb3_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)
+hako_configure_windows_runtime(tb3_sim)

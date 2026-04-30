@@ -240,6 +240,7 @@ cmake --install C:\project\hakoniwa-pdu-endpoint\build-win --config Release --pr
 - 成功時は `build-win/main_for_sample/forklift/Release/forklift_sim.exe` が生成されます。
 - 成功時は `build-win/main_for_sample/forklift/Release/forklift_unit_sim.exe` が生成されます。
 - 成功時は `build-win/main_for_sample/tb3/Release/tb3_sim.exe` が生成されます。
+- Windows では、`hakoniwa_pdu_endpoint.dll` などの実行時 DLL を build 後に各 `.exe` の隣へコピーします。
 - `forklift_simulation_loop.obj: Permission denied` が出る場合はコードではなく Windows のファイルロックです。`MSBuild.exe`、`cl.exe`、`devenv.exe` を閉じて再ビルドしてください。
 
 ---
@@ -307,6 +308,10 @@ python python/lidar_visualizer.py
 ## TurtleBot3 2D LiDAR
 
 TurtleBot3 Burger サンプルには、MuJoCo ベースの 2D LiDAR 実装が含まれます。
+
+注記:
+- `models/tb3/turtlebot3_burger_world.xml` は現在、外部 mesh ではなく body / wheel / LiDAR housing を primitive geom で表現しています。
+- これは Windows 実行時に、環境依存の絶対 mesh パスでモデルロードが失敗するのを避けるためです。
 
 - 360 度 raycast
 - 選択した sensor profile に基づく scan frame 生成

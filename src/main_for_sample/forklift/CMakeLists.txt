@@ -42,6 +42,7 @@ target_link_libraries(forklift_sim
     ${HAKO_CONDUCTOR_LINK_TARGET}
 )
 target_compile_definitions(forklift_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)
+hako_configure_windows_runtime(forklift_sim)
 
 target_include_directories(forklift_unit_sim
     PRIVATE ${PROJECT_ROOT_DIR}/src/mujoco-common
@@ -61,3 +62,4 @@ target_link_libraries(forklift_unit_sim
     ${HAKO_CONDUCTOR_LINK_TARGET}
 )
 target_compile_definitions(forklift_unit_sim PRIVATE USE_VIEWER=$<BOOL:${USE_VIEWER}>)
+hako_configure_windows_runtime(forklift_unit_sim)
