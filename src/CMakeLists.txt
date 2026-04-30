@@ -15,7 +15,26 @@ else()
 endif()
 
 set(PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}/..")
-set(HAKONIWA_INSTALL_PREFIX "/usr/local/hakoniwa" CACHE PATH "Install prefix of hakoniwa-core-pro")
+
+set(_hako_default_core_prefix "/usr/local/hakoniwa")
+set(_hako_default_endpoint_prefix "")
+if(WIN32)
+    if(DEFINED ENV{HAKONIWA_CORE_ROOT} AND NOT "$ENV{HAKONIWA_CORE_ROOT}" STREQUAL "")
+        set(_hako_default_core_prefix "$ENV{HAKONIWA_CORE_ROOT}")
+    elseif(EXISTS "${PROJECT_ROOT_DIR}/../hakoniwa-core-pro/install")
+        set(_hako_default_core_prefix "${PROJECT_ROOT_DIR}/../hakoniwa-core-pro/install")
+    endif()
+
+    if(DEFINED ENV{HAKONIWA_PDU_ENDPOINT_ROOT} AND NOT "$ENV{HAKONIWA_PDU_ENDPOINT_ROOT}" STREQUAL "")
+        set(_hako_default_endpoint_prefix "$ENV{HAKONIWA_PDU_ENDPOINT_ROOT}")
+    elseif(EXISTS "${PROJECT_ROOT_DIR}/../hakoniwa-pdu-endpoint/install")
+        set(_hako_default_endpoint_prefix "${PROJECT_ROOT_DIR}/../hakoniwa-pdu-endpoint/install")
+    endif()
+endif()
+
+set(HAKONIWA_INSTALL_PREFIX "${_hako_default_core_prefix}" CACHE PATH "Install prefix of hakoniwa-core-pro")
+set(HAKONIWA_PDU_ENDPOINT_PREFIX "${_hako_default_endpoint_prefix}" CACHE PATH "Install prefix of hakoniwa-pdu-endpoint")
+set(HAKONIWA_EXTRA_PREFIX_PATH "" CACHE STRING "Additional semicolon-separated prefixes for CMake package discovery")
 
 option(USE_MUJOCO "Enable MuJoCo support" ON)
 if(USE_MUJOCO)
@@ -166,7 +185,27 @@ set(HAKO_CORE_INCLUDE_BASE "${HAKONIWA_INSTALL_PREFIX}/include")
 set(HAKO_PDU_TYPES_INCLUDE_DIR "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa/pdu")
 set(HAKO_CORE_LIBRARY_DIR "${HAKONIWA_INSTALL_PREFIX}/lib")
 
-list(APPEND CMAKE_PREFIX_PATH "${HAKONIWA_INSTALL_PREFIX}")
+set(_hako_package_prefixes "")
+foreach(_prefix IN ITEMS "${HAKONIWA_INSTALL_PREFIX}" "${HAKONIWA_PDU_ENDPOINT_PREFIX}")
+    if(NOT "${_prefix}" STREQUAL "")
+        list(APPEND _hako_package_prefixes "${_prefix}")
+    endif()
+endforeach()
+if(NOT "${HAKONIWA_EXTRA_PREFIX_PATH}" STREQUAL "")
+    list(APPEND _hako_package_prefixes ${HAKONIWA_EXTRA_PREFIX_PATH})
+endif()
+
+list(APPEND CMAKE_PREFIX_PATH ${_hako_package_prefixes})
+list(REMOVE_DUPLICATES CMAKE_PREFIX_PATH)
+
+message(STATUS "Hakoniwa core prefix: ${HAKONIWA_INSTALL_PREFIX}")
+if(NOT "${HAKONIWA_PDU_ENDPOINT_PREFIX}" STREQUAL "")
+    message(STATUS "Hakoniwa PDU endpoint prefix: ${HAKONIWA_PDU_ENDPOINT_PREFIX}")
+endif()
+if(NOT "${HAKONIWA_EXTRA_PREFIX_PATH}" STREQUAL "")
+    message(STATUS "Hakoniwa extra prefix path: ${HAKONIWA_EXTRA_PREFIX_PATH}")
+endif()
+
 find_package(hakoniwa-core CONFIG QUIET)
 find_package(hakoniwa_pdu_endpoint CONFIG QUIET)
 if(hakoniwa-core_FOUND)
@@ -184,7 +223,11 @@ endif()
 if(hakoniwa_pdu_endpoint_FOUND)
     set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
 else()
-    message(FATAL_ERROR "hakoniwa_pdu_endpoint package config not found under ${HAKONIWA_INSTALL_PREFIX}")
+    message(FATAL_ERROR
+        "hakoniwa_pdu_endpoint package config not found.\n"
+        "Checked CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
+        "Set HAKONIWA_PDU_ENDPOINT_PREFIX to the install root that contains lib/cmake/hakoniwa_pdu_endpoint."
+    )
 endif()
 
 option(USE_VIEWER "Enable MuJoCo viewer" ON)

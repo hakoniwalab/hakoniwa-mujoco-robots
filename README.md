@@ -202,6 +202,25 @@ git submodule update --init --recursive
 ./build.bash clean
 ```
 
+### Windows (MSVC + PowerShell)
+
+If `hakoniwa-core-pro` and `hakoniwa-pdu-endpoint` are already installed on Windows, pass their install roots to `build-win.ps1`.
+
+```powershell
+.\build-win.ps1 -Clean `
+  -BuildDirName build-win `
+  -HakoniwaCoreRoot C:\project\hakoniwa-core-pro\install `
+  -HakoniwaPduEndpointRoot C:\project\hakoniwa-pdu-endpoint\install `
+  -ExtraPrefixPaths C:\project\vcpkg\installed\x64-windows `
+  -ToolchainFile C:\project\vcpkg\scripts\buildsystems\vcpkg.cmake
+```
+
+Notes:
+- The script configures with `-S src`, matching the existing Unix build layout.
+- `HakoniwaCoreRoot` is forwarded to `HAKONIWA_INSTALL_PREFIX`.
+- `HakoniwaPduEndpointRoot` is forwarded to `HAKONIWA_PDU_ENDPOINT_PREFIX`.
+- `ExtraPrefixPaths` is optional and can be used for packages such as `glfw3`.
+
 ## Detailed Run Commands
 
 ### C++ samples
