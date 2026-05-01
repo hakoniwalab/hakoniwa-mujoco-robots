@@ -20,6 +20,7 @@ target_include_directories(tb3_sim
 target_include_directories(tb3_sim SYSTEM PRIVATE
     ${MUJOCO_SOURCE_DIR}
     ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
+    ${PROJECT_ROOT_DIR}/thirdparty/hakoniwa-core-pro/hakoniwa-pdu-registry/pdu/types
 )
 
 target_link_libraries(tb3_sim

@@ -246,6 +246,25 @@ cmake --install C:\project\hakoniwa-pdu-endpoint\build-win --config Release --pr
 - Successful outputs are generated under `build-win/main_for_sample/tb3/Release/tb3_sim.exe`.
 - On Windows, runtime DLLs such as `hakoniwa_pdu_endpoint.dll` are copied next to each `.exe` after build.
 - If Windows reports `forklift_simulation_loop.obj: Permission denied`, that is a file lock issue, not a source code issue. Close `MSBuild.exe`, `cl.exe`, or `devenv.exe` and rebuild.
+- The Python endpoint binding is built separately from the C++ samples. For `python/tb3_gamepad.py`, build the vendored `thirdparty/hakoniwa-pdu-endpoint` Python runtime with Hakoniwa core support enabled:
+
+```powershell
+cd .\thirdparty\hakoniwa-pdu-endpoint
+.\build-python-win.ps1 `
+  -Clean `
+  -BuildNative `
+  -BuildFfi `
+  -EnableHakoniwaCore `
+  -HakoniwaCoreRoot C:\project\hakoniwa-core-pro\install `
+  -BuildDirName build-win `
+  -Configuration Release `
+  -PythonCommand python `
+  -ToolchainFile C:\project\vcpkg\scripts\buildsystems\vcpkg.cmake `
+  -VcpkgTriplet x64-windows `
+  -Platform x64
+```
+
+- `python/tb3_gamepad.py` prefers the vendored Python package under `thirdparty/hakoniwa-pdu-endpoint/python`, so it will use the locally built runtime instead of a stale site-packages installation when both are present.
 
 ## Detailed Run Commands
 

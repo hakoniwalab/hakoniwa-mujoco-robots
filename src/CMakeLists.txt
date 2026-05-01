@@ -19,14 +19,107 @@ function(hako_configure_target_warnings target_name)
     endif()
 endfunction()
 
+function(hako_define_windows_mujoco_target)
+    if(NOT WIN32 OR NOT USE_MUJOCO)
+        return()
+    endif()
+    if(TARGET MuJoCo::mujoco)
+        return()
+    endif()
+
+    if(MUJOCO_ROOT)
+        set(_hako_mujoco_base_dir "${MUJOCO_ROOT}")
+    else()
+        set(_hako_mujoco_base_dir "${mujoco_precompiled_SOURCE_DIR}")
+    endif()
+
+    set(_hako_mujoco_include_dir "${_hako_mujoco_base_dir}/include")
+    set(_hako_mujoco_import_lib "${_hako_mujoco_base_dir}/lib/mujoco.lib")
+    set(_hako_mujoco_runtime_dll "${_hako_mujoco_base_dir}/bin/mujoco.dll")
+
+    if(NOT EXISTS "${_hako_mujoco_include_dir}/mujoco/mujoco.h")
+        message(FATAL_ERROR "MuJoCo headers not found: ${_hako_mujoco_include_dir}/mujoco/mujoco.h")
+    endif()
+    if(NOT EXISTS "${_hako_mujoco_import_lib}")
+        message(FATAL_ERROR "MuJoCo import library not found: ${_hako_mujoco_import_lib}")
+    endif()
+    if(NOT EXISTS "${_hako_mujoco_runtime_dll}")
+        message(FATAL_ERROR "MuJoCo runtime DLL not found: ${_hako_mujoco_runtime_dll}")
+    endif()
+
+    add_library(MuJoCo::mujoco SHARED IMPORTED GLOBAL)
+    set_target_properties(MuJoCo::mujoco PROPERTIES
+        IMPORTED_IMPLIB "${_hako_mujoco_import_lib}"
+        IMPORTED_LOCATION "${_hako_mujoco_runtime_dll}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_hako_mujoco_include_dir}"
+    )
+
+    set(MUJOCO_SOURCE_DIR "${_hako_mujoco_include_dir}" PARENT_SCOPE)
+    set(MUJOCO_LIB_DIR "${_hako_mujoco_base_dir}/lib" PARENT_SCOPE)
+    set(MUJOCO_RUNTIME_DLL "${_hako_mujoco_runtime_dll}" PARENT_SCOPE)
+    set(LIBMUJOCO "MuJoCo::mujoco" PARENT_SCOPE)
+endfunction()
+
 function(hako_configure_windows_runtime target_name)
     if(WIN32)
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                $<TARGET_RUNTIME_DLLS:${target_name}>
-                $<TARGET_FILE_DIR:${target_name}>
-            COMMAND_EXPAND_LISTS
-        )
+        set(_hako_runtime_dlls "")
+        set(_hako_runtime_target_files "")
+        if(NOT HAKO_USE_THIRDPARTY_HAKONIWA)
+            if(EXISTS "${HAKONIWA_INSTALL_PREFIX}/bin")
+                file(GLOB _hako_core_runtime_dlls "${HAKONIWA_INSTALL_PREFIX}/bin/*.dll")
+                list(APPEND _hako_runtime_dlls ${_hako_core_runtime_dlls})
+            endif()
+            if(EXISTS "${HAKONIWA_PDU_ENDPOINT_PREFIX}/bin")
+                file(GLOB _hako_endpoint_runtime_dlls "${HAKONIWA_PDU_ENDPOINT_PREFIX}/bin/*.dll")
+                list(APPEND _hako_runtime_dlls ${_hako_endpoint_runtime_dlls})
+            endif()
+        endif()
+        if(TARGET MuJoCo::mujoco)
+            list(APPEND _hako_runtime_target_files "$<TARGET_FILE:MuJoCo::mujoco>")
+        endif()
+        list(REMOVE_DUPLICATES _hako_runtime_dlls)
+        list(REMOVE_DUPLICATES _hako_runtime_target_files)
+        if(_hako_runtime_dlls AND _hako_runtime_target_files)
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:${target_name}>
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${_hako_runtime_target_files}
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${_hako_runtime_dlls}
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND_EXPAND_LISTS
+            )
+        elseif(_hako_runtime_dlls)
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:${target_name}>
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${_hako_runtime_dlls}
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND_EXPAND_LISTS
+            )
+        elseif(_hako_runtime_target_files)
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:${target_name}>
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${_hako_runtime_target_files}
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND_EXPAND_LISTS
+            )
+        else()
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_RUNTIME_DLLS:${target_name}>
+                    $<TARGET_FILE_DIR:${target_name}>
+                COMMAND_EXPAND_LISTS
+            )
+        endif()
     endif()
 endfunction()
 if (DEFINED HAKO_CMAKE_OPTION_FILEPATH)
@@ -39,6 +132,8 @@ else()
 endif()
 
 set(PROJECT_ROOT_DIR "${PROJECT_SOURCE_DIR}/..")
+set(HAKO_THIRDPARTY_DIR "${PROJECT_ROOT_DIR}/thirdparty")
+option(HAKO_USE_THIRDPARTY_HAKONIWA "Build against vendored Hakoniwa core/PDU endpoint under thirdparty/" OFF)
 
 set(_hako_default_core_prefix "/usr/local/hakoniwa")
 set(_hako_default_endpoint_prefix "")
@@ -59,6 +154,7 @@ endif()
 set(HAKONIWA_INSTALL_PREFIX "${_hako_default_core_prefix}" CACHE PATH "Install prefix of hakoniwa-core-pro")
 set(HAKONIWA_PDU_ENDPOINT_PREFIX "${_hako_default_endpoint_prefix}" CACHE PATH "Install prefix of hakoniwa-pdu-endpoint")
 set(HAKONIWA_EXTRA_PREFIX_PATH "" CACHE STRING "Additional semicolon-separated prefixes for CMake package discovery")
+set(MUJOCO_ROOT "" CACHE PATH "Manual MuJoCo root containing include/, lib/mujoco.lib, and bin/mujoco.dll")
 
 option(USE_MUJOCO "Enable MuJoCo support" ON)
 if(USE_MUJOCO)
@@ -97,24 +193,34 @@ if(USE_MUJOCO)
             endif()
         endif()
 
-        set(MUJOCO_PACKAGE_PATH "mujoco-${MUJOCO_VERSION}-${MUJOCO_PLATFORM}-${MUJOCO_ARCH}.${MUJOCO_EXT}")
-        set(MUJOCO_PACKAGE_URL_VTAG "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_RELEASE_TAG}/${MUJOCO_PACKAGE_PATH}")
-        set(MUJOCO_PACKAGE_URL_PLAIN "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/${MUJOCO_PACKAGE_PATH}")
-        message(STATUS "Attempting to download MuJoCo package: ${MUJOCO_PACKAGE_URL_VTAG}")
+        if(WIN32 AND MUJOCO_ROOT)
+            set(MUJOCO_SOURCE_DIR "${MUJOCO_ROOT}/include")
+            set(MUJOCO_LIB_DIR "${MUJOCO_ROOT}/lib")
+            hako_define_windows_mujoco_target()
+        else()
+            set(MUJOCO_PACKAGE_PATH "mujoco-${MUJOCO_VERSION}-${MUJOCO_PLATFORM}-${MUJOCO_ARCH}.${MUJOCO_EXT}")
+            set(MUJOCO_PACKAGE_URL_VTAG "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_RELEASE_TAG}/${MUJOCO_PACKAGE_PATH}")
+            set(MUJOCO_PACKAGE_URL_PLAIN "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/${MUJOCO_PACKAGE_PATH}")
+            message(STATUS "Attempting to download MuJoCo package: ${MUJOCO_PACKAGE_URL_VTAG}")
 
-        FetchContent_Declare(
-            mujoco_precompiled
-            URL "${MUJOCO_PACKAGE_URL_VTAG}" "${MUJOCO_PACKAGE_URL_PLAIN}"
-            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        )
-        FetchContent_MakeAvailable(mujoco_precompiled)
-        FetchContent_GetProperties(mujoco_precompiled)
-        if(NOT mujoco_precompiled_POPULATED)
-            FetchContent_Populate(mujoco_precompiled)
+            FetchContent_Declare(
+                mujoco_precompiled
+                URL "${MUJOCO_PACKAGE_URL_VTAG}" "${MUJOCO_PACKAGE_URL_PLAIN}"
+                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            )
+            FetchContent_MakeAvailable(mujoco_precompiled)
+            FetchContent_GetProperties(mujoco_precompiled)
+            if(NOT mujoco_precompiled_POPULATED)
+                FetchContent_Populate(mujoco_precompiled)
+            endif()
+            set(MUJOCO_SOURCE_DIR "${mujoco_precompiled_SOURCE_DIR}/include")
+            set(MUJOCO_LIB_DIR "${mujoco_precompiled_SOURCE_DIR}/lib")
+            if(WIN32)
+                hako_define_windows_mujoco_target()
+            else()
+                set(LIBMUJOCO "mujoco")
+            endif()
         endif()
-        set(MUJOCO_SOURCE_DIR "${mujoco_precompiled_SOURCE_DIR}/include")
-        set(MUJOCO_LIB_DIR "${mujoco_precompiled_SOURCE_DIR}/lib")
-        set(LIBMUJOCO "mujoco")
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         # macOS releases are published as DMG, so we download and copy include/lib.
         set(MUJOCO_PACKAGE_PATH "mujoco-${MUJOCO_VERSION}-macos-universal2.dmg")
@@ -198,61 +304,102 @@ if(USE_MUJOCO)
     endif()
 
     include_directories("${MUJOCO_SOURCE_DIR}")
-    link_directories("${MUJOCO_LIB_DIR}")
+    if(NOT WIN32)
+        link_directories("${MUJOCO_LIB_DIR}")
+    endif()
     message(STATUS "MuJoCo v${MUJOCO_VERSION} downloaded and configured.")
 else()
     message(STATUS "MuJoCo disabled: Using simple physics model")
 endif()
 
-set(HAKO_CORE_INCLUDE_ROOT "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa")
-set(HAKO_CORE_INCLUDE_BASE "${HAKONIWA_INSTALL_PREFIX}/include")
-set(HAKO_PDU_TYPES_INCLUDE_DIR "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa/pdu")
-set(HAKO_CORE_LIBRARY_DIR "${HAKONIWA_INSTALL_PREFIX}/lib")
-
-set(_hako_package_prefixes "")
-foreach(_prefix IN ITEMS "${HAKONIWA_INSTALL_PREFIX}" "${HAKONIWA_PDU_ENDPOINT_PREFIX}")
-    if(NOT "${_prefix}" STREQUAL "")
-        list(APPEND _hako_package_prefixes "${_prefix}")
+if(HAKO_USE_THIRDPARTY_HAKONIWA)
+    set(HAKO_THIRDPARTY_CORE_DIR "${HAKO_THIRDPARTY_DIR}/hakoniwa-core-pro")
+    set(HAKO_THIRDPARTY_PDU_ENDPOINT_DIR "${HAKO_THIRDPARTY_DIR}/hakoniwa-pdu-endpoint")
+    if(NOT EXISTS "${HAKO_THIRDPARTY_CORE_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR "Vendored hakoniwa-core-pro not found: ${HAKO_THIRDPARTY_CORE_DIR}")
     endif()
-endforeach()
-if(NOT "${HAKONIWA_EXTRA_PREFIX_PATH}" STREQUAL "")
-    list(APPEND _hako_package_prefixes ${HAKONIWA_EXTRA_PREFIX_PATH})
-endif()
+    if(NOT EXISTS "${HAKO_THIRDPARTY_PDU_ENDPOINT_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR "Vendored hakoniwa-pdu-endpoint not found: ${HAKO_THIRDPARTY_PDU_ENDPOINT_DIR}")
+    endif()
 
-list(APPEND CMAKE_PREFIX_PATH ${_hako_package_prefixes})
-list(REMOVE_DUPLICATES CMAKE_PREFIX_PATH)
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries instead of static libraries" FORCE)
+    if(WIN32)
+        set(HAKO_CLIENT_OPTION_FILEPATH "${HAKO_THIRDPARTY_CORE_DIR}/cmake-options/win-cmake-options.cmake" CACHE FILEPATH "" FORCE)
+    endif()
+    set(HAKO_CORE_PRO_BUILD_COMMAND OFF CACHE BOOL "" FORCE)
+    set(HAKO_CORE_PRO_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(HAKO_CORE_PRO_BUILD_PYTHON_BINDINGS OFF CACHE BOOL "" FORCE)
+    set(HAKO_ENABLE_GTEST OFF CACHE BOOL "" FORCE)
+    set(HAKO_PDU_ENDPOINT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(HAKO_PDU_ENDPOINT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(HAKO_PDU_ENDPOINT_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+    set(HAKO_PDU_ENDPOINT_ENABLE_HAKONIWA_CORE ON CACHE BOOL "" FORCE)
+    set(HAKO_PDU_ENDPOINT_HAKONIWA_CORE_SOURCE_DIR "${HAKO_THIRDPARTY_CORE_DIR}" CACHE PATH "" FORCE)
+    if(EXISTS "${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include/nlohmann/json.hpp")
+        set(HAKO_LOCAL_NLOHMANN_JSON_ROOT "${PROJECT_ROOT_DIR}/thirdparty/nolman" CACHE PATH "" FORCE)
+    endif()
 
-message(STATUS "Hakoniwa core prefix: ${HAKONIWA_INSTALL_PREFIX}")
-if(NOT "${HAKONIWA_PDU_ENDPOINT_PREFIX}" STREQUAL "")
-    message(STATUS "Hakoniwa PDU endpoint prefix: ${HAKONIWA_PDU_ENDPOINT_PREFIX}")
-endif()
-if(NOT "${HAKONIWA_EXTRA_PREFIX_PATH}" STREQUAL "")
-    message(STATUS "Hakoniwa extra prefix path: ${HAKONIWA_EXTRA_PREFIX_PATH}")
-endif()
+    add_subdirectory("${HAKO_THIRDPARTY_CORE_DIR}" "${CMAKE_BINARY_DIR}/thirdparty/hakoniwa-core-pro" EXCLUDE_FROM_ALL)
+    add_subdirectory("${HAKO_THIRDPARTY_PDU_ENDPOINT_DIR}" "${CMAKE_BINARY_DIR}/thirdparty/hakoniwa-pdu-endpoint" EXCLUDE_FROM_ALL)
 
-find_package(hakoniwa-core CONFIG QUIET)
-find_package(hakoniwa_pdu_endpoint CONFIG QUIET)
-if(hakoniwa-core_FOUND)
-    message(STATUS "Using installed hakoniwa-core package: ${HAKONIWA_INSTALL_PREFIX}")
-    set(HAKO_ASSETS_LINK_TARGET hakoniwa-core::assets)
-    set(HAKO_CONDUCTOR_LINK_TARGET hakoniwa-core::conductor)
-else()
-    message(STATUS "hakoniwa-core package config not found. Falling back to direct library search in ${HAKO_CORE_LIBRARY_DIR}")
-    find_library(HAKO_ASSETS_LIB NAMES assets PATHS "${HAKO_CORE_LIBRARY_DIR}" REQUIRED NO_DEFAULT_PATH)
-    find_library(HAKO_CONDUCTOR_LIB NAMES conductor PATHS "${HAKO_CORE_LIBRARY_DIR}" REQUIRED NO_DEFAULT_PATH)
-    set(HAKO_ASSETS_LINK_TARGET "${HAKO_ASSETS_LIB}")
-    set(HAKO_CONDUCTOR_LINK_TARGET "${HAKO_CONDUCTOR_LIB}")
-endif()
-
-if(hakoniwa_pdu_endpoint_FOUND)
+    set(HAKO_CORE_INCLUDE_ROOT "${HAKO_THIRDPARTY_CORE_DIR}/include/hakoniwa")
+    set(HAKO_CORE_INCLUDE_BASE "${HAKO_THIRDPARTY_CORE_DIR}/include")
+    set(HAKO_PDU_TYPES_INCLUDE_DIR "${HAKO_THIRDPARTY_CORE_DIR}/hakoniwa-pdu-registry/pdu/types")
+    set(HAKO_ASSETS_LINK_TARGET assets)
+    set(HAKO_CONDUCTOR_LINK_TARGET conductor)
     set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
+    message(STATUS "Using vendored Hakoniwa targets from thirdparty/")
 else()
-    message(FATAL_ERROR
-        "hakoniwa_pdu_endpoint package config not found.\n"
-        "Checked CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
-        "Set HAKONIWA_PDU_ENDPOINT_PREFIX to the install root that contains lib/cmake/hakoniwa_pdu_endpoint.\n"
-        "Passing a build directory such as build-win or build-shared is not supported here; run cmake --install for hakoniwa-pdu-endpoint first."
-    )
+    set(HAKO_CORE_INCLUDE_ROOT "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa")
+    set(HAKO_CORE_INCLUDE_BASE "${HAKONIWA_INSTALL_PREFIX}/include")
+    set(HAKO_PDU_TYPES_INCLUDE_DIR "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa/pdu")
+    set(HAKO_CORE_LIBRARY_DIR "${HAKONIWA_INSTALL_PREFIX}/lib")
+
+    set(_hako_package_prefixes "")
+    foreach(_prefix IN ITEMS "${HAKONIWA_INSTALL_PREFIX}" "${HAKONIWA_PDU_ENDPOINT_PREFIX}")
+        if(NOT "${_prefix}" STREQUAL "")
+            list(APPEND _hako_package_prefixes "${_prefix}")
+        endif()
+    endforeach()
+    if(NOT "${HAKONIWA_EXTRA_PREFIX_PATH}" STREQUAL "")
+        list(APPEND _hako_package_prefixes ${HAKONIWA_EXTRA_PREFIX_PATH})
+    endif()
+
+    list(APPEND CMAKE_PREFIX_PATH ${_hako_package_prefixes})
+    list(REMOVE_DUPLICATES CMAKE_PREFIX_PATH)
+
+    message(STATUS "Hakoniwa core prefix: ${HAKONIWA_INSTALL_PREFIX}")
+    if(NOT "${HAKONIWA_PDU_ENDPOINT_PREFIX}" STREQUAL "")
+        message(STATUS "Hakoniwa PDU endpoint prefix: ${HAKONIWA_PDU_ENDPOINT_PREFIX}")
+    endif()
+    if(NOT "${HAKONIWA_EXTRA_PREFIX_PATH}" STREQUAL "")
+        message(STATUS "Hakoniwa extra prefix path: ${HAKONIWA_EXTRA_PREFIX_PATH}")
+    endif()
+
+    find_package(hakoniwa-core CONFIG QUIET)
+    find_package(hakoniwa_pdu_endpoint CONFIG QUIET)
+    if(hakoniwa-core_FOUND)
+        message(STATUS "Using installed hakoniwa-core package: ${HAKONIWA_INSTALL_PREFIX}")
+        set(HAKO_ASSETS_LINK_TARGET hakoniwa-core::assets)
+        set(HAKO_CONDUCTOR_LINK_TARGET hakoniwa-core::conductor)
+    else()
+        message(STATUS "hakoniwa-core package config not found. Falling back to direct library search in ${HAKO_CORE_LIBRARY_DIR}")
+        find_library(HAKO_ASSETS_LIB NAMES assets PATHS "${HAKO_CORE_LIBRARY_DIR}" REQUIRED NO_DEFAULT_PATH)
+        find_library(HAKO_CONDUCTOR_LIB NAMES conductor PATHS "${HAKO_CORE_LIBRARY_DIR}" REQUIRED NO_DEFAULT_PATH)
+        set(HAKO_ASSETS_LINK_TARGET "${HAKO_ASSETS_LIB}")
+        set(HAKO_CONDUCTOR_LINK_TARGET "${HAKO_CONDUCTOR_LIB}")
+    endif()
+
+    if(hakoniwa_pdu_endpoint_FOUND)
+        set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
+    else()
+        message(FATAL_ERROR
+            "hakoniwa_pdu_endpoint package config not found.\n"
+            "Checked CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
+            "Set HAKONIWA_PDU_ENDPOINT_PREFIX to the install root that contains lib/cmake/hakoniwa_pdu_endpoint.\n"
+            "Passing a build directory such as build-win or build-shared is not supported here; run cmake --install for hakoniwa-pdu-endpoint first."
+        )
+    endif()
 endif()
 
 option(USE_VIEWER "Enable MuJoCo viewer" ON)

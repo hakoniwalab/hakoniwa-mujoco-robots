@@ -24,22 +24,22 @@
 #include "hako_asset.h"
 #include "hako_conductor.h"
 #include "hakoniwa/pdu/endpoint.hpp"
-#include "hakoniwa/pdu/hako_msgs/pdu_cpptype_GameControllerOperation.hpp"
-#include "hakoniwa/pdu/hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
-#include "hakoniwa/pdu/nav_msgs/pdu_cpptype_Odometry.hpp"
-#include "hakoniwa/pdu/nav_msgs/pdu_cpptype_conv_Odometry.hpp"
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_Imu.hpp"
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_JointState.hpp"
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_LaserScan.hpp"
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_conv_Imu.hpp"
+#include "hako_msgs/pdu_cpptype_GameControllerOperation.hpp"
+#include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
+#include "nav_msgs/pdu_cpptype_Odometry.hpp"
+#include "nav_msgs/pdu_cpptype_conv_Odometry.hpp"
+#include "sensor_msgs/pdu_cpptype_Imu.hpp"
+#include "sensor_msgs/pdu_cpptype_JointState.hpp"
+#include "sensor_msgs/pdu_cpptype_LaserScan.hpp"
+#include "sensor_msgs/pdu_cpptype_conv_Imu.hpp"
 #define hako_convert_pdu2cpp_array_string_varray hako_convert_pdu2ros_array_string_varray
 #define hako_convert_cpp2pdu_array_string_varray hako_convert_ros2pdu_array_string_varray
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_conv_JointState.hpp"
+#include "sensor_msgs/pdu_cpptype_conv_JointState.hpp"
 #undef hako_convert_pdu2cpp_array_string_varray
 #undef hako_convert_cpp2pdu_array_string_varray
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_conv_LaserScan.hpp"
-#include "hakoniwa/pdu/tf2_msgs/pdu_cpptype_TFMessage.hpp"
-#include "hakoniwa/pdu/tf2_msgs/pdu_cpptype_conv_TFMessage.hpp"
+#include "sensor_msgs/pdu_cpptype_conv_LaserScan.hpp"
+#include "tf2_msgs/pdu_cpptype_TFMessage.hpp"
+#include "tf2_msgs/pdu_cpptype_conv_TFMessage.hpp"
 #include "hakoniwa/pdu/type_endpoint.hpp"
 #include "physics/physics_impl.hpp"
 #include "robots/tb3/tb3_robot.hpp"
@@ -158,6 +158,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
     endpoint.start();
     endpoint.post_start();
+    std::cout << "[INFO] TB3 endpoint started successfully." << std::endl;
 
     hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist>
         base_pos_ep(endpoint, base_pos_key);
@@ -211,30 +212,39 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 if (gamepad_conv.pdu2cpp(reinterpret_cast<char*>(gamepad_buf.data()), latest)) {
                     command_state.gamepad = latest;
                     command_state.has_input = true;
+                    #if 0
+                    std::cout << "[DEBUG] Gamepad axis: ";
+                    for (size_t i = 0; i < latest.axis.size(); ++i) {
+                        std::cout << latest.axis[i] << (i < latest.axis.size() - 1 ? ", " : "");
+                    }
+                    std::cout << "; buttons: ";
+                    for (size_t i = 0; i < latest.button.size(); ++i) {
+                        std::cout << latest.button[i] << (i < latest.button.size() - 1 ? ", " : "");
+                    }
+                    std::cout << std::endl;
+                    #endif
                 } else {
                     hako_asset_usleep(delta_time_usec * 1000);
                     std::this_thread::sleep_for(std::chrono::duration<double>(1));
                     continue;
                 }
             }
-
             // --- 制御 ---
             tb3.ApplyCommand(command_state.gamepad, command_state.has_input);
             tb3.Step();
-
             // --- base_link_pos 送信（1ms周期） ---
             HakoCpp_Twist base_pos {};
             tb3.FillBasePose(base_pos);
             (void)base_pos_ep.send(base_pos);
 
             const double sim_time_sec = static_cast<double>(hako_asset_simulation_time()) / 1.0e6;
-
             if (tb3.MaybeBuildImu(sim_timestep, sim_time_sec, imu)) {
                 (void)imu_ep.send(imu);
             }
             if (tb3.MaybeBuildJointState(sim_timestep, sim_time_sec, joint_state)) {
                 (void)joint_state_ep.send(joint_state);
             }
+
             if (tb3.MaybeBuildOdometry(sim_timestep, sim_time_sec, odom)) {
                 (void)odom_ep.send(odom);
             }
@@ -260,11 +270,19 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         }
 
         hako_asset_usleep(delta_time_usec);
-        auto end = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        const double sleep_time = sim_timestep - elapsed.count();
-        if (sleep_time > 0.0) {
-            std::this_thread::sleep_for(std::chrono::duration<double>(sleep_time));
+        { // keep real-time pacing at 20ms for each 20ms of simulated time
+            static uint64_t previous_time = 0;
+            const uint64_t current_time = static_cast<uint64_t>(hako_asset_simulation_time());
+            const uint64_t time_diff = current_time - previous_time;
+            if (time_diff >= 20 * 1000) {
+                auto end = std::chrono::steady_clock::now();
+                const auto elapsed = end - start;
+                const auto target = std::chrono::milliseconds(20);
+                if (elapsed < target) {
+                    std::this_thread::sleep_for(target - elapsed);
+                }
+                previous_time = current_time;
+            }
         }
     }
 

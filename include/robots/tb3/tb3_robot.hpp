@@ -4,12 +4,12 @@
 #include <string>
 
 #include "geometry_msgs/pdu_cpptype_Twist.hpp"
-#include "hakoniwa/pdu/hako_msgs/pdu_cpptype_GameControllerOperation.hpp"
-#include "hakoniwa/pdu/nav_msgs/pdu_cpptype_Odometry.hpp"
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_Imu.hpp"
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_JointState.hpp"
-#include "hakoniwa/pdu/sensor_msgs/pdu_cpptype_LaserScan.hpp"
-#include "hakoniwa/pdu/tf2_msgs/pdu_cpptype_TFMessage.hpp"
+#include "hako_msgs/pdu_cpptype_GameControllerOperation.hpp"
+#include "nav_msgs/pdu_cpptype_Odometry.hpp"
+#include "sensor_msgs/pdu_cpptype_Imu.hpp"
+#include "sensor_msgs/pdu_cpptype_JointState.hpp"
+#include "sensor_msgs/pdu_cpptype_LaserScan.hpp"
+#include "tf2_msgs/pdu_cpptype_TFMessage.hpp"
 #include "physics.hpp"
 #include "sensors/imu/imu_sensor.hpp"
 #include "sensors/joint_state/joint_state_sensor.hpp"

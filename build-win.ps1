@@ -6,11 +6,13 @@ param(
     [string]$Platform = "x64",
     [string]$Configuration = "Release",
     [string]$ToolchainFile = "",
+    [string]$MuJoCoRoot = "",
     [string]$HakoniwaCoreRoot = "",
     [string]$HakoniwaPduEndpointRoot = "",
     [string[]]$ExtraPrefixPaths = @(),
     [string]$Glfw3Dir = "",
     [switch]$DisableViewer,
+    [switch]$UseThirdpartyHakoniwa,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$AdditionalCMakeArgs
 )
@@ -48,6 +50,10 @@ $ConfigureArgs = @(
     "-DUSE_VIEWER=$UseViewerValue"
 )
 
+if ($UseThirdpartyHakoniwa) {
+    $ConfigureArgs += "-DHAKO_USE_THIRDPARTY_HAKONIWA=ON"
+}
+
 if (-not [string]::IsNullOrWhiteSpace($Platform)) {
     $ConfigureArgs += @("-A", $Platform)
 }
@@ -55,6 +61,11 @@ if (-not [string]::IsNullOrWhiteSpace($Platform)) {
 if (-not [string]::IsNullOrWhiteSpace($ToolchainFile)) {
     $ResolvedToolchain = Resolve-ExistingPath -PathValue $ToolchainFile -Label "Toolchain file"
     $ConfigureArgs += "-DCMAKE_TOOLCHAIN_FILE=$ResolvedToolchain"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($MuJoCoRoot)) {
+    $ResolvedMuJoCoRoot = Resolve-ExistingPath -PathValue $MuJoCoRoot -Label "MuJoCo root"
+    $ConfigureArgs += "-DMUJOCO_ROOT=$ResolvedMuJoCoRoot"
 }
 
 $PrefixList = New-Object System.Collections.Generic.List[string]

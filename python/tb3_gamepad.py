@@ -7,13 +7,14 @@ from pathlib import Path
 
 import hakopy
 import pygame
+import time
 
 from rc_utils.rc_utils import RcConfig, StickMonitor
 from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_conv_GameControllerOperation import py_to_pdu_GameControllerOperation
 from hakoniwa_pdu.pdu_msgs.hako_msgs.pdu_pytype_GameControllerOperation import GameControllerOperation
-from hakoniwa_pdu_endpoint.c_endpoint import Endpoint, PduKey
+from hakoniwa_pdu.impl.shm_communication_service import ShmCommunicationService
+from hakoniwa_pdu.pdu_manager import PduManager
 
-DEFAULT_ENDPOINT_CONFIG = "config/endpoint/tb3_gamepad_endpoint.json"
 DEFAULT_RC_CONFIG = "python/rc_config/ps4-control.json"
 DEFAULT_ASSET_NAME = "tb3_gamepad"
 TARGET_KEYWORDS = ["Wireless Controller"]
@@ -24,10 +25,10 @@ STEP_USEC = 20000
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-_endpoint = None
 _joystick = None
 _stick_monitor = None
 _gamepad = None
+pdu_manager = None
 
 
 def select_joystick():
@@ -85,12 +86,6 @@ def update_gamepad_state():
 
 
 def my_on_initialize(_context):
-    try:
-        _endpoint.post_start()
-        print("TB3_GAMEPAD_ENDPOINT_POST_START_OK")
-    except Exception as exc:
-        print(f"TB3_GAMEPAD_ENDPOINT_POST_START_FAILED:{exc}")
-        return -1
     return 0
 
 
@@ -100,18 +95,21 @@ def my_on_reset(_context):
 
 
 def my_on_manual_timing_control(_context):
-    key = PduKey(robot="TB3", pdu="hako_cmd_game")
+    global pdu_manager
+    robot="TB3"
+    pdu = "hako_cmd_game"
 
     while True:
+        pdu_manager.run_nowait()
         update_gamepad_state()
-        payload = bytes(py_to_pdu_GameControllerOperation(_gamepad))
+        payload = py_to_pdu_GameControllerOperation(_gamepad)
         try:
-            _endpoint.send_by_name(key, payload)
+            #print(f"gamepad axis: {_gamepad.axis}, button: {_gamepad.button}")
+            pdu_manager.flush_pdu_raw_data_nowait(robot, pdu, payload)
         except Exception as exc:
             print(f"TB3_GAMEPAD_WRITE_FAILED:{exc}")
-        result = hakopy.usleep(STEP_USEC)
-        if not result:
-            break
+        
+        time.sleep(STEP_USEC / 1.0e6)
     return 0
 
 
@@ -124,21 +122,17 @@ MY_CALLBACK = {
 
 
 def main() -> int:
-    global _endpoint, _joystick, _stick_monitor, _gamepad
+    global pdu_manager, _joystick, _stick_monitor, _gamepad
 
-    endpoint_config_path = sys.argv[1] if len(sys.argv) >= 2 else os.getenv("TB3_ENDPOINT_CONFIG", DEFAULT_ENDPOINT_CONFIG)
+    pdu_config_path = sys.argv[1] if len(sys.argv) >= 2 else os.getenv("PDU_CONFIG_PATH", "config/tb3-pdudef-compact.json")
     rc_config_path = sys.argv[2] if len(sys.argv) >= 3 else os.getenv("RC_CONFIG_PATH", DEFAULT_RC_CONFIG)
     asset_name = sys.argv[3] if len(sys.argv) >= 4 else os.getenv("TB3_GAMEPAD_ASSET_NAME", DEFAULT_ASSET_NAME)
 
-    endpoint_config_path = str((REPO_ROOT / endpoint_config_path).resolve()) if not os.path.isabs(endpoint_config_path) else endpoint_config_path
     rc_config_path = str((REPO_ROOT / rc_config_path).resolve()) if not os.path.isabs(rc_config_path) else rc_config_path
 
-    if not os.path.exists(endpoint_config_path):
-        print(f"[ERROR] Endpoint config file not found at '{endpoint_config_path}'")
-        return 1
-    if not os.path.exists(rc_config_path):
-        print(f"[ERROR] RC config file not found at '{rc_config_path}'")
-        return 1
+    pdu_manager = PduManager()
+    pdu_manager.initialize(config_path=pdu_config_path, comm_service=ShmCommunicationService())
+    pdu_manager.start_service_nowait()
 
     pygame.init()
     pygame.joystick.init()
@@ -152,51 +146,15 @@ def main() -> int:
     _stick_monitor = StickMonitor(RcConfig(rc_config_path))
     _gamepad = build_empty_gamepad()
 
-    with open(endpoint_config_path, "r", encoding="utf-8") as f:
-        ep_config = json.load(f)
-    pdu_def_relpath = ep_config.get("pdu_def_path")
-    if pdu_def_relpath is None:
-        print("TB3_GAMEPAD_NO_PDU_CONFIG_PATH")
-        return 1
-    pdu_config_path = str((Path(endpoint_config_path).parent / pdu_def_relpath).resolve())
 
-    _endpoint = Endpoint("tb3_gamepad_endpoint", "inout")
-    try:
-        _endpoint.open(endpoint_config_path)
-        _endpoint.start()
-        print("TB3_GAMEPAD_ENDPOINT_READY")
-    except Exception as exc:
-        print(f"TB3_GAMEPAD_ENDPOINT_OPEN_FAILED:{exc}")
-        return 1
-
-    ret = hakopy.asset_register(
-        asset_name,
-        pdu_config_path,
-        MY_CALLBACK,
-        STEP_USEC,
-        hakopy.HAKO_ASSET_MODEL_CONTROLLER,
-    )
+    ret = hakopy.init_for_external()
     if ret is False:
         print("TB3_GAMEPAD_REGISTER_FAILED")
         return 1
 
     try:
-        ret = hakopy.start()
-        print(f"TB3_GAMEPAD_START_RETURN:{ret}")
+        my_on_manual_timing_control(None)  # 直接呼び出してループを開始
     finally:
-        try:
-            zero = build_empty_gamepad()
-            _endpoint.send_by_name(PduKey(robot="TB3", pdu="hako_cmd_game"), bytes(py_to_pdu_GameControllerOperation(zero)))
-        except Exception:
-            pass
-        try:
-            _endpoint.stop()
-        except Exception:
-            pass
-        try:
-            _endpoint.close()
-        except Exception:
-            pass
         pygame.joystick.quit()
         pygame.quit()
 

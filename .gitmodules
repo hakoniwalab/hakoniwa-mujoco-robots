@@ -7,3 +7,5 @@
 [submodule "thirdparty/hakoniwa-mbody-registry"]
 	path = thirdparty/hakoniwa-mbody-registry
 	url = https://github.com/hakoniwalab/hakoniwa-mbody-registry.git
+[submodule "thirdparty/hakoniwa-pdu-endpoint"]
+	path = thirdparty/hakoniwa-pdu-endpoint
