@@ -1,0 +1,10 @@
+# Python dependencies for Hakoniwa MuJoCo robot Python tools on Windows.
+# Note:
+# - hakopy, hakoniwa_pdu, and generated PDU Python modules are local Hakoniwa packages.
+#   They should be provided via PYTHONPATH or installed from the Hakoniwa repositories.
+# - rc_utils is also a local project module in this repository.
+
+numpy
+matplotlib
+PyQt5
+pygame

@@ -674,7 +674,7 @@ class Tb3StateWindow(QMainWindow):
 
 
 def main() -> int:
-    config_path = sys.argv[1] if len(sys.argv) >= 2 else os.getenv("HAKO_CONFIG_PATH", DEFAULT_CONFIG)
+    config_path = sys.argv[1] if len(sys.argv) >= 2 else os.getenv("HAKO_PDU_CONFIG_PATH", DEFAULT_CONFIG)
     robot_name = sys.argv[2] if len(sys.argv) >= 3 else os.getenv("HAKO_TB3_STATE_ROBOT_NAME", DEFAULT_ROBOT)
 
     config_path = str((REPO_ROOT / config_path).resolve()) if not os.path.isabs(config_path) else config_path

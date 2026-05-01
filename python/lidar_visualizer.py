@@ -30,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POINT_SIZE = 4.0
 DEFAULT_LOCAL_VIEW_SIZE = 1.0
 DEFAULT_FOLLOW_GAIN = 0.08
+DEFAULT_DEBUG_INTERVAL_SEC = 1.0
 
 
 def _to_float_list(values):
@@ -44,6 +45,13 @@ def _get_env_float(name: str, default_value: float) -> float:
     value = os.getenv(name)
     if value is None or value == "":
         return default_value
+
+
+def _get_env_bool(name: str, default_value: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default_value
+    return value.strip().lower() in {"1", "true", "yes", "on"}
     try:
         return float(value)
     except ValueError:
@@ -74,6 +82,10 @@ class LiDARWindow(QMainWindow):
         self.min_plot_range = _get_env_float("LIDAR_MIN_PLOT_RANGE", 1.0)
         self.point_size = _get_env_float("LIDAR_POINT_SIZE", DEFAULT_POINT_SIZE)
         self.local_view_size = _get_env_float("LIDAR_LOCAL_VIEW_SIZE", DEFAULT_LOCAL_VIEW_SIZE)
+        self.debug_enabled = _get_env_bool("HAKO_LIDAR_DEBUG", False)
+        self.debug_interval_sec = max(_get_env_float("HAKO_LIDAR_DEBUG_INTERVAL", DEFAULT_DEBUG_INTERVAL_SEC), 0.1)
+        self._last_debug_at = 0.0
+        self._update_count = 0
 
         self.setWindowTitle(f"{robot_name} LiDAR")
         self.setGeometry(50, 50, 800, 800)
@@ -90,6 +102,15 @@ class LiDARWindow(QMainWindow):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_plot)
         self.timer.start(50)
+
+    def _debug(self, message: str):
+        if not self.debug_enabled:
+            return
+        now = time.time()
+        if (now - self._last_debug_at) < self.debug_interval_sec:
+            return
+        self._last_debug_at = now
+        print(f"[LIDAR] {message}", flush=True)
 
     def shutdown(self):
         if self._shutdown_done:
@@ -114,10 +135,12 @@ class LiDARWindow(QMainWindow):
     def _read_pose(self):
         raw_pose = self.pdu_manager.read_pdu_raw_data(self.robot_name, self.pose_pdu_name)
         if raw_pose is None:
+            self._debug(f"pose raw data is None: robot={self.robot_name} pdu={self.pose_pdu_name}")
             return None
         try:
             pose = pdu_to_py_Twist(raw_pose)
-        except Exception:
+        except Exception as exc:
+            self._debug(f"pose decode failed: robot={self.robot_name} pdu={self.pose_pdu_name} error={exc}")
             return None
         return float(pose.linear.x), float(pose.linear.y), float(pose.angular.z)
 
@@ -129,23 +152,37 @@ class LiDARWindow(QMainWindow):
     def update_plot(self):
         if self._closing or self.pdu_manager is None:
             return
+        self._update_count += 1
 
         try:
             self.pdu_manager.run_nowait()
             raw_scan = self.pdu_manager.read_pdu_raw_data(self.robot_name, self.scan_pdu_name)
-        except Exception:
+        except Exception as exc:
+            self._debug(f"run/read failed: robot={self.robot_name} scan_pdu={self.scan_pdu_name} error={exc}")
             return
 
         if raw_scan is None:
+            self._debug(
+                f"scan raw data is None: robot={self.robot_name} scan_pdu={self.scan_pdu_name} "
+                f"pose_pdu={self.pose_pdu_name} updates={self._update_count}"
+            )
             return
 
         try:
             scan = pdu_to_py_LaserScan(raw_scan)
-        except Exception:
+        except Exception as exc:
+            self._debug(
+                f"scan decode failed: robot={self.robot_name} scan_pdu={self.scan_pdu_name} "
+                f"raw_len={len(raw_scan)} error={exc}"
+            )
             return
 
         ranges = np.array(_to_float_list(scan.ranges), dtype=np.float32)
         if ranges.size == 0:
+            self._debug(
+                f"scan ranges empty: robot={self.robot_name} scan_pdu={self.scan_pdu_name} "
+                f"raw_len={len(raw_scan)} angle_min={scan.angle_min} angle_increment={scan.angle_increment}"
+            )
             return
 
         pose = self._read_pose()
@@ -190,6 +227,14 @@ class LiDARWindow(QMainWindow):
             self.last_hit_x = world_x
             self.last_hit_y = world_y
             self.last_hit_time = time.time()
+        else:
+            self._debug(
+                f"no visible hits: robot={self.robot_name} scan_pdu={self.scan_pdu_name} "
+                f"ranges={ranges.size} valid_ranges={int(np.count_nonzero(valid))} "
+                f"view_center=({self.view_center_x:.3f},{self.view_center_y:.3f}) "
+                f"sensor=({sensor_x:.3f},{sensor_y:.3f},{sensor_yaw:.3f}) "
+                f"window={self.local_view_size:.3f}"
+            )
 
         self.ax.cla()
         self.ax.set_xlim(self.view_center_x - half_view, self.view_center_x + half_view)
@@ -250,12 +295,12 @@ class LiDARWindow(QMainWindow):
 
 
 def main() -> int:
-    config_path = sys.argv[1] if len(sys.argv) >= 2 else os.getenv("HAKO_CONFIG_PATH", DEFAULT_CONFIG)
+    config_path = sys.argv[1] if len(sys.argv) >= 2 else os.getenv("HAKO_PDU_CONFIG_PATH", DEFAULT_CONFIG)
     robot_name = sys.argv[2] if len(sys.argv) >= 3 else os.getenv("HAKO_LIDAR_ROBOT_NAME", DEFAULT_ROBOT)
     scan_pdu_name = sys.argv[3] if len(sys.argv) >= 4 else os.getenv("HAKO_LIDAR_SCAN_PDU_NAME", DEFAULT_SCAN_PDU)
     pose_pdu_name = sys.argv[4] if len(sys.argv) >= 5 else os.getenv("HAKO_LIDAR_POSE_PDU_NAME", DEFAULT_POSE_PDU)
     config_path = str((REPO_ROOT / config_path).resolve()) if not os.path.isabs(config_path) else config_path
-
+    print("config_path:", config_path)
     if not os.path.exists(config_path):
         print(f"[ERROR] Config file not found at '{config_path}'")
         return 1
@@ -263,6 +308,13 @@ def main() -> int:
     pdu_manager = PduManager()
     pdu_manager.initialize(config_path=config_path, comm_service=ShmCommunicationService())
     pdu_manager.start_service_nowait()
+
+    if _get_env_bool("HAKO_LIDAR_DEBUG", False):
+        print(
+            "[LIDAR] startup "
+            f"config={config_path} robot={robot_name} scan_pdu={scan_pdu_name} pose_pdu={pose_pdu_name}",
+            flush=True,
+        )
 
     if not hakopy.init_for_external():
         print("[ERROR] hakopy.init_for_external() failed")
