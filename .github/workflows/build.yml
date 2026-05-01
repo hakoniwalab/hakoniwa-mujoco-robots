@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-unix:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglfw3-dev libboost-all-dev ninja-build
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install glfw boost ninja
+
+      - name: Configure
+        shell: bash
+        run: |
+          CMAKE_PREFIX_ARGS=()
+          if [[ "${RUNNER_OS}" == "macOS" ]]; then
+            CMAKE_PREFIX_ARGS+=("-DCMAKE_PREFIX_PATH=$(brew --prefix glfw);$(brew --prefix boost)")
+          fi
+          cmake -S src -B build-ci -G Ninja \
+            -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
+            -DUSE_VIEWER=ON \
+            "${CMAKE_PREFIX_ARGS[@]}"
+
+      - name: Build
+        run: cmake --build build-ci --parallel
+
+  build-windows:
+    name: Build (windows-latest)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC developer command prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Bootstrap vcpkg
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git $env:RUNNER_TEMP\vcpkg
+          & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat"
+          & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" install glfw3:x64-windows boost-asio:x64-windows boost-beast:x64-windows
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          .\build-win.ps1 `
+            -Clean `
+            -UseThirdpartyHakoniwa `
+            -ExtraPrefixPaths "$env:RUNNER_TEMP\vcpkg\installed\x64-windows" `
+            -ToolchainFile "$env:RUNNER_TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake"
