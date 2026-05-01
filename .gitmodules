@@ -9,3 +9,4 @@
 	url = https://github.com/hakoniwalab/hakoniwa-mbody-registry.git
 [submodule "thirdparty/hakoniwa-pdu-endpoint"]
 	path = thirdparty/hakoniwa-pdu-endpoint
+	url = https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git
