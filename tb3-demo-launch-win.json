@@ -27,7 +27,7 @@
     },
     {
       "name": "gamepad",
-      "activation_timing": "after_start",
+      "activation_timing": "before_start",
       "command": "python",
       "args": [
         "python/tb3_gamepad.py"
@@ -36,7 +36,7 @@
     },
     {
       "name": "lidar",
-      "activation_timing": "after_start",
+      "activation_timing": "before_start",
       "command": "python",
       "args": [
         "python/tb3_lidar_visualizer.py"
@@ -45,7 +45,7 @@
     },
     {
       "name": "state_visualizer",
-      "activation_timing": "after_start",
+      "activation_timing": "before_start",
       "command": "python",
       "args": [
         "python/tb3_state_visualizer.py"
