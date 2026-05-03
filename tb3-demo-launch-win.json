@@ -17,7 +17,7 @@
     {
       "name": "tb3_sim",
       "activation_timing": "before_start",
-      "command": ".\\tb3_bin\\tb3_sim.exe ",
+      "command": ".\\tb3_bin-win\\tb3_sim.exe ",
       "args": [
         "config/sensors/lidar/lds-01.json"
       ],
