@@ -332,6 +332,7 @@ int main(int argc, const char* argv[])
     world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
     try {
         world->loadModel(model_path);
+        std::cout << "[INFO] TB3 model loaded successfully from: " << model_path << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Failed to load TB3 model: " << e.what() << std::endl;
         std::cerr << "Please check if the model file exists at: " << model_path << std::endl;
