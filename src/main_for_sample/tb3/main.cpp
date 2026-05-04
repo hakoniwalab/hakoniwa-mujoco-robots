@@ -53,10 +53,13 @@ using hako::robots::tb3::Tb3RuntimeConfig;
 
 std::filesystem::path repo_root_path()
 {
-    const auto source_path = std::filesystem::path(__FILE__).lexically_normal();
-    return source_path.parent_path().parent_path().parent_path().parent_path();
-}
+    const char* env = std::getenv("HAKO_TB3_ROOT");
+    if (env != nullptr && env[0] != '\0') {
+        return std::filesystem::path(env).lexically_normal();
+    }
 
+    return std::filesystem::current_path().lexically_normal();
+}
 const std::string model_path =
     (repo_root_path() / "models/tb3/turtlebot3_burger_world.xml").string();
 const std::string hako_config_path = (repo_root_path() / "config/tb3-pdudef-compact.json").string();
