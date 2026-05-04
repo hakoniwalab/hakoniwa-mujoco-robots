@@ -334,6 +334,7 @@ int main(int argc, const char* argv[])
         world->loadModel(model_path);
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Failed to load TB3 model: " << e.what() << std::endl;
+        std::cerr << "Please check if the model file exists at: " << model_path << std::endl;
         return 1;
     }
 
