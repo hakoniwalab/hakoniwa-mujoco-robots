@@ -1,0 +1,47 @@
+{
+  "$schema": "../schema/multicamera.schema.json",
+  "cameras": [
+    {
+      "name": "left_camera",
+      "pose": {
+        "position": { "x": 0, "y": 0.06, "z": 0 },
+        "orientation": { "roll": 0, "pitch": 0, "yaw": 0 }
+      },
+      "camera_profile": {
+        "frame_id": "left_camera_frame",
+        "update_rate": 30,
+        "horizontal_fov": 1.39626,
+        "image": {
+          "width": 1280,
+          "height": 720,
+          "format": "R8G8B8"
+        },
+        "clip": {
+          "near": 0.02,
+          "far": 300
+        }
+      }
+    },
+    {
+      "name": "right_camera",
+      "pose": {
+        "position": { "x": 0, "y": -0.06, "z": 0 },
+        "orientation": { "roll": 0, "pitch": 0, "yaw": 0 }
+      },
+      "camera_profile": {
+        "frame_id": "right_camera_frame",
+        "update_rate": 30,
+        "horizontal_fov": 1.39626,
+        "image": {
+          "width": 1280,
+          "height": 720,
+          "format": "R8G8B8"
+        },
+        "clip": {
+          "near": 0.02,
+          "far": 300
+        }
+      }
+    }
+  ]
+}

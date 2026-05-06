@@ -1,0 +1,19 @@
+{
+  "$schema": "../schema/gps.schema.json",
+  "frame_id": "gps_link",
+  "update_rate": 10,
+  "noise": {
+    "position_horizontal": {
+      "stddev": 2.5
+    },
+    "position_vertical": {
+      "stddev": 5.0
+    },
+    "velocity_horizontal": {
+      "stddev": 0.1
+    },
+    "velocity_vertical": {
+      "stddev": 0.2
+    }
+  }
+}

@@ -5,6 +5,7 @@
 __pycache__
 work
 cmake-build
+src/cmake-build*
 logs
 
 # Compiled Object files

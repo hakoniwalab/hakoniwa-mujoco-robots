@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/rgbd-camera.schema.json",
+  "title": "Hakoniwa RGBD Camera sensor profile",
+  "description": "SDF-like but MJCF-resolved JSON config for RGBD Camera profiles used by Hakoniwa MuJoCo sensors. This schema composes the standard camera and depth-camera schemas.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "rgb",
+    "depth"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "rgb": {
+      "$ref": "camera.schema.json",
+      "description": "The properties for the RGB camera stream."
+    },
+    "depth": {
+      "$ref": "depth-camera.schema.json",
+      "description": "The properties for the Depth camera stream."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "$schema": "../schema/contact.schema.json",
+  "frame_id": "bumper_frame",
+  "update_rate": 50,
+  "collision_name": "bumper_collision"
+}

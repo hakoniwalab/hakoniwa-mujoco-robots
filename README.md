@@ -374,6 +374,18 @@ Switch example:
 
 This is intended to capture a practical Sim2Real point: changing sensors changes perception quality.
 
+## Camera Depth Status
+
+Camera / depth / RGBD sensor components are available under `include/sensors/camera/` and `src/sensors/camera/`.
+
+- Depth conversion currently assumes the MuJoCo offscreen path where `mjr_readPixels` returns an OpenGL-style depth buffer.
+- The implementation converts depth with effective clip planes computed from `vis.map.znear/zfar * stat.extent`.
+- Camera / depth / RGBD / multicamera profiles under `config/sensors/camera/*.json` can be loaded into C++ configs.
+- The profile structure is documented in `config/sensors/schema/`, and the JSON loader reuses the existing `LoadConfig(config)` validation path.
+- This path has been smoke-tested with fixed-camera box scenes at `0.2`, `0.5`, `1.0`, `2.0`, `5.0`, and `9.0` meters.
+- The smoke test also checks several image positions, multiple horizontal FOV settings, and clip-range NaN masking.
+- It is still not claimed to be fully validated for arbitrary scenes such as oblique geometry, extreme camera setups, or alternative depth-map conventions.
+
 ## Docker (Ubuntu 24.04)
 
 Create image:

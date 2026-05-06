@@ -370,6 +370,18 @@ LiDAR の見え方は sensor config JSON で切り替えられます。
 
 この差により、実機で経験する「センサを変えると見え方が変わる」状態を simulation 上でも扱えます。
 
+## Camera Depth Status
+
+camera / depth / RGBD sensor の実装は `include/sensors/camera/` と `src/sensors/camera/` にあります。
+
+- depth 変換は、MuJoCo offscreen path において `mjr_readPixels` が OpenGL-style depth buffer を返す前提で実装しています。
+- clip plane は `vis.map.znear/zfar * stat.extent` から実効距離を計算して使います。
+- `config/sensors/camera/*.json` の camera / depth / RGBD / multicamera profile は C++ config として読み込めます。
+- profile の構造は `config/sensors/schema/` にあり、JSON loader は既存の `LoadConfig(config)` validation を再利用します。
+- 現在の経路は、固定カメラ + box シーンで `0.2`、`0.5`、`1.0`、`2.0`、`5.0`、`9.0` m の smoke test を通過しています。
+- あわせて、複数の画面位置、複数の horizontal FOV、clip による NaN マスクも確認済みです。
+- ただし、斜め面、極端なカメラ設定、別の depth-map convention など、任意シーン全般に対して完全検証済みとはまだ言いません。
+
 ## Docker（Ubuntu 24.04）
 
 イメージ作成:

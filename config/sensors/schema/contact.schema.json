@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/contact.schema.json",
+  "title": "Hakoniwa Contact sensor profile",
+  "description": "SDF-like but MJCF-resolved JSON config for Contact sensor profiles used by Hakoniwa MuJoCo sensors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "frame_id",
+    "update_rate",
+    "collision_name"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "frame_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The coordinate frame this sensor is attached to."
+    },
+    "update_rate": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "The frequency at which the sensor generates data, in Hz."
+    },
+    "collision_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The name of the collision geometry to monitor for contacts."
+    }
+  }
+}

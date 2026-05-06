@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/depth-camera.schema.json",
+  "title": "Hakoniwa Depth Camera sensor profile",
+  "description": "SDF-like but MJCF-resolved JSON config for Depth Camera profiles used by Hakoniwa MuJoCo sensors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "frame_id",
+    "update_rate",
+    "image",
+    "clip",
+    "horizontal_fov"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "frame_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "update_rate": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "The frequency at which the sensor generates data, in Hz."
+    },
+    "horizontal_fov": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 3.141592653589793,
+      "description": "Horizontal field of view, in radians."
+    },
+    "image": {
+      "$ref": "#/$defs/image"
+    },
+    "clip": {
+      "$ref": "#/$defs/clip"
+    },
+    "noise": {
+      "$ref": "#/$defs/noise"
+    }
+  },
+  "$defs": {
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "width",
+        "height",
+        "format"
+      ],
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "format": {
+          "type": "string",
+          "enum": ["DEPTH_U16_MM", "DEPTH_F32_M"],
+          "description": "Depth pixel format. DEPTH_U16_MM stores depth in millimeters as uint16. DEPTH_F32_M stores depth in meters as float32."
+        }
+      }
+    },
+    "clip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "near",
+        "far"
+      ],
+      "properties": {
+        "near": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Near clipping distance in meters. Must be less than far."
+        },
+        "far": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Far clipping distance in meters. Must be greater than near."
+        }
+      }
+    },
+    "noise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "stddev"
+      ],
+      "properties": {
+        "type": {
+          "enum": ["gaussian"],
+          "description": "The type of noise model."
+        },
+        "mean": {
+          "type": "number",
+          "default": 0.0
+        },
+        "stddev": {
+          "type": "number",
+          "minimum": 0,
+          "description": "The standard deviation of the noise distribution."
+        }
+      }
+    }
+  }
+}

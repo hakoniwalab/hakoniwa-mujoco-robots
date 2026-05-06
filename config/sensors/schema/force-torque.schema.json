@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/force-torque.schema.json",
+  "title": "Hakoniwa Force/Torque sensor profile",
+  "description": "SDF-like but MJCF-resolved JSON config for Force/Torque sensor profiles used by Hakoniwa MuJoCo sensors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "frame_id",
+    "update_rate",
+    "joint_name"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "frame_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The coordinate frame this sensor is attached to."
+    },
+    "update_rate": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "The frequency at which the sensor generates data, in Hz."
+    },
+    "joint_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The name of the joint to monitor for forces and torques."
+    },
+    "frame": {
+      "enum": ["parent", "child", "sensor"],
+      "default": "child",
+      "description": "The frame in which the measurements are expressed."
+    },
+    "measure_direction": {
+      "enum": ["parent_to_child", "child_to_parent"],
+      "default": "child_to_parent",
+      "description": "The direction of the measured force/torque."
+    }
+  }
+}

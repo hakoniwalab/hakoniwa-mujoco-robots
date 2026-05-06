@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/gps.schema.json",
+  "title": "Hakoniwa GPS sensor profile",
+  "description": "SDF-like but MJCF-resolved JSON config for GPS sensor profiles used by Hakoniwa MuJoCo sensors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "frame_id",
+    "update_rate"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "frame_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The coordinate frame this sensor is attached to."
+    },
+    "update_rate": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "The frequency at which the sensor generates data, in Hz."
+    },
+    "noise": {
+      "$ref": "#/$defs/noise"
+    }
+  },
+  "$defs": {
+    "noise_model": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": ["gaussian"],
+          "default": "gaussian"
+        },
+        "mean": {
+          "type": "number",
+          "default": 0.0
+        },
+        "stddev": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.0
+        },
+        "bias_mean": {
+          "type": "number",
+          "default": 0.0
+        },
+        "bias_stddev": {
+          "type": "number",
+          "minimum": 0,
+          "default": 0.0
+        }
+      }
+    },
+    "noise": {
+      "type": "object",
+      "properties": {
+        "position_horizontal": {
+          "$ref": "#/$defs/noise_model"
+        },
+        "position_vertical": {
+          "$ref": "#/$defs/noise_model"
+        },
+        "velocity_horizontal": {
+          "$ref": "#/$defs/noise_model"
+        },
+        "velocity_vertical": {
+          "$ref": "#/$defs/noise_model"
+        }
+      }
+    }
+  }
+}
