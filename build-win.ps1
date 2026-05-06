@@ -2,8 +2,8 @@
 param(
     [switch]$Clean,
     [string]$BuildDirName = "build-win",
-    [string]$Generator = "Visual Studio 17 2022",
-    [string]$Platform = "x64",
+    [string]$Generator = "",
+    [string]$Platform = "",
     [string]$Configuration = "Release",
     [string]$ToolchainFile = "",
     [string]$MuJoCoRoot = "",
@@ -19,6 +19,16 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+
+function Is-SingleConfigGenerator {
+    param([string]$Name)
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        return $false
+    }
+
+    return $Name -match "Ninja|Makefiles"
+}
 
 function Resolve-ExistingPath {
     param(
@@ -38,6 +48,11 @@ $SourceDir = Join-Path $RepoRoot "src"
 $BuildDir = Join-Path $RepoRoot $BuildDirName
 $UseViewerValue = if ($DisableViewer) { "OFF" } else { "ON" }
 
+$ResolvedGenerator = $Generator
+if ([string]::IsNullOrWhiteSpace($ResolvedGenerator) -and $env:CMAKE_GENERATOR) {
+    $ResolvedGenerator = $env:CMAKE_GENERATOR
+}
+
 if ($Clean -and (Test-Path -LiteralPath $BuildDir)) {
     Write-Host "Cleaning build directory: $BuildDir"
     Remove-Item -LiteralPath $BuildDir -Recurse -Force
@@ -46,15 +61,18 @@ if ($Clean -and (Test-Path -LiteralPath $BuildDir)) {
 $ConfigureArgs = @(
     "-S", $SourceDir,
     "-B", $BuildDir,
-    "-G", $Generator,
     "-DUSE_VIEWER=$UseViewerValue"
 )
+
+if (-not [string]::IsNullOrWhiteSpace($ResolvedGenerator)) {
+    $ConfigureArgs += @("-G", $ResolvedGenerator)
+}
 
 if ($UseThirdpartyHakoniwa) {
     $ConfigureArgs += "-DHAKO_USE_THIRDPARTY_HAKONIWA=ON"
 }
 
-if (-not [string]::IsNullOrWhiteSpace($Platform)) {
+if ((-not [string]::IsNullOrWhiteSpace($Platform)) -and (-not (Is-SingleConfigGenerator $ResolvedGenerator))) {
     $ConfigureArgs += @("-A", $Platform)
 }
 
@@ -106,6 +124,10 @@ if ($null -ne $AdditionalCMakeArgs -and $AdditionalCMakeArgs.Count -gt 0) {
     $ConfigureArgs += $AdditionalCMakeArgs
 }
 
+if (Is-SingleConfigGenerator $ResolvedGenerator) {
+    $ConfigureArgs += "-DCMAKE_BUILD_TYPE=$Configuration"
+}
+
 Write-Host "Configuring with CMake..."
 & cmake @ConfigureArgs
 if ($LASTEXITCODE -ne 0) {
@@ -113,9 +135,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $BuildArgs = @(
-    "--build", $BuildDir,
-    "--config", $Configuration
+    "--build", $BuildDir
 )
+
+if (-not (Is-SingleConfigGenerator $ResolvedGenerator)) {
+    $BuildArgs += @("--config", $Configuration)
+}
 
 Write-Host "Building with CMake..."
 & cmake @BuildArgs

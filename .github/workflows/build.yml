@@ -76,11 +76,17 @@ jobs:
           & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat"
           & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" install glfw3:x64-windows boost-asio:x64-windows boost-beast:x64-windows
 
+      - name: Setup Ninja
+        shell: pwsh
+        run: |
+          choco install ninja -y
+
       - name: Configure and build
         shell: pwsh
         run: |
           .\build-win.ps1 `
             -Clean `
+            -Generator Ninja `
             -UseThirdpartyHakoniwa `
             -ExtraPrefixPaths "$env:RUNNER_TEMP\vcpkg\installed\x64-windows" `
             -ToolchainFile "$env:RUNNER_TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake"
