@@ -382,8 +382,11 @@ Camera / depth / RGBD sensor components are available under `include/sensors/cam
 - The implementation converts depth with effective clip planes computed from `vis.map.znear/zfar * stat.extent`.
 - Camera / depth / RGBD / multicamera profiles under `config/sensors/camera/*.json` can be loaded into C++ configs.
 - The profile structure is documented in `config/sensors/schema/`, and the JSON loader reuses the existing `LoadConfig(config)` validation path.
+- Camera unit tests live under `tests/sensors/camera/unit/` and cover config loader, PDU converter, and local depth encoding.
+- These unit tests do not require an OpenGL render context and are intended to run in CI.
 - This path has been smoke-tested with fixed-camera box scenes at `0.2`, `0.5`, `1.0`, `2.0`, `5.0`, and `9.0` meters.
 - The smoke test also checks several image positions, multiple horizontal FOV settings, and clip-range NaN masking.
+- Render smoke tests live under `tests/sensors/camera/smoke/` and require MuJoCo + OpenGL, so they are intended for local/manual runs or dedicated CI.
 - It is still not claimed to be fully validated for arbitrary scenes such as oblique geometry, extreme camera setups, or alternative depth-map conventions.
 
 ## Docker (Ubuntu 24.04)

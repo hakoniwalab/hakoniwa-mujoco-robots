@@ -1,0 +1,46 @@
+name: Camera Sensor Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  camera-unit-tests:
+    name: Camera Unit Tests (ubuntu-latest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libglfw3-dev libboost-all-dev ninja-build
+
+      - name: Configure
+        run: |
+          cmake -S src -B src/cmake-build -G Ninja \
+            -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
+            -DHAKO_BUILD_SENSOR_TESTS=ON \
+            -DHAKO_BUILD_CAMERA_SMOKE_TESTS=OFF \
+            -DUSE_VIEWER=OFF
+
+      - name: Build camera unit tests
+        run: |
+          cmake --build src/cmake-build -j4 --target \
+            camera_config_loader_test \
+            camera_pdu_converter_test \
+            depth_encoding_test
+
+      - name: Run camera unit tests
+        run: |
+          ./src/cmake-build/sensors/camera_config_loader_test
+          ./src/cmake-build/sensors/camera_pdu_converter_test
+          ./src/cmake-build/sensors/depth_encoding_test

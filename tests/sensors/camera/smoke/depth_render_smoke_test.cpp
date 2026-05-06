@@ -218,7 +218,7 @@ CaseResult EvaluatePixel(
     return result;
 }
 
-void PrintResult(const CaseResult& result)
+void PrintCaseResult(const CaseResult& result)
 {
     std::cout << "[" << result.suite << "] "
               << result.name
@@ -236,20 +236,13 @@ void PrintResult(const CaseResult& result)
               << std::endl;
 }
 
-bool RunCenterDistanceCase(double expected_distance_m, double tolerance_m)
+bool RunCenterDistanceCase(double front_distance_m, double tolerance_m)
 {
-    const SceneSpec scene {
-        .front_distance_m = expected_distance_m,
-        .target_half_width_m = 0.4,
-        .target_half_height_m = 0.4,
-        .target_half_depth_m = kDefaultTargetHalfDepth,
-    };
-    const CaptureSpec capture_spec {
-        .horizontal_fov_rad = kDefaultHorizontalFovRad,
-        .clip_near_m = kDefaultClipNear,
-        .clip_far_m = kDefaultClipFar,
-        .pixels = {{"center", kImageWidth / 2, kImageHeight / 2}},
-    };
+    SceneSpec scene {};
+    scene.front_distance_m = front_distance_m;
+
+    CaptureSpec capture_spec {};
+    capture_spec.pixels = {PixelSample{"center", kImageWidth / 2, kImageHeight / 2}};
 
     RenderCapture capture {};
     if (!CaptureDepthFrame(scene, capture_spec, capture)) {
@@ -258,35 +251,30 @@ bool RunCenterDistanceCase(double expected_distance_m, double tolerance_m)
 
     const auto result = EvaluatePixel(
         "distance-range",
-        "front_distance=" + std::to_string(expected_distance_m),
+        "front_distance=" + std::to_string(front_distance_m),
         capture_spec.pixels.front(),
         capture,
-        expected_distance_m,
+        front_distance_m,
         tolerance_m,
         false);
-    PrintResult(result);
+    PrintCaseResult(result);
     return result.passed;
 }
 
 bool RunPixelPositionCase()
 {
-    const SceneSpec scene {
-        .front_distance_m = 2.0,
-        .target_half_width_m = kLargeTargetHalfWidth,
-        .target_half_height_m = kLargeTargetHalfHeight,
-        .target_half_depth_m = kDefaultTargetHalfDepth,
-    };
-    const CaptureSpec capture_spec {
-        .horizontal_fov_rad = kDefaultHorizontalFovRad,
-        .clip_near_m = kDefaultClipNear,
-        .clip_far_m = kDefaultClipFar,
-        .pixels = {
-            {"center", kImageWidth / 2, kImageHeight / 2},
-            {"left-center", kImageWidth / 4, kImageHeight / 2},
-            {"right-center", (3 * kImageWidth) / 4, kImageHeight / 2},
-            {"upper-center", kImageWidth / 2, kImageHeight / 4},
-            {"lower-center", kImageWidth / 2, (3 * kImageHeight) / 4},
-        },
+    SceneSpec scene {};
+    scene.front_distance_m = 2.0;
+    scene.target_half_width_m = kLargeTargetHalfWidth;
+    scene.target_half_height_m = kLargeTargetHalfHeight;
+
+    CaptureSpec capture_spec {};
+    capture_spec.pixels = {
+        {"center", kImageWidth / 2, kImageHeight / 2},
+        {"left-center", kImageWidth / 4, kImageHeight / 2},
+        {"right-center", (3 * kImageWidth) / 4, kImageHeight / 2},
+        {"upper-center", kImageWidth / 2, kImageHeight / 4},
+        {"lower-center", kImageWidth / 2, (3 * kImageHeight) / 4},
     };
 
     RenderCapture capture {};
@@ -294,7 +282,7 @@ bool RunPixelPositionCase()
         return false;
     }
 
-    bool ok = true;
+    bool all_passed = true;
     for (const auto& pixel : capture_spec.pixels) {
         const auto result = EvaluatePixel(
             "pixel-position",
@@ -304,26 +292,22 @@ bool RunPixelPositionCase()
             2.0,
             0.03,
             false);
-        PrintResult(result);
-        ok = ok && result.passed;
+        PrintCaseResult(result);
+        all_passed = all_passed && result.passed;
     }
-    return ok;
+    return all_passed;
 }
 
 bool RunFovCase(double horizontal_fov_rad)
 {
-    const SceneSpec scene {
-        .front_distance_m = 2.0,
-        .target_half_width_m = kLargeTargetHalfWidth,
-        .target_half_height_m = kLargeTargetHalfHeight,
-        .target_half_depth_m = kDefaultTargetHalfDepth,
-    };
-    const CaptureSpec capture_spec {
-        .horizontal_fov_rad = horizontal_fov_rad,
-        .clip_near_m = kDefaultClipNear,
-        .clip_far_m = kDefaultClipFar,
-        .pixels = {{"center", kImageWidth / 2, kImageHeight / 2}},
-    };
+    SceneSpec scene {};
+    scene.front_distance_m = 2.0;
+    scene.target_half_width_m = kLargeTargetHalfWidth;
+    scene.target_half_height_m = kLargeTargetHalfHeight;
+
+    CaptureSpec capture_spec {};
+    capture_spec.horizontal_fov_rad = horizontal_fov_rad;
+    capture_spec.pixels = {PixelSample{"center", kImageWidth / 2, kImageHeight / 2}};
 
     RenderCapture capture {};
     if (!CaptureDepthFrame(scene, capture_spec, capture)) {
@@ -338,7 +322,7 @@ bool RunFovCase(double horizontal_fov_rad)
         2.0,
         0.03,
         false);
-    PrintResult(result);
+    PrintCaseResult(result);
     return result.passed;
 }
 
@@ -349,18 +333,13 @@ bool RunClipCase(
     double clip_far_m,
     bool expect_nan)
 {
-    const SceneSpec scene {
-        .front_distance_m = front_distance_m,
-        .target_half_width_m = 0.4,
-        .target_half_height_m = 0.4,
-        .target_half_depth_m = kDefaultTargetHalfDepth,
-    };
-    const CaptureSpec capture_spec {
-        .horizontal_fov_rad = kDefaultHorizontalFovRad,
-        .clip_near_m = clip_near_m,
-        .clip_far_m = clip_far_m,
-        .pixels = {{"center", kImageWidth / 2, kImageHeight / 2}},
-    };
+    SceneSpec scene {};
+    scene.front_distance_m = front_distance_m;
+
+    CaptureSpec capture_spec {};
+    capture_spec.clip_near_m = clip_near_m;
+    capture_spec.clip_far_m = clip_far_m;
+    capture_spec.pixels = {PixelSample{"center", kImageWidth / 2, kImageHeight / 2}};
 
     RenderCapture capture {};
     if (!CaptureDepthFrame(scene, capture_spec, capture)) {
@@ -375,19 +354,19 @@ bool RunClipCase(
         front_distance_m,
         0.03,
         expect_nan);
-    PrintResult(result);
+    PrintCaseResult(result);
     return result.passed;
 }
 }
 
 int main()
 {
-    try {
-        if (!HasRenderableGuiSession()) {
-            std::cout << "SKIPPED: OpenGL context unavailable (no active macOS GUI session)" << std::endl;
-            return 0;
-        }
+    if (!HasRenderableGuiSession()) {
+        std::cout << "SKIPPED: OpenGL context unavailable (no active macOS GUI session)" << std::endl;
+        return 0;
+    }
 
+    try {
         bool all_passed = true;
 
         all_passed = RunCenterDistanceCase(0.2, 0.01) && all_passed;
@@ -408,12 +387,8 @@ int main()
         all_passed = RunClipCase("target_inside_clip", 2.0, 0.05, 10.0, false) && all_passed;
 
         return all_passed ? 0 : 1;
-    } catch (const std::runtime_error& e) {
-        std::cout << "SKIPPED: OpenGL context unavailable or MuJoCo render setup failed: "
-                  << e.what() << std::endl;
+    } catch (const std::exception& ex) {
+        std::cerr << "SKIPPED: OpenGL context unavailable: " << ex.what() << std::endl;
         return 0;
-    } catch (const std::exception& e) {
-        std::cerr << "depth_render_smoke_test failed: " << e.what() << std::endl;
-        return 1;
     }
 }
