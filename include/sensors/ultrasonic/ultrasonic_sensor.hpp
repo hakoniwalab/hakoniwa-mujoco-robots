@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <array>
 
 #include "physics.hpp"
 #include "sensor.hpp"
@@ -435,10 +436,10 @@ namespace hako::robots::sensor::ultrasonic
          * @brief Capture one ultrasonic range measurement.
          *
          * Expected runtime algorithm:
-         * 1. Resolve sensor origin and orientation.
-         * 2. Generate one or more ray directions inside the configured cone.
+         * 1. Read current sensor origin and orientation from the resolved runtime frame.
+         * 2. Transform precomputed local ray directions into world coordinates.
          * 3. Cast rays into the physics world.
-         * 4. Select the nearest valid hit.
+         * 4. Select the nearest valid projected hit.
          * 5. Apply detection distance limits.
          * 6. Apply configured noise and precision.
          * 7. Fill UltrasonicFrame.
@@ -486,5 +487,38 @@ namespace hako::robots::sensor::ultrasonic
          * @brief Noise pipeline applied to measured range values.
          */
         noise::RangeNoisePipeline noise_pipeline_;
+
+        /**
+         * @brief Runtime frame resolution state.
+         */
+        enum class RuntimeFrameType
+        {
+            None,
+            Site,
+            Body
+        };
+
+        /**
+         * @brief Resolved runtime frame type used as the sensor origin for ray casting.
+         */
+        RuntimeFrameType runtime_frame_type_ {RuntimeFrameType::None};
+        /**
+         * @brief Resolved MuJoCo site/body ID used as the sensor origin for ray casting.
+         */
+        int runtime_frame_id_ {-1};
+        /**
+         * @brief Resolved body ID to be excluded from ray hit detection.
+          *
+          * This is typically the robot's own base body, so the sensor does not
+          * detect its own body.
+         */
+        int body_exclude_id_ {-1};
+        /**
+         * @brief Precomputed local ray directions for cone approximation.
+         *
+         * Each ray direction is a unit vector in the sensor's local frame.
+         * The number of rays is determined by config_.cone.ray_count.
+         */
+        std::vector<std::array<double, 3>> ray_dirs_local_ {};
     };
 }

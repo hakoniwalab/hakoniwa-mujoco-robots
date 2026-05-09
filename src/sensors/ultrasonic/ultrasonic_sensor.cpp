@@ -4,6 +4,7 @@
 #include <mujoco/mujoco.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <utility>
@@ -58,6 +59,30 @@ double find_stddev_for_range(const UltrasonicConfig& config, double range)
         }
     }
     return 0.0;
+}
+
+std::array<double, 3> make_local_ray_direction(double yaw, double pitch)
+{
+    std::array<double, 3> dir {
+        std::cos(pitch) * std::cos(yaw),
+        std::cos(pitch) * std::sin(yaw),
+        -std::sin(pitch)
+    };
+
+    const double norm = std::sqrt(
+        dir[0] * dir[0] +
+        dir[1] * dir[1] +
+        dir[2] * dir[2]);
+
+    if (norm > 0.0) {
+        dir[0] /= norm;
+        dir[1] /= norm;
+        dir[2] /= norm;
+    } else {
+        dir = {1.0, 0.0, 0.0};
+    }
+
+    return dir;
 }
 
 } // namespace
@@ -155,40 +180,27 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
             return false;
         }
 
-        rebuild_noise_pipeline(config_, noise_pipeline_);
-        scheduler_.StartReady(GetUpdatePeriodSec());
+        auto* model = world_->getModel();
+        if (model == nullptr) {
+            std::cerr
+                << "ERROR: UltrasonicSensor::LoadConfig: MuJoCo model is null."
+                << std::endl;
+            return false;
+        }
 
         /*
-         * Runtime binding policy:
+         * Resolve runtime frame once.
          *
-         * - If RuntimeBinding.source_site is specified, Measure() resolves it
-         *   directly as a MuJoCo site using mj_name2id(mjOBJ_SITE).
-         *
-         * - Otherwise, this class falls back to sensor_body_name_ and resolves
-         *   it through the Hakoniwa physics abstraction.
-         *
-         * Do not resolve source_site using getRigidBody(); MuJoCo sites and
-         * bodies are different object types.
+         * Resolution policy:
+         * 1. RuntimeBinding.source_site, if specified, is resolved as mjOBJ_SITE.
+         * 2. Otherwise sensor_body_name_ is used as a fallback runtime object name.
+         *    It is resolved as site first, then body.
+         * 3. If sensor_body_name_ is empty, frame_id is used as a convention fallback.
          */
-        sensor_body_.reset();
+        runtime_frame_type_ = RuntimeFrameType::None;
+        runtime_frame_id_ = -1;
 
-        if (config_.runtime_binding.source_site.empty()) {
-            sensor_body_ = world_->getRigidBody(sensor_body_name_);
-            if (sensor_body_ == nullptr) {
-                std::cerr
-                    << "ERROR: UltrasonicSensor::LoadConfig: Failed to find sensor body: "
-                    << sensor_body_name_ << std::endl;
-                return false;
-            }
-        } else {
-            auto* model = world_->getModel();
-            if (model == nullptr) {
-                std::cerr
-                    << "ERROR: UltrasonicSensor::LoadConfig: MuJoCo model is null."
-                    << std::endl;
-                return false;
-            }
-
+        if (!config_.runtime_binding.source_site.empty()) {
             const int site_id = mj_name2id(
                 model,
                 mjOBJ_SITE,
@@ -200,7 +212,95 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
                     << config_.runtime_binding.source_site << std::endl;
                 return false;
             }
+
+            runtime_frame_type_ = RuntimeFrameType::Site;
+            runtime_frame_id_ = site_id;
+        } else {
+            const std::string runtime_name =
+                !sensor_body_name_.empty() ? sensor_body_name_ : config_.frame_id;
+
+            int site_id = mj_name2id(model, mjOBJ_SITE, runtime_name.c_str());
+            if (site_id >= 0) {
+                runtime_frame_type_ = RuntimeFrameType::Site;
+                runtime_frame_id_ = site_id;
+            } else {
+                int body_id = mj_name2id(model, mjOBJ_BODY, runtime_name.c_str());
+                if (body_id >= 0) {
+                    runtime_frame_type_ = RuntimeFrameType::Body;
+                    runtime_frame_id_ = body_id;
+                }
+            }
+
+            if (runtime_frame_type_ == RuntimeFrameType::None) {
+                std::cerr
+                    << "ERROR: UltrasonicSensor::LoadConfig: Failed to resolve runtime frame as site/body: "
+                    << runtime_name << std::endl;
+                return false;
+            }
         }
+
+        /*
+         * Resolve excluded body once.
+         *
+         * body_exclude_id_ may remain -1.
+         * In that case mj_ray will not exclude a specific body, and IsSelfGeom()
+         * will also return false.
+         */
+        body_exclude_id_ = -1;
+        if (!exclude_body_name_.empty()) {
+            body_exclude_id_ = mj_name2id(
+                model,
+                mjOBJ_BODY,
+                exclude_body_name_.c_str());
+
+            if (body_exclude_id_ < 0) {
+                std::cerr
+                    << "WARN: UltrasonicSensor::LoadConfig: Failed to find exclude body: "
+                    << exclude_body_name_ << std::endl;
+            }
+        }
+
+        /*
+         * Precompute local ray directions once.
+         *
+         * Cone.Horizontal and Cone.Vertical are full angles in radians.
+         * Local frame convention:
+         * - +X: forward / measurement axis
+         * - +Y: horizontal direction
+         * - +Z: vertical direction
+         */
+        ray_dirs_local_.clear();
+
+        const int ray_count = std::max(1, config_.cone.ray_count);
+        const int side = std::max(
+            1,
+            static_cast<int>(std::ceil(std::sqrt(static_cast<double>(ray_count)))));
+
+        ray_dirs_local_.reserve(static_cast<std::size_t>(ray_count));
+
+        for (int i = 0; i < ray_count; ++i) {
+            const int row = i / side;
+            const int col = i % side;
+
+            const double h_ratio =
+                (side == 1)
+                    ? 0.0
+                    : -0.5 + static_cast<double>(col) / static_cast<double>(side - 1);
+
+            const double v_ratio =
+                (side == 1)
+                    ? 0.0
+                    : -0.5 + static_cast<double>(row) / static_cast<double>(side - 1);
+
+            const double yaw = h_ratio * config_.cone.horizontal;
+            const double pitch = v_ratio * config_.cone.vertical;
+
+            ray_dirs_local_.push_back(make_local_ray_direction(yaw, pitch));
+        }
+
+        rebuild_noise_pipeline(config_, noise_pipeline_);
+        scheduler_.StartReady(GetUpdatePeriodSec());
+
     } catch (const nlohmann::json::exception& e) {
         std::cerr
             << "ERROR: UltrasonicSensor::LoadConfig: JSON parsing error: "
@@ -244,54 +344,34 @@ void UltrasonicSensor::Measure(UltrasonicFrame& out)
         return;
     }
 
+    if (runtime_frame_type_ == RuntimeFrameType::None || runtime_frame_id_ < 0) {
+        set_invalid(out, config_);
+        return;
+    }
+
+    if (ray_dirs_local_.empty()) {
+        set_invalid(out, config_);
+        return;
+    }
+
     const mjtNum* sensor_pos = nullptr;
     const mjtNum* sensor_mat = nullptr;
 
-    /*
-     * Resolve sensor origin/orientation.
-     *
-     * Preferred:
-     * - RuntimeBinding.source_site as MuJoCo site.
-     *
-     * Fallback:
-     * - sensor_body_name_ as MuJoCo body.
-     */
-    if (!config_.runtime_binding.source_site.empty()) {
-        const int site_id = mj_name2id(
-            model,
-            mjOBJ_SITE,
-            config_.runtime_binding.source_site.c_str());
-
-        if (site_id < 0) {
-            set_invalid(out, config_);
-            return;
-        }
-
-        sensor_pos = &data->site_xpos[3 * site_id];
-        sensor_mat = &data->site_xmat[9 * site_id];
+    if (runtime_frame_type_ == RuntimeFrameType::Site) {
+        sensor_pos = &data->site_xpos[3 * runtime_frame_id_];
+        sensor_mat = &data->site_xmat[9 * runtime_frame_id_];
+    } else if (runtime_frame_type_ == RuntimeFrameType::Body) {
+        sensor_pos = &data->xpos[3 * runtime_frame_id_];
+        sensor_mat = &data->xmat[9 * runtime_frame_id_];
     } else {
-        const int body_id = mj_name2id(
-            model,
-            mjOBJ_BODY,
-            sensor_body_name_.c_str());
-
-        if (body_id < 0) {
-            set_invalid(out, config_);
-            return;
-        }
-
-        sensor_pos = &data->xpos[3 * body_id];
-        sensor_mat = &data->xmat[9 * body_id];
+        set_invalid(out, config_);
+        return;
     }
 
     /*
-     * Sensor local frame convention:
-     * - +X: forward / measurement axis
-     * - +Y: horizontal direction
-     * - +Z: vertical direction
+     * Convert sensor local +X into world coordinates.
      *
-     * MuJoCo xmat/site_xmat is a 3x3 orientation matrix.
-     * mju_mulMatVec3(dst, mat, vec) transforms the local vector by the matrix.
+     * This is the measurement axis used for forward-axis projection.
      */
     mjtNum sensor_forward_local[3] = {1.0, 0.0, 0.0};
     mjtNum sensor_forward_world[3] = {0.0, 0.0, 0.0};
@@ -307,51 +387,12 @@ void UltrasonicSensor::Measure(UltrasonicFrame& out)
     bool hit_found = false;
     bool below_min_found = false;
 
-    const int ray_count = std::max(1, config_.cone.ray_count);
-    const int side = std::max(
-        1,
-        static_cast<int>(std::ceil(std::sqrt(static_cast<double>(ray_count)))));
-
-    const int body_exclude_id = mj_name2id(
-        model,
-        mjOBJ_BODY,
-        exclude_body_name_.c_str());
-
-    for (int i = 0; i < ray_count; ++i) {
-        const int row = i / side;
-        const int col = i % side;
-
-        const double h_ratio =
-            (side == 1)
-                ? 0.0
-                : -0.5 + static_cast<double>(col) / static_cast<double>(side - 1);
-
-        const double v_ratio =
-            (side == 1)
-                ? 0.0
-                : -0.5 + static_cast<double>(row) / static_cast<double>(side - 1);
-
-        const double yaw = h_ratio * config_.cone.horizontal;
-        const double pitch = v_ratio * config_.cone.vertical;
-
-        /*
-         * Generate a ray direction in the sensor local frame.
-         *
-         * yaw:
-         * - horizontal angular offset around local Z.
-         *
-         * pitch:
-         * - vertical angular offset.
-         *
-         * The local forward axis is +X.
-         */
+    for (const auto& local_dir : ray_dirs_local_) {
         mjtNum ray_dir_local[3] = {
-            static_cast<mjtNum>(std::cos(pitch) * std::cos(yaw)),
-            static_cast<mjtNum>(std::cos(pitch) * std::sin(yaw)),
-            static_cast<mjtNum>(-std::sin(pitch))
+            static_cast<mjtNum>(local_dir[0]),
+            static_cast<mjtNum>(local_dir[1]),
+            static_cast<mjtNum>(local_dir[2])
         };
-
-        mju_normalize3(ray_dir_local);
 
         mjtNum ray_dir_world[3] = {0.0, 0.0, 0.0};
 
@@ -371,20 +412,6 @@ void UltrasonicSensor::Measure(UltrasonicFrame& out)
         int geom_id[1] = {-1};
         mjtNum normal[3] = {0.0, 0.0, 0.0};
 
-        /*
-         * mj_ray returns the distance along ray_dir_world.
-         *
-         * In this MuJoCo version, mj_ray takes 9 arguments:
-         * - model
-         * - data
-         * - ray origin
-         * - ray direction
-         * - geom group filter
-         * - static geom flag
-         * - excluded body id
-         * - output geom id array
-         * - output normal
-         */
         const mjtNum hit_dist = mj_ray(
             model,
             data,
@@ -392,24 +419,18 @@ void UltrasonicSensor::Measure(UltrasonicFrame& out)
             ray_dir_world,
             nullptr,
             1,
-            body_exclude_id,
+            body_exclude_id_,
             geom_id,
             normal);
 
         if (hit_dist < 0.0) {
             continue;
         }
-        if (IsSelfGeom(model, body_exclude_id, geom_id[0])) {
+
+        if (IsSelfGeom(model, body_exclude_id_, geom_id[0])) {
             continue;
         }
-        /*
-         * Convert the ray distance into forward-axis projected distance.
-         *
-         * projected = ray_distance * cos(theta)
-         *
-         * Since both vectors are normalized:
-         * cos(theta) = dot(sensor_forward_world, ray_dir_world)
-         */
+
         const double cos_theta =
             static_cast<double>(
                 sensor_forward_world[0] * ray_dir_world[0] +
@@ -459,4 +480,4 @@ void UltrasonicSensor::Measure(UltrasonicFrame& out)
     out.variance = stddev * stddev;
 }
 
-} // namespace hako::robots::sensor::ultrasonic 
+} // namespace hako::robots::sensor::ultrasonic
