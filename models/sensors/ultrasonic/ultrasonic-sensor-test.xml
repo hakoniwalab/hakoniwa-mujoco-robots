@@ -8,7 +8,7 @@
 
     <body name="base_footprint" pos="0 0 0.1">
       <freejoint name="base_freejoint"/>
-      <geom name="base_geom" type="box" size="0.1 0.1 0.05" pos="0 0 0"/>
+      <geom name="base_geom" type="box" size="0.1 0.1 0.05" pos="0 0 0" rgba="0 0.4 1 1"/>
 
       <!-- Hakoniwa ultrasonic uses local +X as measurement axis -->
       <site name="front_ultrasonic_site"
