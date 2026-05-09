@@ -20,6 +20,7 @@ add_library(
     noise/axis_noise.cpp
     odometry/odometry_sensor.cpp
     tf/tf_publisher.cpp
+    ultrasonic/ultrasonic_sensor.cpp
 )
 target_compile_features(msensors PRIVATE cxx_std_20)
 hako_configure_target_warnings(msensors)

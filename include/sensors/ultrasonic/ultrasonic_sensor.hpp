@@ -302,18 +302,41 @@ namespace hako::robots::sensor::ultrasonic
         /**
          * @brief Capture one ultrasonic range measurement.
          *
-         * The output frame should contain a single range value and status.
+         * The output frame contains a single representative range value and status.
+         *
+         * The ultrasonic sensor may internally approximate its field of view by
+         * casting one or more rays inside the configured cone.
+         *
+         * Distance convention:
+         * - Each internal ray cast returns the hit distance along that ray direction.
+         * - The published ultrasonic range is the distance projected onto the
+         *   sensor forward axis.
+         *
+         * For each valid ray hit:
+         *
+         *     projected_distance = ray_distance * cos(theta)
+         *
+         * where theta is the angle between the sensor forward axis and the ray
+         * direction. Equivalently, when both vectors are normalized:
+         *
+         *     projected_distance = ray_distance * dot(sensor_forward, ray_direction)
+         *
+         * Therefore, an off-axis ray candidate is shorter than or equal to the raw
+         * raycast distance. If multiple rays hit objects, the nearest projected
+         * distance is used as out.range.
          *
          * Expected behavior:
          * - If a valid hit is found:
          *     out.status = UltrasonicStatus::OK
+         *     out.range contains the nearest forward-axis projected distance.
          *
          * - If no hit is found:
          *     out.status = UltrasonicStatus::NO_HIT
          *     out.range = config.detection_distance.max
          *
-         * - If the hit is below the minimum measurable range:
+         * - If the projected hit distance is below the minimum measurable range:
          *     out.status = UltrasonicStatus::BELOW_MIN_RANGE
+         *     out.range may be clamped to config.detection_distance.min.
          *
          * @param out Output frame to be filled by the implementation.
          */
