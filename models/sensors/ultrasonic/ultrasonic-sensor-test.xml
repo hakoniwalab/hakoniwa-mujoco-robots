@@ -7,6 +7,7 @@
     <geom name="ground" type="plane" size="5 5 0.1" pos="0 0 0"/>
 
     <body name="base_footprint" pos="0 0 0.1">
+      <freejoint name="base_freejoint"/>
       <geom name="base_geom" type="box" size="0.1 0.1 0.05" pos="0 0 0"/>
 
       <!-- Hakoniwa ultrasonic uses local +X as measurement axis -->

@@ -65,7 +65,6 @@ void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, in
 }  // namespace
 
 void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex& mutex) {
-    (void)running_flag;
 
     if (!glfwInit()) {
         const char* description = nullptr;
@@ -99,7 +98,7 @@ void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex&
     mjv_makeScene(model, &g_scene, 2000);
     mjr_makeContext(model, &g_context, mjFONTSCALE_150);
 
-    while (!glfwWindowShouldClose(g_window)) {
+    while (running_flag && !glfwWindowShouldClose(g_window)) {
         int framebuffer_width = 0;
         int framebuffer_height = 0;
         glfwGetFramebufferSize(g_window, &framebuffer_width, &framebuffer_height);

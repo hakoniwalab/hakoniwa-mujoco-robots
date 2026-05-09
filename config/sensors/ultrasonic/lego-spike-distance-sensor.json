@@ -13,16 +13,16 @@
         "Min": 0.05,
         "Max": 2.0
       },
-      "StdDev": 0.02,
-      "Precision": 0.001,
-      "NoiseDistribution": "gaussian"
+      "StdDev": 0.0,
+      "Precision": 0.0,
+      "NoiseDistribution": "none"
     }
   ],
 
   "Cone": {
-    "Horizontal": 1.221730476,
-    "Vertical": 1.221730476,
-    "RayCount": 9
+    "Horizontal": 0.0,
+    "Vertical": 0.0,
+    "RayCount": 1
   },
 
   "UpdateRate": 100.0,
@@ -31,6 +31,6 @@
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "parent_body": "base_link",
-    "source_site": "spike_distance_sensor_site"
+    "source_site": "front_ultrasonic_site"
   }
 }
