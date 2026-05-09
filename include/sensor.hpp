@@ -48,6 +48,29 @@ namespace hako::robots::sensor
         virtual void Reset() = 0;
         virtual double GetUpdatePeriodSec() const = 0;
         virtual bool ShouldUpdate(double delta_sec) = 0;
+        virtual bool IsSelfGeom(const mjModel* model, int body_exclude, int geom_id) const
+        {
+            if (model == nullptr || geom_id < 0 || geom_id >= model->ngeom || body_exclude < 0) {
+                return false;
+            }
+
+            int body_id = model->geom_bodyid[geom_id];
+            while (body_id >= 0) {
+                if (body_id == body_exclude) {
+                    return true;
+                }
+
+                const int parent_id = model->body_parentid[body_id];
+                if (parent_id == body_id) {
+                    break;
+                }
+
+                body_id = parent_id;
+            }
+
+            return false;
+        }
+
     };
 
     class IStatePublisher

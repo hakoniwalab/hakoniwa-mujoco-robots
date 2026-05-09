@@ -209,25 +209,6 @@ float LiDAR2DSensor::CastRay(
     return static_cast<float>(config_.detection_distance.max);
 }
 
-bool LiDAR2DSensor::IsSelfGeom(const mjModel* model, int body_exclude, int geom_id) const
-{
-    if (geom_id < 0 || body_exclude < 0) {
-        return false;
-    }
-    int body_id = model->geom_bodyid[geom_id];
-    while (body_id >= 0) {
-        if (body_id == body_exclude) {
-            return true;
-        }
-        const int parent_id = model->body_parentid[body_id];
-        if (parent_id == body_id) {
-            break;
-        }
-        body_id = parent_id;
-    }
-    return false;
-}
-
 void LiDAR2DSensor::ApplyBlindPadding(std::vector<float>& ranges) const
 {
     if (!config_.angle_range.blind_padding.enabled || config_.angle_range.blind_padding.size <= 0) {
