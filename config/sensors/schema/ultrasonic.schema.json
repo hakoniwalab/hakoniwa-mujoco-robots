@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/ultrasonic.schema.json",
+  "title": "Hakoniwa Ultrasonic sensor profile",
+  "description": "SDF-like but MJCF-resolved JSON config for ultrasonic range sensors used by Hakoniwa MuJoCo sensors.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "frame_id",
+    "DetectionDistance",
+    "DistanceAccuracy",
+    "Cone",
+    "UpdateRate"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "frame_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "DetectionDistance": {
+      "$ref": "#/$defs/distanceRange"
+    },
+    "DistanceAccuracy": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/distanceAccuracy"
+      }
+    },
+    "Cone": {
+      "$ref": "#/$defs/cone"
+    },
+    "UpdateRate": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "RuntimeBinding": {
+      "$ref": "#/$defs/runtimeBinding"
+    }
+  },
+  "$defs": {
+    "distanceRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Min",
+        "Max"
+      ],
+      "properties": {
+        "Min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "Max": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "distanceAccuracy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Range",
+        "StdDev",
+        "NoiseDistribution"
+      ],
+      "properties": {
+        "Range": {
+          "$ref": "#/$defs/distanceRange"
+        },
+        "StdDev": {
+          "type": "number",
+          "minimum": 0
+        },
+        "Precision": {
+          "type": "number",
+          "minimum": 0
+        },
+        "NoiseDistribution": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "cone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Horizontal",
+        "Vertical",
+        "RayCount"
+      ],
+      "properties": {
+        "Horizontal": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Horizontal field of view in radians."
+        },
+        "Vertical": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Vertical field of view in radians."
+        },
+        "RayCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of rays used to approximate the ultrasonic cone."
+        }
+      }
+    },
+    "runtimeBinding": {
+      "type": "object",
+      "description": "Optional Hakoniwa runtime binding fields for MJCF-based resolution.",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "parent_body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_body": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_site": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame_id_override": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

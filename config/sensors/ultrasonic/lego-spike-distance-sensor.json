@@ -1,0 +1,36 @@
+{
+  "$schema": "https://hakoniwa.dev/schemas/ultrasonic.schema.json",
+  "frame_id": "spike_distance_sensor_link",
+
+  "DetectionDistance": {
+    "Min": 0.05,
+    "Max": 2.0
+  },
+
+  "DistanceAccuracy": [
+    {
+      "Range": {
+        "Min": 0.05,
+        "Max": 2.0
+      },
+      "StdDev": 0.02,
+      "Precision": 0.001,
+      "NoiseDistribution": "gaussian"
+    }
+  ],
+
+  "Cone": {
+    "Horizontal": 1.221730476,
+    "Vertical": 1.221730476,
+    "RayCount": 9
+  },
+
+  "UpdateRate": 100.0,
+
+  "RuntimeBinding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "parent_body": "base_link",
+    "source_site": "spike_distance_sensor_site"
+  }
+}
