@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <mutex>
+#include <functional>
 
 namespace {
 
@@ -63,9 +64,27 @@ void keyboard_callback(GLFWwindow* window, int key, int scancode, int action, in
 }
 
 }  // namespace
+void viewer_thread(
+    mjModel* model,
+    mjData* data,
+    bool& running_flag,
+    std::mutex& mutex)
+{
+    viewer_thread_with_overlay(
+        model,
+        data,
+        running_flag,
+        mutex,
+        nullptr);
+}
 
-void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex& mutex) {
-
+void viewer_thread_with_overlay(
+    mjModel* model,
+    mjData* data,
+    bool& running_flag,
+    std::mutex& mutex,
+    ViewerOverlayCallback overlay)
+{
     if (!glfwInit()) {
         const char* description = nullptr;
         const int error_code = glfwGetError(&description);
@@ -106,7 +125,20 @@ void viewer_thread(mjModel* model, mjData* data, bool& running_flag, std::mutex&
 
         {
             std::lock_guard<std::mutex> lock(mutex);
-            mjv_updateScene(model, data, &g_option, nullptr, &g_camera, mjCAT_ALL, &g_scene);
+
+            mjv_updateScene(
+                model,
+                data,
+                &g_option,
+                nullptr,
+                &g_camera,
+                mjCAT_ALL,
+                &g_scene);
+
+            if (overlay) {
+                overlay(g_scene);
+            }
+
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             mjr_render(viewport, &g_scene, &g_context);
         }

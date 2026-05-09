@@ -1,5 +1,6 @@
 #include "physics.hpp"
 #include "sensors/ultrasonic/ultrasonic_sensor.hpp"
+#include "sensors/debug/raycast_debug.hpp"
 #include "mujoco_viewer.hpp"
 
 #include <mujoco/mujoco.h>
@@ -19,11 +20,14 @@ constexpr const char* kDefaultModelPath =
     "models/sensors/ultrasonic/ultrasonic-sensor-test.xml";
 
 /*
- * If you created a no-noise test config, prefer:
+ * This config should be aligned with the test model.
  *
- *   config/sensors/ultrasonic/ultrasonic-sensor-test.json
- *
- * Keep this path aligned with RuntimeBinding.source_site.
+ * Recommended:
+ *   - RuntimeBinding.source_site = "front_ultrasonic_site"
+ *   - NoiseDistribution = "none"
+ *   - StdDev = 0.0
+ *   - Precision = 0.0
+ *   - RayCount = 1
  */
 constexpr const char* kDefaultConfigPath =
     "config/sensors/ultrasonic/lego-spike-distance-sensor.json";
@@ -32,6 +36,7 @@ constexpr const char* kSensorSiteName = "front_ultrasonic_site";
 constexpr const char* kExcludeBodyName = "base_footprint";
 
 constexpr double kMoveStep = 0.05;
+constexpr double kDebugRayWidth = 0.006;
 
 std::string status_to_string(
     hako::robots::sensor::ultrasonic::UltrasonicStatus status)
@@ -111,6 +116,16 @@ int find_base_freejoint_qpos_addr(const mjModel* model)
     return model->jnt_qposadr[joint_id];
 }
 
+int find_site_id(const mjModel* model, const std::string& site_name)
+{
+    const int site_id = mj_name2id(model, mjOBJ_SITE, site_name.c_str());
+    if (site_id < 0) {
+        throw std::runtime_error("site was not found: " + site_name);
+    }
+
+    return site_id;
+}
+
 void print_pose(const mjData* data, int qpos_addr)
 {
     std::cout
@@ -142,6 +157,46 @@ void move_base(mjModel* model, mjData* data, int qpos_addr, double dx, double dy
     mj_forward(model, data);
 }
 
+hako::robots::sensor::debug::RaycastDebugLine make_ultrasonic_center_ray_debug_line(
+    const mjData* data,
+    int site_id,
+    const hako::robots::sensor::ultrasonic::UltrasonicFrame& frame)
+{
+    const mjtNum* site_pos = &data->site_xpos[3 * site_id];
+    const mjtNum* site_mat = &data->site_xmat[9 * site_id];
+
+    mjtNum local_forward[3] = {1.0, 0.0, 0.0};
+    mjtNum world_forward[3] = {0.0, 0.0, 0.0};
+
+    mju_mulMatVec3(world_forward, site_mat, local_forward);
+    mju_normalize3(world_forward);
+
+    hako::robots::sensor::debug::RaycastDebugLine line {};
+
+    line.from = {
+        static_cast<double>(site_pos[0]),
+        static_cast<double>(site_pos[1]),
+        static_cast<double>(site_pos[2])
+    };
+
+    line.to = {
+        static_cast<double>(site_pos[0] + world_forward[0] * frame.range),
+        static_cast<double>(site_pos[1] + world_forward[1] * frame.range),
+        static_cast<double>(site_pos[2] + world_forward[2] * frame.range)
+    };
+
+    using hako::robots::sensor::ultrasonic::UltrasonicStatus;
+
+    line.hit =
+        frame.status == UltrasonicStatus::OK ||
+        frame.status == UltrasonicStatus::BELOW_MIN_RANGE;
+
+    line.geom_id = -1;
+    line.label = "ultrasonic_center_ray";
+
+    return line;
+}
+
 void print_help()
 {
     std::cout << R"(
@@ -155,11 +210,41 @@ Controls:
   h : help
   q : quit
 
+Viewer:
+  - After pressing 's', the measured center ray is drawn in the viewer.
+  - Green line: hit
+  - Red line: no-hit
+
 Note:
   On macOS, the MuJoCo viewer runs on the main thread.
   Console input runs on a worker thread.
 
 )" << std::endl;
+}
+
+static void scan(
+    hako::robots::sensor::ultrasonic::UltrasonicSensor& sensor,
+    hako::robots::sensor::ultrasonic::UltrasonicFrame& last_frame,
+    bool& has_last_frame)
+{
+
+    hako::robots::sensor::ultrasonic::UltrasonicFrame frame;
+    sensor.Measure(frame);
+
+    last_frame = frame;
+    has_last_frame = true;
+
+    std::cout
+        << "range="
+        << std::fixed << std::setprecision(3)
+        << frame.range
+        << " m"
+        << ", status="
+        << status_to_string(frame.status)
+        << ", variance="
+        << std::scientific << frame.variance
+        << std::defaultfloat
+        << std::endl;
 }
 
 void run_command_loop(
@@ -168,8 +253,14 @@ void run_command_loop(
     mjModel* model,
     mjData* data,
     int qpos_addr,
-    hako::robots::sensor::ultrasonic::UltrasonicSensor& sensor)
+    hako::robots::sensor::ultrasonic::UltrasonicSensor& sensor,
+    hako::robots::sensor::ultrasonic::UltrasonicFrame& last_frame,
+    bool& has_last_frame)
 {
+    {
+        std::lock_guard<std::mutex> lock(mujoco_mutex);
+        scan(sensor, last_frame, has_last_frame);
+    }
     while (running) {
         std::cout << "> " << std::flush;
 
@@ -191,6 +282,7 @@ void run_command_loop(
         {
             std::lock_guard<std::mutex> lock(mujoco_mutex);
             move_base(model, data, qpos_addr, +kMoveStep, 0.0);
+            scan(sensor, last_frame, has_last_frame);
             std::cout << "moved: x += " << kMoveStep << ", ";
             print_pose(data, qpos_addr);
             break;
@@ -200,6 +292,7 @@ void run_command_loop(
         {
             std::lock_guard<std::mutex> lock(mujoco_mutex);
             move_base(model, data, qpos_addr, -kMoveStep, 0.0);
+            scan(sensor, last_frame, has_last_frame);
             std::cout << "moved: x -= " << kMoveStep << ", ";
             print_pose(data, qpos_addr);
             break;
@@ -209,6 +302,7 @@ void run_command_loop(
         {
             std::lock_guard<std::mutex> lock(mujoco_mutex);
             move_base(model, data, qpos_addr, 0.0, +kMoveStep);
+            scan(sensor, last_frame, has_last_frame);
             std::cout << "moved: y += " << kMoveStep << ", ";
             print_pose(data, qpos_addr);
             break;
@@ -218,6 +312,7 @@ void run_command_loop(
         {
             std::lock_guard<std::mutex> lock(mujoco_mutex);
             move_base(model, data, qpos_addr, 0.0, -kMoveStep);
+            scan(sensor, last_frame, has_last_frame);
             std::cout << "moved: y -= " << kMoveStep << ", ";
             print_pose(data, qpos_addr);
             break;
@@ -226,21 +321,7 @@ void run_command_loop(
         case 's':
         {
             std::lock_guard<std::mutex> lock(mujoco_mutex);
-
-            hako::robots::sensor::ultrasonic::UltrasonicFrame frame;
-            sensor.Measure(frame);
-
-            std::cout
-                << "range="
-                << std::fixed << std::setprecision(3)
-                << frame.range
-                << " m"
-                << ", status="
-                << status_to_string(frame.status)
-                << ", variance="
-                << std::scientific << frame.variance
-                << std::defaultfloat
-                << std::endl;
+            scan(sensor, last_frame, has_last_frame);
             break;
         }
 
@@ -283,6 +364,7 @@ int main(int argc, char** argv)
         }
 
         const int qpos_addr = find_base_freejoint_qpos_addr(model);
+        const int sensor_site_id = find_site_id(model, kSensorSiteName);
 
         hako::robots::sensor::ultrasonic::UltrasonicSensor sensor(
             world,
@@ -295,6 +377,9 @@ int main(int argc, char** argv)
                 << config_path << std::endl;
             return EXIT_FAILURE;
         }
+
+        hako::robots::sensor::ultrasonic::UltrasonicFrame last_frame {};
+        bool has_last_frame = false;
 
         std::cout << "Hakoniwa Ultrasonic Sensor Example" << std::endl;
         std::cout << "model : " << model_path << std::endl;
@@ -313,7 +398,7 @@ int main(int argc, char** argv)
          * on the main thread. Therefore:
          *
          *   - command_thread handles console input
-         *   - main thread runs viewer_thread()
+         *   - main thread runs viewer_thread_with_overlay()
          */
         command_thread = std::thread(
             run_command_loop,
@@ -322,13 +407,30 @@ int main(int argc, char** argv)
             model,
             data,
             qpos_addr,
-            std::ref(sensor));
+            std::ref(sensor),
+            std::ref(last_frame),
+            std::ref(has_last_frame));
 
-        viewer_thread(
+        viewer_thread_with_overlay(
             model,
             data,
             viewer_running,
-            mujoco_mutex);
+            mujoco_mutex,
+            [&](mjvScene& scene) {
+                if (!has_last_frame) {
+                    return;
+                }
+
+                const auto line = make_ultrasonic_center_ray_debug_line(
+                    data,
+                    sensor_site_id,
+                    last_frame);
+
+                hako::robots::sensor::debug::AddRaycastDebugLine(
+                    scene,
+                    line,
+                    kDebugRayWidth);
+            });
 
         /*
          * If the viewer window was closed, stop the command loop.
