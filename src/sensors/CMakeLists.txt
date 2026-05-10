@@ -85,6 +85,10 @@ if(HAKO_BUILD_SENSOR_TESTS)
         ultrasonic_range_pdu_converter_test
         ${PROJECT_ROOT_DIR}/tests/sensors/ultrasonic/unit/ultrasonic_range_pdu_converter_test.cpp
     )
+    hako_add_sensor_test(
+        ultrasonic_measurement_test
+        ${PROJECT_ROOT_DIR}/tests/sensors/ultrasonic/unit/ultrasonic_measurement_test.cpp
+    )
 
     add_custom_target(
         camera_unit_tests
@@ -98,6 +102,7 @@ if(HAKO_BUILD_SENSOR_TESTS)
         DEPENDS
             ultrasonic_config_loader_test
             ultrasonic_range_pdu_converter_test
+            ultrasonic_measurement_test
     )
     add_custom_target(
         sensor_unit_tests
@@ -112,6 +117,7 @@ if(HAKO_BUILD_SENSOR_TESTS)
         COMMAND $<TARGET_FILE:depth_encoding_test>
         COMMAND $<TARGET_FILE:ultrasonic_config_loader_test>
         COMMAND $<TARGET_FILE:ultrasonic_range_pdu_converter_test>
+        COMMAND $<TARGET_FILE:ultrasonic_measurement_test>
         DEPENDS sensor_unit_tests
         WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
         USES_TERMINAL
