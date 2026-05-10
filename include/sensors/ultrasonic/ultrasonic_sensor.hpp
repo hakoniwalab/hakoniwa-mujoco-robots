@@ -10,8 +10,16 @@
 #include "sensors/common/update_scheduler.hpp"
 #include "sensors/noise/noise.hpp"
 
+#include "sensor_msgs/pdu_cpptype_Range.hpp"
+#include "sensor_msgs/pdu_cpptype_conv_Range.hpp"
+
 namespace hako::robots::sensor::ultrasonic
 {
+    enum class RangeRadiationType : uint8_t
+    {
+        ULTRASOUND = 0,
+        INFRARED = 1
+    };
     /**
      * @brief Distance interval in meters.
      *
@@ -163,7 +171,10 @@ namespace hako::robots::sensor::ultrasonic
      * - frame_id:
      *     Logical sensor frame name.
      *     This should be used as the published frame_id in sensor output.
-     *
+     * 
+     * - radiation_type:
+     *    Radiation type of the range sensor.
+     * 
      * - detection_distance:
      *     Valid measurable distance range in meters.
      *
@@ -195,6 +206,7 @@ namespace hako::robots::sensor::ultrasonic
     struct UltrasonicConfig
     {
         std::string frame_id {"ultrasonic"};
+        RangeRadiationType radiation_type {RangeRadiationType::ULTRASOUND};
         DistanceRange detection_distance {};
         std::vector<DistanceAccuracy> distance_accuracy {};
         Cone cone {};
@@ -342,6 +354,23 @@ namespace hako::robots::sensor::ultrasonic
          * @param out Output frame to be filled by the implementation.
          */
         virtual void Measure(UltrasonicFrame& out) = 0;
+
+
+        static HakoCpp_Range ToRangePdu(
+            const UltrasonicConfig& config,
+            const UltrasonicFrame& frame)
+        {
+            HakoCpp_Range pdu_range {};
+
+            pdu_range.header.frame_id = config.frame_id;
+            pdu_range.radiation_type = static_cast<Hako_uint8>(config.radiation_type);
+            pdu_range.field_of_view = static_cast<float>(config.cone.horizontal);
+            pdu_range.min_range = static_cast<float>(config.detection_distance.min);
+            pdu_range.max_range = static_cast<float>(config.detection_distance.max);
+            pdu_range.range = static_cast<float>(frame.range);
+
+            return pdu_range;
+        }
     };
 
     /**

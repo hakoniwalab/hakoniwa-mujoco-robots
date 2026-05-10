@@ -24,7 +24,7 @@
     "Vertical": 0.0,
     "RayCount": 1
   },
-
+  "RadiationType": "ultrasound",
   "UpdateRate": 100.0,
 
   "RuntimeBinding": {

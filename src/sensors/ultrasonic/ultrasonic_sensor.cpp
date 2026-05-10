@@ -110,6 +110,18 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
     try {
         config_.frame_id = root.value("frame_id", "ultrasonic");
 
+        std::string radiation_type =
+            root.value("RadiationType", std::string("ultrasound"));
+
+        if (radiation_type == "ultrasound" || radiation_type == "ULTRASOUND") {
+            config_.radiation_type = RangeRadiationType::ULTRASOUND;
+        } else if (radiation_type == "infrared" || radiation_type == "INFRARED") {
+            config_.radiation_type = RangeRadiationType::INFRARED;
+        } else {
+            std::cerr << "ERROR: invalid RadiationType: " << radiation_type << std::endl;
+            return false;
+        }
+
         if (root.contains("DetectionDistance")) {
             const auto& j_dist = root.at("DetectionDistance");
             config_.detection_distance.min = common::get_json_number(j_dist, "Min", 0.0);
