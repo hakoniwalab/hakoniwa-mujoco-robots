@@ -1,4 +1,4 @@
-name: Camera Sensor Tests
+name: Sensor Unit Tests
 
 on:
   push:
@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  camera-unit-tests:
-    name: Camera Unit Tests (ubuntu-latest)
+  sensor-unit-tests:
+    name: Sensor Unit Tests (ubuntu-latest)
     runs-on: ubuntu-latest
 
     steps:
@@ -32,15 +32,10 @@ jobs:
             -DHAKO_BUILD_CAMERA_SMOKE_TESTS=OFF \
             -DUSE_VIEWER=OFF
 
-      - name: Build camera unit tests
+      - name: Build sensor unit tests
         run: |
-          cmake --build src/cmake-build -j4 --target \
-            camera_config_loader_test \
-            camera_pdu_converter_test \
-            depth_encoding_test
+          cmake --build src/cmake-build -j4 --target sensor_unit_tests
 
-      - name: Run camera unit tests
+      - name: Run sensor unit tests
         run: |
-          ./src/cmake-build/sensors/camera_config_loader_test
-          ./src/cmake-build/sensors/camera_pdu_converter_test
-          ./src/cmake-build/sensors/depth_encoding_test
+          cmake --build src/cmake-build --target run_sensor_unit_tests
