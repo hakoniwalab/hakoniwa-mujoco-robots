@@ -1,16 +1,19 @@
 # Ultrasonic Sensor Example
 
-This example demonstrates the Hakoniwa MuJoCo ultrasonic sensor with a minimal MJCF model.
+This example demonstrates a Hakoniwa ultrasonic range sensor running on MuJoCo.
 
-The purpose of this example is to manually verify that the ultrasonic sensor can:
+It is intended as a small, user-facing example for understanding how a Hakoniwa sensor is modeled, configured, measured, visualized, and converted to a ROS-compatible PDU data type.
 
-- load a MuJoCo model
-- resolve a sensor site
-- move the robot body with keyboard commands
-- measure distance from the sensor site
-- show how the measured range changes as the robot moves
+The example shows how to:
 
-This is an interactive example, not a strict automated test.
+- load a minimal MuJoCo model
+- bind an ultrasonic sensor to a MuJoCo `site`
+- move the robot body interactively
+- measure range from the sensor site
+- visualize the measured ray in the MuJoCo viewer
+- convert the internal ultrasonic frame to `sensor_msgs/Range`
+
+This is an interactive example. Automated checks for the same basic behavior are provided by the sensor unit tests.
 
 ## Files
 
@@ -24,11 +27,16 @@ models/sensors/ultrasonic/
 
 config/sensors/ultrasonic/
   lego-spike-distance-sensor.json
-````
+
+tests/sensors/ultrasonic/unit/
+  ultrasonic_config_loader_test.cpp
+  ultrasonic_range_pdu_converter_test.cpp
+  ultrasonic_measurement_test.cpp
+```
 
 ## Model
 
-The example uses the following MJCF model:
+The example uses this MJCF model:
 
 ```text
 models/sensors/ultrasonic/ultrasonic-sensor-test.xml
@@ -36,24 +44,56 @@ models/sensors/ultrasonic/ultrasonic-sensor-test.xml
 
 The model contains:
 
-* a movable base body named `base_footprint`
-* a sensor site named `front_ultrasonic_site`
-* a front wall
-* a diagonal obstacle for cone-ray behavior checks
+- a movable robot body named `base_footprint`
+- a free joint named `base_freejoint`
+- a sensor site named `front_ultrasonic_site`
+- a front wall
+- a diagonal obstacle
 
-The ultrasonic sensor uses the local `+X` axis of the source site as the measurement direction.
+The ultrasonic sensor uses the local `+X` axis of the source site as its measurement direction.
+
+In other words, the ray starts at `front_ultrasonic_site` and points along the site's local forward direction.
 
 ## Sensor Config
 
-The example uses the following ultrasonic sensor profile:
+The example uses this sensor profile:
 
 ```text
 config/sensors/ultrasonic/lego-spike-distance-sensor.json
 ```
 
-This profile represents a simple LEGO SPIKE-like distance sensor.
+The profile currently represents a simple LEGO SPIKE-like distance sensor profile for Hakoniwa testing.
 
-## Expected Initial Distance
+Important fields:
+
+```json
+{
+  "DetectionDistance": {
+    "Min": 0.05,
+    "Max": 2.0
+  },
+  "DistanceAccuracy": [
+    {
+      "StdDev": 0.0,
+      "Precision": 0.0,
+      "NoiseDistribution": "none"
+    }
+  ],
+  "Cone": {
+    "Horizontal": 0.0,
+    "Vertical": 0.0,
+    "RayCount": 1
+  },
+  "RadiationType": "ultrasound",
+  "RuntimeBinding": {
+    "source_site": "front_ultrasonic_site"
+  }
+}
+```
+
+For this example, noise is disabled and `RayCount` is `1`, so the measurement is deterministic and easy to verify.
+
+## Expected Distances
 
 The front wall is located at `x = 1.0`.
 
@@ -63,19 +103,61 @@ The wall half-size along the X axis is `0.02`, so the front surface of the wall 
 x = 1.0 - 0.02 = 0.98
 ```
 
-The sensor site is located at:
+The sensor site is initially located at:
 
 ```text
 x = 0.12
 ```
 
-Therefore, the expected initial surface distance is approximately:
+Therefore, the expected initial surface distance is:
 
 ```text
 0.98 - 0.12 = 0.86 m
 ```
 
-Small differences are acceptable depending on raycast behavior, geometry resolution, and future sensor runtime policies.
+When the robot moves forward by `0.05 m`, the expected range becomes:
+
+```text
+0.86 - 0.05 = 0.81 m
+```
+
+The unit test also verifies a diagonal obstacle hit and a no-hit case.
+
+## Build
+
+From the repository root:
+
+```bash
+./build.bash
+```
+
+Or, if CMake has already been configured:
+
+```bash
+cmake --build src/cmake-build
+```
+
+The example target is:
+
+```text
+ultrasonic-example
+```
+
+## Run
+
+From the repository root:
+
+```bash
+./src/cmake-build/examples/sensors/ultrasonic/ultrasonic-example
+```
+
+You can also pass a model path and config path explicitly:
+
+```bash
+./src/cmake-build/examples/sensors/ultrasonic/ultrasonic-example \
+  models/sensors/ultrasonic/ultrasonic-sensor-test.xml \
+  config/sensors/ultrasonic/lego-spike-distance-sensor.json
+```
 
 ## Controls
 
@@ -87,17 +169,39 @@ k : move backward (-X)
 j : move left     (+Y)
 l : move right    (-Y)
 s : sense and print ultrasonic range
+h : help
 q : quit
 ```
 
-The initial implementation uses translation only.
-Yaw rotation is intentionally omitted to keep the first example focused on position and distance behavior.
+Moving with `i`, `k`, `j`, or `l` updates the robot position and refreshes the ultrasonic measurement.
+
+Pressing `s` explicitly measures the current range and prints the latest result.
+
+## Viewer
+
+The MuJoCo viewer displays the model and the latest measured ray.
+
+After the first measurement:
+
+- green ray means hit
+- red ray means no-hit
+
+The ray is drawn from the sensor site to the measured range endpoint.
+
+Mathematically, the endpoint is:
+
+```text
+to = site_position + world_forward * range
+```
+
+where `world_forward` is the source site's local `+X` direction transformed into world coordinates.
+
+This debug visualization is useful for ultrasonic sensors and can also be reused for 2D LiDAR ray visualization.
 
 ## Example Session
 
 ```text
 Hakoniwa Ultrasonic Sensor Example
-
 model : models/sensors/ultrasonic/ultrasonic-sensor-test.xml
 config: config/sensors/ultrasonic/lego-spike-distance-sensor.json
 site  : front_ultrasonic_site
@@ -107,88 +211,117 @@ Controls:
   k : move backward (-X)
   j : move left     (+Y)
   l : move right    (-Y)
-  s : sense
+  s : sense and print ultrasonic range
+  h : help
   q : quit
 
+base_pos=(0.000, 0.000, 0.100)
 > s
-range: 0.860 m
-
+range=0.860 m, status=OK, variance=0.000e+00
 > i
+range=0.810 m, status=OK, variance=0.000e+00
 moved: x += 0.050, base_pos=(0.050, 0.000, 0.100)
-
-> s
-range: 0.810 m
-
-> k
-moved: x -= 0.050, base_pos=(0.000, 0.000, 0.100)
-
 > j
-moved: y += 0.050, base_pos=(0.000, 0.050, 0.100)
-
-> s
-range: 0.862 m
+range=0.810 m, status=OK, variance=0.000e+00
+moved: y += 0.050, base_pos=(0.050, 0.050, 0.100)
 ```
 
-## Build
+## PDU Mapping
 
-From the repository root:
+The ultrasonic sensor keeps an internal frame with simulation-friendly diagnostic data:
 
-```bash
-./build.bash
+```text
+UltrasonicFrame
+  frame_id
+  range
+  variance
+  status
 ```
 
-Or build directly with CMake:
+For external communication, it can be converted to the ROS-compatible Hakoniwa PDU type:
 
-```bash
-cmake --build src/cmake-build
+```text
+sensor_msgs/Range
+  std_msgs/Header header
+  uint8 radiation_type
+  float32 field_of_view
+  float32 min_range
+  float32 max_range
+  float32 range
 ```
 
-## Run
+Mapping:
+
+```text
+UltrasonicConfig.frame_id              -> Range.header.frame_id
+UltrasonicConfig.radiation_type        -> Range.radiation_type
+UltrasonicConfig.cone.horizontal       -> Range.field_of_view
+UltrasonicConfig.detection_distance.min -> Range.min_range
+UltrasonicConfig.detection_distance.max -> Range.max_range
+UltrasonicFrame.range                  -> Range.range
+```
+
+`variance` and `status` are internal diagnostic fields and are not part of ROS `sensor_msgs/Range`.
+
+## Tests
+
+Sensor unit tests can be built with:
 
 ```bash
-./src/cmake-build/examples/sensors/ultrasonic/ultrasonic-example
+cmake -S src -B src/cmake-build \
+  -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
+  -DHAKO_BUILD_SENSOR_TESTS=ON \
+  -DHAKO_BUILD_CAMERA_SMOKE_TESTS=OFF \
+  -DUSE_VIEWER=OFF
+
+cmake --build src/cmake-build --target sensor_unit_tests
+```
+
+Run all sensor unit tests:
+
+```bash
+cmake --build src/cmake-build --target run_sensor_unit_tests
+```
+
+Ultrasonic-specific tests are grouped under:
+
+```text
+ultrasonic_unit_tests
+```
+
+They verify:
+
+- config loading
+- `sensor_msgs/Range` PDU conversion
+- deterministic measurement values with noise disabled
+
+The deterministic measurement test checks:
+
+```text
+initial front wall range        = 0.86 m
+front wall range after x move   = 0.81 m
+diagonal obstacle range         = 0.18 m
+no-hit range                    = 2.00 m with NO_HIT status
 ```
 
 ## Current Scope
 
-This example is intentionally minimal.
-
 Included:
 
-* MuJoCo model loading
-* ultrasonic sensor config loading
-* source site lookup
-* keyboard-based base movement
-* manual sensing with `s`
-* range output to standard output
+- MuJoCo model loading
+- ultrasonic sensor config loading
+- source site lookup
+- keyboard-based base movement
+- deterministic range measurement
+- MuJoCo viewer ray overlay
+- `sensor_msgs/Range` PDU conversion
+- automated unit tests for config, PDU conversion, and measurement values
 
-Not included in the first version:
+Not included yet:
 
-* Hakoniwa PDU publish
-* viewer integration
-* automatic assertions
-* CI execution
-* yaw rotation
-* multi-sensor setup
+- live Hakoniwa endpoint publish from the example
+- yaw rotation controls
+- multi-sensor setup
+- full 2D LiDAR ray overlay
 
-Those features can be added later after the basic sensor behavior is stable.
-
-## Relationship to Tests
-
-This example is a manual usage example.
-
-After the behavior is stabilized, the same logic can be promoted into automated smoke tests under:
-
-```text
-tests/sensors/ultrasonic/
-```
-
-A future smoke test should verify at least:
-
-* model load succeeds
-* `front_ultrasonic_site` exists
-* initial range is approximately `0.86 m`
-* moving forward decreases the measured range
-* moving backward increases the measured range
-* self geometry is not detected as the nearest hit
-
+These can be added incrementally now that the sensor, viewer, PDU, example, and test paths are connected.
