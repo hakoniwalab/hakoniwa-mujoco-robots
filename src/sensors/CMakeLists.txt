@@ -113,6 +113,7 @@ if(HAKO_BUILD_SENSOR_TESTS)
         COMMAND $<TARGET_FILE:ultrasonic_config_loader_test>
         COMMAND $<TARGET_FILE:ultrasonic_range_pdu_converter_test>
         DEPENDS sensor_unit_tests
+        WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
         USES_TERMINAL
     )
     add_custom_target(
@@ -121,6 +122,7 @@ if(HAKO_BUILD_SENSOR_TESTS)
         COMMAND $<TARGET_FILE:camera_pdu_converter_test>
         COMMAND $<TARGET_FILE:depth_encoding_test>
         DEPENDS camera_unit_tests
+        WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
         USES_TERMINAL
     )
 endif()
