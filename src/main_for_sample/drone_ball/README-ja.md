@@ -151,6 +151,20 @@ python3 python/drone_ball_control.py \
 
 つまり、ボールはアバターではなく、**PDU 接続された物理 object** です。
 
+### 2.5 衝突 impulse 送信
+
+`drone_ball_sim` では、`Ball-1` が `Drone-1` または `Drone-2` に当たった時に、`impulse` PDU を送る sender も入れています。
+
+この sender は現在、少なくとも次のチューニング値を持っています。
+
+- `restitution_coefficient`
+- `relative_normal_speed_threshold`
+- `cooldown_steps`
+
+特に `cooldown_steps` は、同じ接触が連続している間に何度も impulse を送りすぎないための抑制用パラメータです。
+
+現時点では、これらの値は `src/main_for_sample/drone_ball/main.cpp` 側で sender に渡しています。
+
 ### 3. PDU 設定の考え方
 
 今回の実装では、判断を C++ コードに埋め込みすぎないようにしています。

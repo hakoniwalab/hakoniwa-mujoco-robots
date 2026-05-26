@@ -8,13 +8,15 @@
       {
         "name": "Drone-1",
         "pdu": [
-          { "name": "pos", "notify_on_recv": false }
+          { "name": "pos", "notify_on_recv": false },
+          { "name": "impulse", "notify_on_recv": false }
         ]
       },
       {
         "name": "Drone-2",
         "pdu": [
-          { "name": "pos", "notify_on_recv": false }
+          { "name": "pos", "notify_on_recv": false },
+          { "name": "impulse", "notify_on_recv": false }
         ]
       },
       {

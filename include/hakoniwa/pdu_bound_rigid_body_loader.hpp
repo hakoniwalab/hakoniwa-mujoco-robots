@@ -54,7 +54,7 @@ inline bool is_publish_channel(
     const std::string& logical_name)
 {
     if (type == PduBoundRigidBodyType::Mirrored) {
-        return false;
+        return logical_name == "impulse";
     }
     return logical_name == "pos" || logical_name == "velocity";
 }

@@ -5,7 +5,8 @@
       "bodyName": "d1_b_drone_base",
       "type": "mirrored",
       "channels": {
-        "pos": "pos"
+        "pos": "pos",
+        "impulse": "impulse"
       }
     },
     {
@@ -13,7 +14,8 @@
       "bodyName": "d2_b_drone_base",
       "type": "mirrored",
       "channels": {
-        "pos": "pos"
+        "pos": "pos",
+        "impulse": "impulse"
       }
     },
     {

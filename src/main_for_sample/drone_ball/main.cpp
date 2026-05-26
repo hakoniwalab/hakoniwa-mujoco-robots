@@ -66,6 +66,9 @@ struct DroneBallRuntimeConfig {
     std::string asset_config_path {};
     std::string endpoint_config_path {};
     std::string bindings_config_path {};
+    double impulse_restitution_coefficient {0.3};
+    double impulse_relative_normal_speed_threshold {0.2};
+    int impulse_cooldown_steps {100};
     bool disable_conductor_start {false};
     bool disable_viewer {false};
 };
@@ -80,6 +83,9 @@ DroneBallRuntimeConfig load_runtime_config()
         resolve_repo_path(get_env_string("HAKO_DRONE_ENDPOINT_CONFIG_PATH", endpoint_path));
     config.bindings_config_path =
         resolve_repo_path(get_env_string("HAKO_DRONE_BINDINGS_PATH", bindings_path));
+    config.impulse_restitution_coefficient = 0.3;
+    config.impulse_relative_normal_speed_threshold = 0.2;
+    config.impulse_cooldown_steps = 100;
     config.disable_conductor_start = disable_conductor_start;
     config.disable_viewer = disable_viewer;
     return config;
@@ -136,18 +142,30 @@ static int my_manual_timing_control(hako_asset_context_t* context)
 
     std::vector<std::unique_ptr<hakoniwa::MirroredRigidBody>> mirrored_bodies;
     std::vector<std::unique_ptr<hakoniwa::ControllableRigidBody>> controllable_bodies;
+    std::vector<hakoniwa::MirroredRigidBody*> mirrored_body_ptrs;
     mirrored_bodies.reserve(bindings.size());
     controllable_bodies.reserve(bindings.size());
+    mirrored_body_ptrs.reserve(bindings.size());
 
     for (const auto& binding : bindings) {
         if (binding.type == hakoniwa::PduBoundRigidBodyType::Mirrored) {
             mirrored_bodies.push_back(
                 std::make_unique<hakoniwa::MirroredRigidBody>(world, endpoint, binding));
+            mirrored_body_ptrs.push_back(mirrored_bodies.back().get());
         } else {
             controllable_bodies.push_back(
                 std::make_unique<hakoniwa::ControllableRigidBody>(world, endpoint, binding));
         }
     }
+    hakoniwa::ImpulseDisturbanceSender::Config impulse_config {};
+    impulse_config.restitution_coefficient = runtime.impulse_restitution_coefficient;
+    impulse_config.relative_normal_speed_threshold =
+        runtime.impulse_relative_normal_speed_threshold;
+    impulse_config.cooldown_steps = runtime.impulse_cooldown_steps;
+    hakoniwa::ImpulseDisturbanceSender impulse_sender(
+        world,
+        mirrored_body_ptrs,
+        impulse_config);
 
     if (endpoint.start() != HAKO_PDU_ERR_OK) {
         std::cerr << "[ERROR] Failed to start endpoint." << std::endl;
@@ -174,6 +192,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 (void)body->process_input_events();
             }
             world->advanceTimeStep();
+            impulse_sender.emit_collision_impulses();
             for (auto& body : controllable_bodies) {
                 (void)body->publish_state();
             }
