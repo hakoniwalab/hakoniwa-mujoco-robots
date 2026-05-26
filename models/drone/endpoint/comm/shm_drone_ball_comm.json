@@ -1,0 +1,31 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "drone_ball_shm",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "Drone-1",
+        "pdu": [
+          { "name": "pos", "notify_on_recv": false }
+        ]
+      },
+      {
+        "name": "Drone-2",
+        "pdu": [
+          { "name": "pos", "notify_on_recv": false }
+        ]
+      },
+      {
+        "name": "Ball-1",
+        "pdu": [
+          { "name": "pos", "notify_on_recv": false },
+          { "name": "velocity", "notify_on_recv": false },
+          { "name": "set_pos", "notify_on_recv": true },
+          { "name": "add_force", "notify_on_recv": true }
+        ]
+      }
+    ]
+  }
+}

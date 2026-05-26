@@ -1,0 +1,6 @@
+[
+  { "channel_id": 0, "pdu_size": 72, "name": "pos", "type": "geometry_msgs/Twist" },
+  { "channel_id": 1, "pdu_size": 72, "name": "velocity", "type": "geometry_msgs/Twist" },
+  { "channel_id": 2, "pdu_size": 72, "name": "set_pos", "type": "geometry_msgs/Twist" },
+  { "channel_id": 3, "pdu_size": 72, "name": "add_force", "type": "geometry_msgs/Twist" }
+]

@@ -1,0 +1,26 @@
+{
+  "paths": [
+    {
+      "id": "drone_type",
+      "path": "drone-pdutypes.json"
+    },
+    {
+      "id": "ball_type",
+      "path": "ball-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "Drone-1",
+      "pdutypes_id": "drone_type"
+    },
+    {
+      "name": "Drone-2",
+      "pdutypes_id": "drone_type"
+    },
+    {
+      "name": "Ball-1",
+      "pdutypes_id": "ball_type"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "drone_ball_endpoint",
+  "pdu_def_path": "../drone-pdudef-current.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_drone_ball_comm.json"
+}

@@ -1,0 +1,31 @@
+{
+  "robots": [
+    {
+      "name": "Drone-1",
+      "bodyName": "d1_b_drone_base",
+      "type": "mirrored",
+      "channels": {
+        "pos": "pos"
+      }
+    },
+    {
+      "name": "Drone-2",
+      "bodyName": "d2_b_drone_base",
+      "type": "mirrored",
+      "channels": {
+        "pos": "pos"
+      }
+    },
+    {
+      "name": "Ball-1",
+      "bodyName": "Ball-1",
+      "type": "controllable",
+      "channels": {
+        "pos": "pos",
+        "velocity": "velocity",
+        "set_pos": "set_pos",
+        "add_force": "add_force"
+      }
+    }
+  ]
+}

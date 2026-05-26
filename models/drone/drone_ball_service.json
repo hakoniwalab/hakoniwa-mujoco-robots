@@ -1,0 +1,44 @@
+{
+  "pduMetaDataSize": 24,
+  "pdu_config_path": "models/drone/drone-pdudef-current.json",
+  "services": [],
+  "nodes": [
+    {
+      "name": "Ball-1",
+      "topics": [
+        {
+          "topic_name": "pos",
+          "type": "geometry_msgs/Twist",
+          "pduSize": {
+            "heapSize": 0
+          },
+          "channel_id": 0
+        },
+        {
+          "topic_name": "velocity",
+          "type": "geometry_msgs/Twist",
+          "pduSize": {
+            "heapSize": 0
+          },
+          "channel_id": 1
+        },
+        {
+          "topic_name": "set_pos",
+          "type": "geometry_msgs/Twist",
+          "pduSize": {
+            "heapSize": 0
+          },
+          "channel_id": 2
+        },
+        {
+          "topic_name": "add_force",
+          "type": "geometry_msgs/Twist",
+          "pduSize": {
+            "heapSize": 0
+          },
+          "channel_id": 3
+        }
+      ]
+    }
+  ]
+}
