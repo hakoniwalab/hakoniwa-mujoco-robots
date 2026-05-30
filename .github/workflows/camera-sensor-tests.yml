@@ -22,7 +22,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglfw3-dev libboost-all-dev ninja-build
+          sudo apt-get install -y \
+            libglfw3-dev \
+            libboost-all-dev \
+            ninja-build
 
       - name: Configure
         run: |
@@ -30,11 +33,30 @@ jobs:
             -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
             -DHAKO_BUILD_SENSOR_TESTS=ON \
             -DHAKO_BUILD_CAMERA_SMOKE_TESTS=OFF \
-            -DUSE_VIEWER=OFF
+            -DUSE_VIEWER=OFF \
+            -DHAKONIWA_ASSETS_LIBRARY=assets \
+            -DHAKONIWA_CONDUCTOR_LIBRARY=conductor
+
+      - name: Show CMake cache summary
+        run: |
+          echo "==== CMake cache summary ===="
+          cmake -LAH -N src/cmake-build | grep -E \
+            "^(HAKO|HAKONIWA|MUJOCO|GLFW|Boost|USE_VIEWER|CMAKE_PREFIX_PATH|CMAKE_BUILD_TYPE|CMAKE_CXX_COMPILER|CMAKE_C_COMPILER)" \
+            || true
+
+      - name: Show submodule status
+        run: |
+          echo "==== Git submodule status ===="
+          git submodule status --recursive
 
       - name: Build sensor unit tests
         run: |
           cmake --build src/cmake-build -j4 --target sensor_unit_tests
+
+      - name: List test binaries
+        run: |
+          echo "==== Test binaries ===="
+          find src/cmake-build -maxdepth 6 -type f -perm -111 | sort || true
 
       - name: Run sensor unit tests
         run: |
