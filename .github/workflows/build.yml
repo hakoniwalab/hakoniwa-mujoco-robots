@@ -54,6 +54,8 @@ jobs:
           cmake -S src -B build-ci -G Ninja \
             -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
             -DUSE_VIEWER=ON \
+            -DHAKONIWA_ASSETS_LIBRARY=assets \
+            -DHAKONIWA_CONDUCTOR_LIBRARY=conductor \
             "${CMAKE_PREFIX_ARGS[@]}"
 
       - name: Show CMake cache summary
@@ -63,7 +65,7 @@ jobs:
 
           echo "==== CMake cache summary ===="
           cmake -LAH -N build-ci | grep -E \
-            "^(HAKO|MUJOCO|GLFW|Boost|USE_VIEWER|CMAKE_PREFIX_PATH|CMAKE_BUILD_TYPE|CMAKE_CXX_COMPILER|CMAKE_C_COMPILER)" \
+            "^(HAKO|HAKONIWA|MUJOCO|GLFW|Boost|USE_VIEWER|CMAKE_PREFIX_PATH|CMAKE_BUILD_TYPE|CMAKE_CXX_COMPILER|CMAKE_C_COMPILER)" \
             || true
 
       - name: Show submodule status
@@ -75,7 +77,10 @@ jobs:
           git submodule status --recursive
 
       - name: Build
-        run: cmake --build build-ci --parallel
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cmake --build build-ci --parallel
 
       - name: List build outputs
         shell: bash
@@ -131,7 +136,8 @@ jobs:
             -Generator Ninja `
             -UseThirdpartyHakoniwa `
             -ExtraPrefixPaths "$env:RUNNER_TEMP\vcpkg\installed\x64-windows" `
-            -ToolchainFile "$env:RUNNER_TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake"
+            -ToolchainFile "$env:RUNNER_TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -ExtraCMakeArgs "-DHAKONIWA_ASSETS_LIBRARY=assets;-DHAKONIWA_CONDUCTOR_LIBRARY=conductor"
 
       - name: Show submodule status
         shell: pwsh
