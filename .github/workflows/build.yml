@@ -12,6 +12,7 @@ jobs:
   build-unix:
     name: Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +30,10 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglfw3-dev libboost-all-dev ninja-build
+          sudo apt-get install -y \
+            libglfw3-dev \
+            libboost-all-dev \
+            ninja-build
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -39,17 +43,52 @@ jobs:
       - name: Configure
         shell: bash
         run: |
+          set -euxo pipefail
+
           CMAKE_PREFIX_ARGS=()
+
           if [[ "${RUNNER_OS}" == "macOS" ]]; then
             CMAKE_PREFIX_ARGS+=("-DCMAKE_PREFIX_PATH=$(brew --prefix glfw);$(brew --prefix boost)")
           fi
+
           cmake -S src -B build-ci -G Ninja \
             -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
             -DUSE_VIEWER=ON \
             "${CMAKE_PREFIX_ARGS[@]}"
 
+      - name: Show CMake cache summary
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "==== CMake cache summary ===="
+          cmake -LAH -N build-ci | grep -E \
+            "^(HAKO|MUJOCO|GLFW|Boost|USE_VIEWER|CMAKE_PREFIX_PATH|CMAKE_BUILD_TYPE|CMAKE_CXX_COMPILER|CMAKE_C_COMPILER)" \
+            || true
+
+      - name: Show submodule status
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "==== Git submodule status ===="
+          git submodule status --recursive
+
       - name: Build
         run: cmake --build build-ci --parallel
+
+      - name: List build outputs
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          echo "==== Build outputs ===="
+          find build-ci -maxdepth 5 -type f \( \
+            -perm -111 \
+            -o -name "*.a" \
+            -o -name "*.so" \
+            -o -name "*.dylib" \
+          \) | sort || true
 
   build-windows:
     name: Build (windows-latest)
@@ -74,7 +113,10 @@ jobs:
         run: |
           git clone https://github.com/microsoft/vcpkg.git $env:RUNNER_TEMP\vcpkg
           & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat"
-          & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" install glfw3:x64-windows boost-asio:x64-windows boost-beast:x64-windows
+          & "$env:RUNNER_TEMP\vcpkg\vcpkg.exe" install `
+            glfw3:x64-windows `
+            boost-asio:x64-windows `
+            boost-beast:x64-windows
 
       - name: Setup Ninja
         shell: pwsh
@@ -90,3 +132,38 @@ jobs:
             -UseThirdpartyHakoniwa `
             -ExtraPrefixPaths "$env:RUNNER_TEMP\vcpkg\installed\x64-windows" `
             -ToolchainFile "$env:RUNNER_TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake"
+
+      - name: Show submodule status
+        shell: pwsh
+        run: |
+          Write-Host "==== Git submodule status ===="
+          git submodule status --recursive
+
+      - name: List build outputs
+        shell: pwsh
+        run: |
+          Write-Host "==== Build outputs ===="
+
+          if (Test-Path build) {
+            Get-ChildItem -Path build -Recurse -File |
+              Where-Object {
+                $_.Extension -in ".exe", ".dll", ".lib", ".pdb"
+              } |
+              Sort-Object FullName |
+              ForEach-Object {
+                $_.FullName
+              }
+          }
+          elseif (Test-Path build-ci) {
+            Get-ChildItem -Path build-ci -Recurse -File |
+              Where-Object {
+                $_.Extension -in ".exe", ".dll", ".lib", ".pdb"
+              } |
+              Sort-Object FullName |
+              ForEach-Object {
+                $_.FullName
+              }
+          }
+          else {
+            Write-Host "No build or build-ci directory found."
+          }
