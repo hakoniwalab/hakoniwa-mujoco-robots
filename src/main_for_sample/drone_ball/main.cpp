@@ -165,7 +165,8 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     hakoniwa::ImpulseDisturbanceSender impulse_sender(
         world,
         mirrored_body_ptrs,
-        impulse_config);
+        impulse_config, 
+        "Ball-1");
 
     if (endpoint.start() != HAKO_PDU_ERR_OK) {
         std::cerr << "[ERROR] Failed to start endpoint." << std::endl;

@@ -28,7 +28,7 @@ public:
     ImpulseDisturbanceSender(
         std::shared_ptr<hako::robots::physics::IWorld> world,
         std::vector<MirroredRigidBody*> mirrored_bodies,
-        std::string target_body_name = "Ball-1")
+        std::string target_body_name)
         : ImpulseDisturbanceSender(
               std::move(world),
               std::move(mirrored_bodies),
@@ -41,7 +41,7 @@ public:
         std::shared_ptr<hako::robots::physics::IWorld> world,
         std::vector<MirroredRigidBody*> mirrored_bodies,
         Config config,
-        std::string target_body_name = "Ball-1")
+        std::string target_body_name)
         : world_(std::move(world))
         , config_(config)
         , target_body_name_(std::move(target_body_name))
@@ -49,8 +49,8 @@ public:
         if (world_ == nullptr || world_->getModel() == nullptr || world_->getData() == nullptr) {
             throw std::runtime_error("ImpulseDisturbanceSender requires valid MuJoCo world/model/data");
         }
-        ball_body_id_ = mj_name2id(world_->getModel(), mjOBJ_BODY, target_body_name_.c_str());
-        if (ball_body_id_ < 0) {
+        controllable_target_body_id_ = mj_name2id(world_->getModel(), mjOBJ_BODY, target_body_name_.c_str());
+        if (controllable_target_body_id_ < 0) {
             throw std::runtime_error("Target body not found for impulse sender: " + target_body_name_);
         }
 
@@ -90,13 +90,13 @@ public:
 
             const int body1 = model->geom_bodyid[contact.geom1];
             const int body2 = model->geom_bodyid[contact.geom2];
-            const bool geom1_is_ball = body_is_descendant_(body1, ball_body_id_);
-            const bool geom2_is_ball = body_is_descendant_(body2, ball_body_id_);
-            if (geom1_is_ball == geom2_is_ball) {
+            const bool geom1_is_controllable_body = body_is_descendant_(body1, controllable_target_body_id_);
+            const bool geom2_is_controllable_body = body_is_descendant_(body2, controllable_target_body_id_);
+            if (geom1_is_controllable_body == geom2_is_controllable_body) {
                 continue;
             }
 
-            const int drone_body = geom1_is_ball ? body2 : body1;
+            const int drone_body = geom1_is_controllable_body ? body2 : body1;
             const int target_index = find_target_index_for_body_(drone_body);
             if (target_index < 0) {
                 continue;
@@ -108,12 +108,12 @@ public:
             candidate.dist = contact.dist;
             candidate.contact_point = {contact.pos[0], contact.pos[1], contact.pos[2]};
             candidate.normal = {contact.frame[0], contact.frame[1], contact.frame[2]};
-            if (!geom1_is_ball) {
+            if (!geom1_is_controllable_body) {
                 candidate.normal[0] = -candidate.normal[0];
                 candidate.normal[1] = -candidate.normal[1];
                 candidate.normal[2] = -candidate.normal[2];
             }
-            candidate.relative_normal_speed = std::abs(relative_normal_speed_(targets_[target_index].root_body_id, ball_body_id_, candidate.normal));
+            candidate.relative_normal_speed = std::abs(relative_normal_speed_(targets_[target_index].root_body_id, controllable_target_body_id_, candidate.normal));
 
             auto& slot = candidates[static_cast<std::size_t>(target_index)];
             if (!slot.has_value() || candidate.dist < slot->dist) {
@@ -283,12 +283,12 @@ private:
         impulse.restitution_coefficient = config_.restitution_coefficient;
 
         const auto self_com = body_com_world_(data, target.root_body_id);
-        const auto ball_com = body_com_world_(data, ball_body_id_);
+        const auto controllable_body_com = body_com_world_(data, controllable_target_body_id_);
         const auto self_contact = sub_(candidate.contact_point, self_com);
-        const auto target_contact = sub_(candidate.contact_point, ball_com);
-        const auto target_velocity = body_velocity_world_(model, data, ball_body_id_);
-        const auto target_angular_velocity = body_angular_velocity_world_(model, data, ball_body_id_);
-        const auto target_euler = body_euler_world_(data, ball_body_id_);
+        const auto target_contact = sub_(candidate.contact_point, controllable_body_com);
+        const auto target_velocity = body_velocity_world_(model, data, controllable_target_body_id_);
+        const auto target_angular_velocity = body_angular_velocity_world_(model, data, controllable_target_body_id_);
+        const auto target_euler = body_euler_world_(data, controllable_target_body_id_);
 
         impulse.self_contact_vector.x = self_contact[0];
         impulse.self_contact_vector.y = self_contact[1];
@@ -314,10 +314,10 @@ private:
         impulse.target_euler.y = target_euler[1];
         impulse.target_euler.z = target_euler[2];
 
-        impulse.target_inertia.x = model->body_inertia[3 * ball_body_id_ + 0];
-        impulse.target_inertia.y = model->body_inertia[3 * ball_body_id_ + 1];
-        impulse.target_inertia.z = model->body_inertia[3 * ball_body_id_ + 2];
-        impulse.target_mass = model->body_mass[ball_body_id_];
+        impulse.target_inertia.x = model->body_inertia[3 * controllable_target_body_id_ + 0];
+        impulse.target_inertia.y = model->body_inertia[3 * controllable_target_body_id_ + 1];
+        impulse.target_inertia.z = model->body_inertia[3 * controllable_target_body_id_ + 2];
+        impulse.target_mass = model->body_mass[controllable_target_body_id_];
 
         const bool result = target.mirrored_body != nullptr && target.mirrored_body->publish_impulse(impulse);
         std::cout
@@ -342,7 +342,7 @@ private:
     std::shared_ptr<hako::robots::physics::IWorld> world_;
     Config config_ {};
     std::string target_body_name_ {};
-    int ball_body_id_ {-1};
+    int controllable_target_body_id_ {-1};
     std::vector<DroneTarget> targets_ {};
 };
 }  // namespace hakoniwa
