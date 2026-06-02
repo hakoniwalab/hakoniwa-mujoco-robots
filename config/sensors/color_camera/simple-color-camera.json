@@ -1,0 +1,20 @@
+{
+  "$schema": "../schema/camera.schema.json",
+  "frame_id": "color_camera_frame",
+  "update_rate": 10,
+  "horizontal_fov": 1.2,
+  "image": {
+    "width": 256,
+    "height": 128,
+    "format": "R8G8B8"
+  },
+  "clip": {
+    "near": 0.05,
+    "far": 10.0
+  },
+  "noise": {
+    "type": "none",
+    "mean": 0.0,
+    "stddev": 0.0
+  }
+}

@@ -56,6 +56,8 @@ Included:
 - Python visualizers
 - PDU configs
 - sensor configs
+- reusable sensor components under `src/sensors/`
+- standalone feature examples under `examples/`
 - forklift context save/restore
 - RD-light as an advanced demo
 
@@ -64,7 +66,10 @@ Directory map:
 - `config/`: PDU JSON configs
 - `config/sensors/`: LiDAR / sensor spec JSON
 - `src/`: C++ simulator implementation
+- `src/sensors/`: sensor implementations and PDU converters
 - `python/`: Python controllers / visualizers
+- `examples/`: small standalone examples for individual features
+- `tests/sensors/`: focused sensor unit / smoke tests
 - `docker/`: Docker scripts
 - `logs/`: generated logs
 - `tmp/`: generated state files
@@ -176,7 +181,30 @@ export PATH=/usr/local/hakoniwa/bin:$PATH
 export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
 ```
 
-### 2) OS notes
+### 2) Install hakoniwa-pdu-endpoint (required)
+
+This repository links against the installed C++ `hakoniwa-pdu-endpoint` package.
+
+```bash
+git clone https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git
+cd hakoniwa-pdu-endpoint
+bash build.bash
+sudo bash install.bash
+```
+
+If you install it outside `/usr/local/hakoniwa`, set:
+
+```bash
+export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa-pdu-endpoint/install
+```
+
+If Hakoniwa core is also outside `/usr/local/hakoniwa`, set:
+
+```bash
+export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
+```
+
+### 3) OS notes
 
 - macOS: `brew install glfw`
 - Ubuntu:
@@ -197,6 +225,8 @@ git submodule update --init --recursive
 ```
 
 - MuJoCo version is managed by `MUJOCO_VERSION.txt`.
+- `./build.bash` runs a preflight check before CMake and reports missing prerequisites such as `hakoniwa-core-pro`, `hakoniwa-pdu-endpoint`, or `glfw3`.
+- If the preflight check blocks a custom setup temporarily, use `HAKO_SKIP_PREFLIGHT=1 ./build.bash`.
 - Clean build:
 ```bash
 ./build.bash clean
@@ -228,6 +258,7 @@ WSL / Git Bash wrapper:
 ```
 
 Notes:
+- `build-win.ps1` runs a preflight check before CMake and reports missing install roots, missing package config files, and missing `glfw3` / `vcpkg` prefix information.
 - The script configures with `-S src`, matching the existing Unix build layout.
 - `HakoniwaCoreRoot` is forwarded to `HAKONIWA_INSTALL_PREFIX`.
 - `HakoniwaPduEndpointRoot` is forwarded to `HAKONIWA_PDU_ENDPOINT_PREFIX`.
@@ -324,6 +355,20 @@ python python/tb3_gamepad.py
 python python/lidar_visualizer.py
 ```
 
+### Standalone examples
+
+- Ultrasonic sensor example:
+```bash
+./src/cmake-build/examples/sensors/ultrasonic/ultrasonic-example
+```
+
+- Color camera sensor example (`i/k/j/l` moves the camera, `s` writes a PNG from the viewer or terminal):
+```bash
+./src/cmake-build/examples/sensors/color_camera/color-camera-example
+```
+
+See [examples/README.md](examples/README.md) for the current example index.
+
 ---
 
 ## TurtleBot3 2D LiDAR
@@ -388,6 +433,40 @@ Camera / depth / RGBD sensor components are available under `include/sensors/cam
 - The smoke test also checks several image positions, multiple horizontal FOV settings, and clip-range NaN masking.
 - Render smoke tests live under `tests/sensors/camera/smoke/` and require MuJoCo + OpenGL, so they are intended for local/manual runs or dedicated CI.
 - It is still not claimed to be fully validated for arbitrary scenes such as oblique geometry, extreme camera setups, or alternative depth-map conventions.
+
+## Sensor Components And Examples
+
+Reusable sensor components live under `src/sensors/`, with JSON profiles under `config/sensors/` and schemas under `config/sensors/schema/`.
+
+Current sensor areas:
+- camera / depth / RGBD / multicamera
+- color camera PNG example
+- 2D LiDAR
+- ultrasonic range
+- IMU
+- joint state
+- odometry
+- TF
+- noise helpers
+- debug ray visualization
+
+The standalone examples are intentionally smaller than the TurtleBot3 and forklift demos. They are useful for checking one feature at a time:
+- [examples/README.md](examples/README.md)
+- [examples/sensors/README.md](examples/sensors/README.md)
+- [examples/sensors/ultrasonic/README.md](examples/sensors/ultrasonic/README.md)
+- [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md)
+
+Sensor unit tests are optional build targets:
+```bash
+cmake -S src -B src/cmake-build -DHAKO_BUILD_SENSOR_TESTS=ON
+cmake --build src/cmake-build --target run_sensor_unit_tests
+```
+
+Camera render smoke tests require a MuJoCo / OpenGL runtime:
+```bash
+cmake -S src -B src/cmake-build -DHAKO_BUILD_CAMERA_SMOKE_TESTS=ON
+cmake --build src/cmake-build --target camera_smoke_tests
+```
 
 ## Docker (Ubuntu 24.04)
 
@@ -900,9 +979,15 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 - `src/main_for_sample/tb3/main.cpp`: TurtleBot3 sample (Hakoniwa asset / endpoint / 2D LiDAR)
 - `python/tb3_gamepad.py`: TurtleBot3 Python controller asset (PS4/DualSense)
 - `python/lidar_visualizer.py`: generic LiDAR visualizer (world view)
+- `examples/README.md`: standalone example index
+- `examples/sensors/ultrasonic/README.md`: ultrasonic sensor example
+- `examples/sensors/color_camera/README.md`: color camera PNG example
+- `src/sensors/`: reusable sensor components and PDU conversion helpers
 - `config/sensors/lidar/lds-01.json`: TurtleBot3 LDS-01-like noisy LiDAR profile
 - `config/sensors/lidar/lds-02.json`: TurtleBot3 LDS-02-like longer-range LiDAR profile
 - `config/sensors/lidar/urg-04lx-ug01.json`: Hokuyo URG-04LX-UG01-like cleaner LiDAR profile
+- `config/sensors/ultrasonic/lego-spike-distance-sensor.json`: ultrasonic range sensor profile used by the standalone example
+- `config/sensors/color_camera/simple-color-camera.json`: color camera profile used by the PNG example
 
 ---
 

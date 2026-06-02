@@ -56,6 +56,8 @@ MuJoCo 上で動作する TurtleBot3 Burger に、箱庭 PDU 経由の 2D LiDAR 
 - Python visualizers
 - PDU config files
 - sensor config files
+- `src/sensors/` 配下の再利用可能な sensor components
+- `examples/` 配下の単機能 standalone examples
 - フォークリフト向け context save/restore
 - RD-light handoff デモ（advanced example）
 
@@ -64,7 +66,10 @@ MuJoCo 上で動作する TurtleBot3 Burger に、箱庭 PDU 経由の 2D LiDAR 
 - `config/` PDU設定JSON
 - `config/sensors/` LiDAR / sensor spec JSON
 - `src/` C++シミュレータ実装
+- `src/sensors/` sensor 実装と PDU 変換
 - `python/` Python制御コード / visualizer
+- `examples/` 個別機能を試す小さな standalone examples
+- `tests/sensors/` sensor unit / smoke tests
 - `docker/` Dockerfile/実行スクリプト
 - `logs/` 実行ログ（生成物）
 - `tmp/` 状態ファイル（生成物）
@@ -174,7 +179,30 @@ export PATH=/usr/local/hakoniwa/bin:$PATH
 export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
 ```
 
-### 2) OS別補足
+### 2) hakoniwa-pdu-endpoint の導入（必須）
+
+このリポジトリは、install 済みの C++ `hakoniwa-pdu-endpoint` package に link します。
+
+```bash
+git clone https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git
+cd hakoniwa-pdu-endpoint
+bash build.bash
+sudo bash install.bash
+```
+
+`/usr/local/hakoniwa` 以外へ install した場合:
+
+```bash
+export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa-pdu-endpoint/install
+```
+
+Hakoniwa core も `/usr/local/hakoniwa` 以外にある場合:
+
+```bash
+export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
+```
+
+### 3) OS別補足
 
 - macOS: `brew install glfw`
 - Ubuntu: OpenGL/GLFW関連を導入
@@ -193,6 +221,8 @@ git submodule update --init --recursive
 ```
 
 - MuJoCoバージョンは `MUJOCO_VERSION.txt` で管理します。
+- `./build.bash` は CMake 実行前に preflight check を行い、`hakoniwa-core-pro`、`hakoniwa-pdu-endpoint`、`glfw3` など不足している前提を表示します。
+- 独自環境で一時的に preflight check を回避したい場合は、`HAKO_SKIP_PREFLIGHT=1 ./build.bash` を使えます。
 - クリーンビルド:
 ```bash
 ./build.bash clean
@@ -224,6 +254,7 @@ WSL / Git Bash ラッパー:
 ```
 
 メモ:
+- `build-win.ps1` は CMake 実行前に preflight check を行い、install root の未指定、package config 不足、`glfw3` / `vcpkg` prefix 情報不足を表示します。
 - 既存の Unix ビルドと同じく、`-S src` を使って configure します。
 - `HakoniwaCoreRoot` は `HAKONIWA_INSTALL_PREFIX` に渡されます。
 - `HakoniwaPduEndpointRoot` は `HAKONIWA_PDU_ENDPOINT_PREFIX` に渡されます。
@@ -322,6 +353,20 @@ python python/tb3_gamepad.py
 python python/lidar_visualizer.py
 ```
 
+### Standalone examples
+
+- ultrasonic sensor example:
+```bash
+./src/cmake-build/examples/sensors/ultrasonic/ultrasonic-example
+```
+
+- color camera sensor example（`i/k/j/l` でカメラ移動、viewer または terminal で `s` キーを押すと PNG 出力）:
+```bash
+./src/cmake-build/examples/sensors/color_camera/color-camera-example
+```
+
+現在の example 一覧は [examples/README.md](examples/README.md) を参照してください。
+
 ---
 
 ## TurtleBot3 2D LiDAR
@@ -384,6 +429,40 @@ camera / depth / RGBD sensor の実装は `include/sensors/camera/` と `src/sen
 - あわせて、複数の画面位置、複数の horizontal FOV、clip による NaN マスクも確認済みです。
 - render smoke test は `tests/sensors/camera/smoke/` にあり、MuJoCo + OpenGL context が必要なため、ローカル手動または専用CI向けです。
 - ただし、斜め面、極端なカメラ設定、別の depth-map convention など、任意シーン全般に対して完全検証済みとはまだ言いません。
+
+## Sensor Components And Examples
+
+再利用可能な sensor components は `src/sensors/` にあります。JSON profile は `config/sensors/`、schema は `config/sensors/schema/` にあります。
+
+現在の主な sensor 領域:
+- camera / depth / RGBD / multicamera
+- color camera PNG example
+- 2D LiDAR
+- ultrasonic range
+- IMU
+- joint state
+- odometry
+- TF
+- noise helpers
+- debug ray visualization
+
+standalone examples は、TurtleBot3 や forklift の大きなデモより小さく、個別機能を単体で確認するためのものです。
+- [examples/README.md](examples/README.md)
+- [examples/sensors/README.md](examples/sensors/README.md)
+- [examples/sensors/ultrasonic/README.md](examples/sensors/ultrasonic/README.md)
+- [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md)
+
+sensor unit tests は任意の build target です。
+```bash
+cmake -S src -B src/cmake-build -DHAKO_BUILD_SENSOR_TESTS=ON
+cmake --build src/cmake-build --target run_sensor_unit_tests
+```
+
+camera render smoke tests は MuJoCo / OpenGL runtime が必要です。
+```bash
+cmake -S src -B src/cmake-build -DHAKO_BUILD_CAMERA_SMOKE_TESTS=ON
+cmake --build src/cmake-build --target camera_smoke_tests
+```
 
 ## Docker（Ubuntu 24.04）
 
@@ -864,9 +943,15 @@ A. この懸念は妥当です。
 - `src/main_for_sample/tb3/main.cpp` TurtleBot3 サンプル（Hakoniwa asset / endpoint / 2D LiDAR）
 - `python/tb3_gamepad.py` TurtleBot3 用 Python controller asset（PS4/DualSense）
 - `python/lidar_visualizer.py` 汎用 LiDAR 可視化ツール（world view）
+- `examples/README.md` standalone example 一覧
+- `examples/sensors/ultrasonic/README.md` ultrasonic sensor example
+- `examples/sensors/color_camera/README.md` color camera PNG example
+- `src/sensors/` 再利用可能な sensor components と PDU 変換 helper
 - `config/sensors/lidar/lds-01.json` TurtleBot3 LDS-01-like noisy LiDAR profile
 - `config/sensors/lidar/lds-02.json` TurtleBot3 LDS-02-like longer-range LiDAR profile
 - `config/sensors/lidar/urg-04lx-ug01.json` Hokuyo URG-04LX-UG01-like cleaner LiDAR profile
+- `config/sensors/ultrasonic/lego-spike-distance-sensor.json` standalone example で使う ultrasonic range sensor profile
+- `config/sensors/color_camera/simple-color-camera.json` PNG example で使う color camera profile
 
 ---
 

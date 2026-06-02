@@ -24,3 +24,25 @@ Run from the repository root:
 ```bash
 ./src/cmake-build/examples/sensors/ultrasonic/ultrasonic-example
 ```
+
+## Color Camera
+
+See:
+
+```text
+examples/sensors/color_camera/README.md
+```
+
+The color camera example demonstrates:
+
+- loading a minimal MuJoCo scene with red / green / blue panels
+- opening a MuJoCo viewer and capturing an RGB camera frame with `s` from the viewer or terminal
+- moving the camera body with `i/k/j/l`
+- printing sample RGB values from the captured image
+- writing the result to a PNG file
+
+Run from the repository root:
+
+```bash
+./src/cmake-build/examples/sensors/color_camera/color-camera-example
+```

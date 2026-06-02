@@ -1,0 +1,48 @@
+<mujoco model="color_camera_sample">
+  <compiler angle="radian"/>
+  <option timestep="0.01" gravity="0 0 0"/>
+
+  <visual>
+    <global offwidth="512" offheight="512"/>
+    <map znear="0.05" zfar="10"/>
+  </visual>
+
+  <asset>
+    <texture name="ground_checker" type="2d" builtin="checker" width="128" height="128"
+             rgb1="0.85 0.85 0.85" rgb2="0.65 0.65 0.65"/>
+    <material name="ground_mat" texture="ground_checker" texrepeat="4 4" reflectance="0"/>
+    <material name="red_mat" rgba="1 0 0 1"/>
+    <material name="green_mat" rgba="0 1 0 1"/>
+    <material name="blue_mat" rgba="0 0.2 1 1"/>
+    <material name="sensor_mat" rgba="0.1 0.1 0.1 1"/>
+    <material name="lens_mat" rgba="0.02 0.02 0.02 1"/>
+    <material name="camera_forward_mat" rgba="1 1 0 1"/>
+  </asset>
+
+  <worldbody>
+    <light name="front_light" pos="0 0 2.0" dir="1 0 -1" diffuse="1 1 1"/>
+    <geom name="ground" type="plane" size="2 2 0.02" material="ground_mat"/>
+
+    <body name="red_panel" pos="1.0 -0.45 0.45">
+      <geom name="red_panel_geom" type="box" size="0.02 0.25 0.35" material="red_mat"/>
+    </body>
+
+    <body name="green_panel" pos="1.0 0 0.45">
+      <geom name="green_panel_geom" type="box" size="0.02 0.25 0.35" material="green_mat"/>
+    </body>
+
+    <body name="blue_panel" pos="1.0 0.45 0.45">
+      <geom name="blue_panel_geom" type="box" size="0.02 0.25 0.35" material="blue_mat"/>
+    </body>
+
+    <body name="color_sensor_body" pos="0 0 0.45">
+      <freejoint name="color_sensor_freejoint"/>
+      <geom name="color_sensor_case" type="box" size="0.04 0.05 0.04" material="sensor_mat"/>
+      <geom name="color_sensor_lens" type="cylinder" size="0.025 0.012" pos="0.045 0 0"
+            euler="0 1.57079632679 0" material="lens_mat"/>
+      <geom name="color_sensor_forward_marker" type="capsule" size="0.008 0.12"
+            fromto="0.07 0 0 0.31 0 0" material="camera_forward_mat"/>
+      <camera name="color_camera" mode="fixed" pos="0 0 0" xyaxes="0 -1 0 0 0 1"/>
+    </body>
+  </worldbody>
+</mujoco>
