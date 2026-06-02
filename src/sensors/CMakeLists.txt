@@ -8,6 +8,7 @@ add_library(
     camera/camera_config_loader.cpp
     camera/camera_pdu_converter.cpp
     camera/camera_encoding_utils.cpp
+    camera/image_frame_writer.cpp
     camera/camera_sensor.cpp
     camera/depth_camera_sensor.cpp
     camera/mujoco_camera_renderer.cpp

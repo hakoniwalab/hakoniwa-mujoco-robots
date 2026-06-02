@@ -26,6 +26,9 @@ namespace hako::robots::sensor::camera
     {
     public:
         MujocoCameraRenderer(std::shared_ptr<hako::robots::physics::IWorld> world);
+        MujocoCameraRenderer(
+            std::shared_ptr<hako::robots::physics::IWorld> world,
+            bool create_hidden_window);
         ~MujocoCameraRenderer();
 
         bool Render(
@@ -42,6 +45,7 @@ namespace hako::robots::sensor::camera
         std::shared_ptr<hako::robots::physics::IWorld> world_;
         GlfwManager& glfw_manager_;
         GLFWwindow* window_ = nullptr;
+        bool owns_window_ = false;
         
         mjvScene scn_{};
         mjrContext con_{};

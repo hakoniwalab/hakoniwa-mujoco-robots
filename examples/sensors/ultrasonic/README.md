@@ -2,14 +2,16 @@
 
 This example demonstrates a Hakoniwa ultrasonic range sensor running on MuJoCo.
 
-It is intended as a small, user-facing example for understanding how a Hakoniwa sensor is modeled, configured, measured, visualized, and converted to a ROS-compatible PDU data type.
+It is intended as a small, user-facing example for understanding how the Ultrasonic Sensor API is used with a concrete MuJoCo model and JSON config.
 
 The example shows how to:
 
 - load a minimal MuJoCo model
 - bind an ultrasonic sensor to a MuJoCo `site`
+- create `UltrasonicSensor`
+- apply the JSON config with `UltrasonicSensor::LoadConfig()`
+- measure range with `UltrasonicSensor::Measure()`
 - move the robot body interactively
-- measure range from the sensor site
 - visualize the measured ray in the MuJoCo viewer
 - convert the internal ultrasonic frame to `sensor_msgs/Range`
 
@@ -21,6 +23,8 @@ This is an interactive example. Automated checks for the same basic behavior are
 examples/sensors/ultrasonic/
   README.md
   ultrasonic-example.cpp
+  support/ultrasonic_example_support.hpp
+  support/ultrasonic_example_support.cpp
 
 models/sensors/ultrasonic/
   ultrasonic-sensor-test.xml
@@ -33,6 +37,33 @@ tests/sensors/ultrasonic/unit/
   ultrasonic_range_pdu_converter_test.cpp
   ultrasonic_measurement_test.cpp
 ```
+
+Read these first:
+
+- [`ultrasonic-example.cpp`](./ultrasonic-example.cpp): the Ultrasonic Sensor API usage
+- [`lego-spike-distance-sensor.json`](../../../config/sensors/ultrasonic/lego-spike-distance-sensor.json): the sensor config
+- [`ultrasonic-sensor-test.xml`](../../../models/sensors/ultrasonic/ultrasonic-sensor-test.xml): the MuJoCo model, sensor site, and obstacles
+
+## Ultrasonic Sensor API
+
+The example uses the range sensor through `UltrasonicSensor`.
+
+```cpp
+auto world = std::make_shared<ExampleWorld>();
+world->loadModel(model_path);
+
+UltrasonicSensor sensor(
+    world,
+    "front_ultrasonic_site",
+    "base_footprint");
+
+sensor.LoadConfig(config_path);
+
+UltrasonicFrame frame {};
+sensor.Measure(frame);
+```
+
+The full version is in [`ultrasonic-example.cpp`](./ultrasonic-example.cpp). The surrounding code only prepares the MuJoCo model, viewer, keyboard controls, robot movement, and debug ray drawing.
 
 ## Model
 

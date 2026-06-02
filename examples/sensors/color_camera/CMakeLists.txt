@@ -1,5 +1,6 @@
 add_executable(color-camera-example
     color-camera-example.cpp
+    support/color_camera_example_support.cpp
 )
 
 target_compile_features(color-camera-example PRIVATE cxx_std_20)

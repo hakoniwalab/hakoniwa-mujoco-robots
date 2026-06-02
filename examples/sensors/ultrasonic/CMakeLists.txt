@@ -2,6 +2,7 @@
 
 add_executable(ultrasonic-example
     ultrasonic-example.cpp
+    support/ultrasonic_example_support.cpp
 )
 
 target_compile_features(ultrasonic-example PRIVATE cxx_std_20)

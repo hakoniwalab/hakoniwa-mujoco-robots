@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstring>
 #include <algorithm>
+#include <utility>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -46,20 +47,35 @@ private:
 }
 
 MujocoCameraRenderer::MujocoCameraRenderer(std::shared_ptr<hako::robots::physics::IWorld> world)
+    : MujocoCameraRenderer(std::move(world), true)
+{
+}
+
+MujocoCameraRenderer::MujocoCameraRenderer(
+    std::shared_ptr<hako::robots::physics::IWorld> world,
+    bool create_hidden_window)
     : world_(world), glfw_manager_(GlfwManager::getInstance()), window_(nullptr)
 {
     if (!world) {
         throw std::invalid_argument("World is null");
     }
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    window_ = glfwCreateWindow(1, 1, "Offscreen", nullptr, nullptr);
-    if (!window_) {
+    if (create_hidden_window) {
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        window_ = glfwCreateWindow(1, 1, "Offscreen", nullptr, nullptr);
+        if (!window_) {
+            throw std::runtime_error(
+                "Failed to create hidden GLFW window for MuJoCo offscreen rendering. "
+                "Ensure an OpenGL-capable display/GPU context is available."
+            );
+        }
+        owns_window_ = true;
+        glfwMakeContextCurrent(window_);
+    } else if (glfwGetCurrentContext() == nullptr) {
         throw std::runtime_error(
-            "Failed to create hidden GLFW window for MuJoCo offscreen rendering. "
-            "Ensure an OpenGL-capable display/GPU context is available."
+            "MujocoCameraRenderer was asked to use the current OpenGL context, "
+            "but no GLFW context is current."
         );
     }
-    glfwMakeContextCurrent(window_);
 
     auto* model = world_->getModel();
     mjv_defaultCamera(&cam_);
@@ -74,7 +90,7 @@ MujocoCameraRenderer::~MujocoCameraRenderer()
 {
     mjv_freeScene(&scn_);
     mjr_freeContext(&con_);
-    if (window_) {
+    if (owns_window_ && window_) {
         glfwDestroyWindow(window_);
     }
 }
@@ -85,7 +101,9 @@ bool MujocoCameraRenderer::Render(
 {
     if (!need_rgb && !need_depth) return false;
 
-    glfwMakeContextCurrent(window_);
+    if (window_ != nullptr) {
+        glfwMakeContextCurrent(window_);
+    }
     mjr_setBuffer(mjFB_OFFSCREEN, &con_);
     if (con_.currentBuffer != mjFB_OFFSCREEN) {
         std::cerr << "Offscreen rendering is not available." << std::endl;

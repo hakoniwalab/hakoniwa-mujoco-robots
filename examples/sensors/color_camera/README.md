@@ -2,14 +2,16 @@
 
 This example opens a MuJoCo viewer and captures a simple color-camera shot when you press `s`.
 
-The goal is to make the sensor behavior visible at a glance:
+The goal is to make the Color Sensor API easy to understand from the example code:
 
 - the model contains red, green, and blue panels
-- the viewer shows the small color-panel scene
-- pressing `i` / `k` / `j` / `l` moves the camera body
-- pressing `s` captures the camera named `color_camera`
-- the example prints RGB values from left / center / right pixels
-- the captured image is written to `./camera_color_sample.png`
+- the config defines the RGB image size, format, and field of view
+- `CameraSensor` is created in `color-camera-example.cpp`
+- `CameraSensor::LoadConfig()` applies the JSON config
+- `CameraSensor::Capture()` captures the camera named `color_camera`
+- `WriteImageFrameToPng()` writes the captured RGB frame to `./camera_color_sample.png`
+
+The viewer, keyboard input, and pixel-print helpers are intentionally kept as support code so the main file shows the sensor usage directly.
 
 ## Files
 
@@ -17,6 +19,8 @@ The goal is to make the sensor behavior visible at a glance:
 examples/sensors/color_camera/
   README.md
   color-camera-example.cpp
+  support/color_camera_example_support.hpp
+  support/color_camera_example_support.cpp
 
 models/sensors/color_camera/
   color-camera-sample.xml
@@ -24,6 +28,31 @@ models/sensors/color_camera/
 config/sensors/color_camera/
   simple-color-camera.json
 ```
+
+Read these first:
+
+- [`color-camera-example.cpp`](./color-camera-example.cpp): the Color Sensor API usage
+- [`simple-color-camera.json`](../../../config/sensors/color_camera/simple-color-camera.json): the camera config
+- [`color-camera-sample.xml`](../../../models/sensors/color_camera/color-camera-sample.xml): the MuJoCo model and camera name
+
+## Color Sensor API
+
+The example uses the RGB color camera through `CameraSensor`.
+
+```cpp
+CameraConfig config {};
+LoadCameraConfigFromJson(config_path, config);
+
+auto renderer = std::make_shared<MujocoCameraRenderer>(world, false);
+auto camera_sensor = std::make_unique<CameraSensor>(renderer, "color_camera");
+camera_sensor->LoadConfig(config);
+
+ImageFrame frame {};
+camera_sensor->Capture(frame);
+WriteImageFrameToPng(frame, output_path);
+```
+
+The full version is in [`color-camera-example.cpp`](./color-camera-example.cpp). The surrounding code only prepares the MuJoCo model, OpenGL context, viewer, and keyboard controls.
 
 ## Model
 
@@ -147,5 +176,5 @@ Open the PNG and you should see the red, green, and blue panels.
 ## Notes
 
 - This is an RGB camera example, not a full camera pipeline demo.
-- The PNG writer is intentionally local to the example and does not add an external dependency.
+- PNG output uses the shared `WriteImageFrameToPng()` helper and does not add an external dependency.
 - The example needs a MuJoCo / OpenGL render context.

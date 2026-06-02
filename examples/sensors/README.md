@@ -2,6 +2,14 @@
 
 This directory contains small examples for Hakoniwa MuJoCo sensor components.
 
+Shared example-only helpers live under:
+
+```text
+examples/sensors/common/
+```
+
+They cover common pieces such as minimal MuJoCo world loading and `i/k/j/l` freejoint movement.
+
 ## Ultrasonic
 
 See:
