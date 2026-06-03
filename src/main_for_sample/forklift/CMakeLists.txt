@@ -32,7 +32,10 @@ target_include_directories(forklift_sim
     PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
     PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
     )
-target_include_directories(forklift_sim SYSTEM PRIVATE ${MUJOCO_SOURCE_DIR})
+target_include_directories(forklift_sim SYSTEM PRIVATE
+    ${MUJOCO_SOURCE_DIR}
+    ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
+)
 
 # MuJoCoライブラリをリンク
 target_link_libraries(forklift_sim 
@@ -53,7 +56,10 @@ target_include_directories(forklift_unit_sim
     PRIVATE ${HAKO_CORE_INCLUDE_ROOT}
     PRIVATE ${HAKO_PDU_TYPES_INCLUDE_DIR}
     )
-target_include_directories(forklift_unit_sim SYSTEM PRIVATE ${MUJOCO_SOURCE_DIR})
+target_include_directories(forklift_unit_sim SYSTEM PRIVATE
+    ${MUJOCO_SOURCE_DIR}
+    ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
+)
 
 target_link_libraries(forklift_unit_sim
     ${LIBMUJOCO}
