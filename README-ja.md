@@ -365,6 +365,11 @@ python python/lidar_visualizer.py
 ./src/cmake-build/examples/sensors/color_camera/color-camera-example
 ```
 
+- joint actuator example（MuJoCo viewer 上で `a/d` が position target、`j/l` が velocity target）:
+```bash
+./src/cmake-build/examples/actuators/joint/joint-actuator-example
+```
+
 現在の example 一覧は [examples/README.md](examples/README.md) を参照してください。
 
 ---
@@ -376,6 +381,9 @@ TurtleBot3 Burger サンプルには、MuJoCo ベースの 2D LiDAR 実装が含
 注記:
 - `models/tb3/turtlebot3_burger_world.xml` は現在、外部 mesh ではなく body / wheel / LiDAR housing を primitive geom で表現しています。
 - これは Windows 実行時に、環境依存の絶対 mesh パスでモデルロードが失敗するのを避けるためです。
+- 車輪 actuator は MuJoCo の `<velocity>` actuator です。gamepad 入力は左右 wheel angular velocity target に変換され、`JointActuatorImpl` 経由で書き込まれます。
+- 発進、停止、ヨー回転をなめらかにするため、linear velocity target と yaw-rate target をレート制限してから wheel angular velocity に変換しています。既定値には `HAKO_TB3_MAX_YAW_RATE=1.2`、`HAKO_TB3_MAX_LINEAR_ACCELERATION=0.1`、`HAKO_TB3_MAX_YAW_ACCELERATION=0.5`、`HAKO_TB3_COMMAND_DEADZONE=0.1` が含まれます。
+- 後部 caster が駆動輪の挙動を支配しないよう、caster の摩擦は低めにしています。
 
 - 360 度 raycast
 - 選択した sensor profile に基づく scan frame 生成
@@ -451,6 +459,8 @@ standalone examples は、TurtleBot3 や forklift の大きなデモより小さ
 - [examples/sensors/README.md](examples/sensors/README.md)
 - [examples/sensors/ultrasonic/README.md](examples/sensors/ultrasonic/README.md)
 - [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md)
+- [examples/actuators/README.md](examples/actuators/README.md)
+- [examples/actuators/joint/README.md](examples/actuators/joint/README.md)
 
 sensor unit tests は任意の build target です。
 ```bash
@@ -946,6 +956,7 @@ A. この懸念は妥当です。
 - `examples/README.md` standalone example 一覧
 - `examples/sensors/ultrasonic/README.md` ultrasonic sensor example
 - `examples/sensors/color_camera/README.md` color camera PNG example
+- `examples/actuators/joint/README.md` MJCF-native position / velocity joint actuator example
 - `src/sensors/` 再利用可能な sensor components と PDU 変換 helper
 - `config/sensors/lidar/lds-01.json` TurtleBot3 LDS-01-like noisy LiDAR profile
 - `config/sensors/lidar/lds-02.json` TurtleBot3 LDS-02-like longer-range LiDAR profile

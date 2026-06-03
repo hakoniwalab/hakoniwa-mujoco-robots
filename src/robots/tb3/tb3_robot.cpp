@@ -15,6 +15,21 @@ namespace hako::robots::tb3
 {
 namespace
 {
+    double rate_limit(double current, double target, double max_delta)
+    {
+        return current + std::clamp(target - current, -max_delta, max_delta);
+    }
+
+    double apply_deadzone(double value, double deadzone)
+    {
+        const double threshold = std::clamp(deadzone, 0.0, 0.95);
+        if (std::abs(value) <= threshold) {
+            return 0.0;
+        }
+        const double sign = (value < 0.0) ? -1.0 : 1.0;
+        return sign * ((std::abs(value) - threshold) / (1.0 - threshold));
+    }
+
     HakoCpp_LaserScan to_hako_scan(const hako::robots::sensor::lidar::LaserScanFrame& frame)
     {
         HakoCpp_LaserScan out {};
@@ -174,7 +189,7 @@ public:
         return true;
     }
 
-    void set_torque(double left, double right)
+    void set_wheel_velocity_target(double left, double right)
     {
         left_actuator_->SetTarget(left);
         right_actuator_->SetTarget(right);
@@ -239,21 +254,56 @@ bool Tb3Robot::Initialize(std::string* error_message)
 
 void Tb3Robot::ApplyCommand(const HakoCpp_GameControllerOperation& gamepad, bool has_input)
 {
-    last_left_torque_ = 0.0;
-    last_right_torque_ = 0.0;
+    raw_linear_velocity_ = 0.0;
+    raw_yaw_rate_ = 0.0;
     if (has_input && gamepad.axis.size() >= 4) {
-        const double turn = -1.5 * std::clamp(static_cast<double>(gamepad.axis[0]), -1.0, 1.0);
-        const double forward = 0.5 * std::clamp(-static_cast<double>(gamepad.axis[3]), -1.0, 1.0);
-        last_left_torque_ = std::clamp(
-            (forward - turn * config_.turn_gain) * config_.drive_gain,
-            -config_.max_torque,
-            config_.max_torque);
-        last_right_torque_ = std::clamp(
-            (forward + turn * config_.turn_gain) * config_.drive_gain,
-            -config_.max_torque,
-            config_.max_torque);
+        const double turn_axis = apply_deadzone(
+            std::clamp(static_cast<double>(gamepad.axis[0]), -1.0, 1.0),
+            config_.command_deadzone);
+        const double forward_axis = apply_deadzone(
+            std::clamp(-static_cast<double>(gamepad.axis[3]), -1.0, 1.0),
+            config_.command_deadzone);
+        raw_yaw_rate_ = -turn_axis * config_.max_yaw_rate;
+        raw_linear_velocity_ = forward_axis * config_.max_linear_velocity;
     }
-    drive_->set_torque(last_left_torque_, last_right_torque_);
+
+    const mjModel* model = world_->getModel();
+    const double dt = (model != nullptr && model->opt.timestep > 0.0) ? model->opt.timestep : 0.001;
+    applied_linear_velocity_ = rate_limit(
+        applied_linear_velocity_,
+        raw_linear_velocity_,
+        std::max(0.0, config_.max_linear_acceleration) * dt);
+    applied_yaw_rate_ = rate_limit(
+        applied_yaw_rate_,
+        raw_yaw_rate_,
+        std::max(0.0, config_.max_yaw_acceleration) * dt);
+
+    double target_left_wheel = 0.0;
+    double target_right_wheel = 0.0;
+    if (config_.wheel_radius > 0.0) {
+        target_left_wheel = (
+            applied_linear_velocity_ - applied_yaw_rate_ * config_.wheel_separation * 0.5) /
+            config_.wheel_radius;
+        target_right_wheel = (
+            applied_linear_velocity_ + applied_yaw_rate_ * config_.wheel_separation * 0.5) /
+            config_.wheel_radius;
+        target_left_wheel = std::clamp(
+            target_left_wheel,
+            -config_.max_wheel_angular_velocity,
+            config_.max_wheel_angular_velocity);
+        target_right_wheel = std::clamp(
+            target_right_wheel,
+            -config_.max_wheel_angular_velocity,
+            config_.max_wheel_angular_velocity);
+    }
+
+    const double max_wheel_delta = std::max(0.0, config_.max_wheel_angular_acceleration) * dt;
+    applied_left_wheel_target_ = rate_limit(applied_left_wheel_target_, target_left_wheel, max_wheel_delta);
+    applied_right_wheel_target_ = rate_limit(applied_right_wheel_target_, target_right_wheel, max_wheel_delta);
+    last_left_wheel_target_ = target_left_wheel;
+    last_right_wheel_target_ = target_right_wheel;
+
+    drive_->set_wheel_velocity_target(applied_left_wheel_target_, applied_right_wheel_target_);
 }
 
 void Tb3Robot::Step()
@@ -361,7 +411,10 @@ void Tb3Robot::EmitDebugLog(int step) const
     std::cout << "[TB3] step=" << step
               << " pos=(" << pos.x << ", " << pos.y << ", " << pos.z << ")"
               << " body_vx=" << body_vel.x
-              << " torque=(" << last_left_torque_ << ", " << last_right_torque_ << ")"
+              << " cmd=(v=" << applied_linear_velocity_ << ", yaw=" << applied_yaw_rate_ << ")"
+              << " wheel_target=(" << last_left_wheel_target_ << ", " << last_right_wheel_target_ << ")"
+              << " applied_wheel_target=(" << applied_left_wheel_target_ << ", "
+              << applied_right_wheel_target_ << ")"
               << " joint_pos=(" << left_joint_pos << ", " << right_joint_pos << ")"
               << " joint_vel=(" << left_joint_vel << ", " << right_joint_vel << ")"
               << " lidar_hits=" << lidar_hits

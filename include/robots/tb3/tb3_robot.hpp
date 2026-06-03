@@ -32,9 +32,15 @@ namespace hako::robots::tb3
         std::string asset_config_path {};
         std::string left_wheel_actuator_config {};
         std::string right_wheel_actuator_config {};
-        double drive_gain {0.1};
-        double turn_gain {0.15};
-        double max_torque {1.0};
+        double max_linear_velocity {0.22};
+        double max_yaw_rate {0.5};
+        double max_linear_acceleration {0.1};
+        double max_yaw_acceleration {0.5};
+        double command_deadzone {0.1};
+        double wheel_radius {0.033};
+        double wheel_separation {0.16};
+        double max_wheel_angular_velocity {12.0};
+        double max_wheel_angular_acceleration {25.0};
         double lidar_yaw_bias_deg {0.0};
         double lidar_origin_offset {0.0};
     };
@@ -73,7 +79,13 @@ namespace hako::robots::tb3
         hako::robots::sensor::TfPublisher tf_sensor_;
         HakoCpp_LaserScan last_laser_scan_ {};
         hako::robots::sensor::JointStateFrame last_joint_state_frame_ {};
-        double last_left_torque_ {0.0};
-        double last_right_torque_ {0.0};
+        double last_left_wheel_target_ {0.0};
+        double last_right_wheel_target_ {0.0};
+        double raw_linear_velocity_ {0.0};
+        double raw_yaw_rate_ {0.0};
+        double applied_linear_velocity_ {0.0};
+        double applied_yaw_rate_ {0.0};
+        double applied_left_wheel_target_ {0.0};
+        double applied_right_wheel_target_ {0.0};
     };
 }

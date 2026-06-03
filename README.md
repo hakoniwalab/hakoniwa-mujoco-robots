@@ -367,6 +367,11 @@ python python/lidar_visualizer.py
 ./src/cmake-build/examples/sensors/color_camera/color-camera-example
 ```
 
+- Joint actuator example (`a/d` changes position target, `j/l` changes velocity target in the MuJoCo viewer):
+```bash
+./src/cmake-build/examples/actuators/joint/joint-actuator-example
+```
+
 See [examples/README.md](examples/README.md) for the current example index.
 
 ---
@@ -378,6 +383,9 @@ The TurtleBot3 Burger sample includes a MuJoCo-based 2D LiDAR implementation.
 Note:
 - `models/tb3/turtlebot3_burger_world.xml` currently uses primitive geoms for the body, wheels, and LiDAR housing instead of external mesh files.
 - This avoids runtime failures caused by machine-specific absolute mesh paths when running on Windows.
+- The wheel actuators are MuJoCo `<velocity>` actuators. Gamepad input is converted to left / right wheel angular velocity targets before being written through `JointActuatorImpl`.
+- Linear velocity and yaw-rate targets are rate-limited before conversion to wheel angular velocities. Defaults include `HAKO_TB3_MAX_YAW_RATE=1.2`, `HAKO_TB3_MAX_LINEAR_ACCELERATION=0.1`, `HAKO_TB3_MAX_YAW_ACCELERATION=0.5`, and `HAKO_TB3_COMMAND_DEADZONE=0.1`.
+- The rear caster uses low friction so it does not dominate the drive-wheel behavior.
 
 - 360-degree raycast
 - scan-frame generation based on the selected sensor profile
@@ -455,6 +463,8 @@ The standalone examples are intentionally smaller than the TurtleBot3 and forkli
 - [examples/sensors/README.md](examples/sensors/README.md)
 - [examples/sensors/ultrasonic/README.md](examples/sensors/ultrasonic/README.md)
 - [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md)
+- [examples/actuators/README.md](examples/actuators/README.md)
+- [examples/actuators/joint/README.md](examples/actuators/joint/README.md)
 
 Sensor unit tests are optional build targets:
 ```bash
@@ -982,6 +992,7 @@ For final semantics and distributed extensions, see [Hakoniwa Design Docs](https
 - `examples/README.md`: standalone example index
 - `examples/sensors/ultrasonic/README.md`: ultrasonic sensor example
 - `examples/sensors/color_camera/README.md`: color camera PNG example
+- `examples/actuators/joint/README.md`: MJCF-native position / velocity joint actuator example
 - `src/sensors/`: reusable sensor components and PDU conversion helpers
 - `config/sensors/lidar/lds-01.json`: TurtleBot3 LDS-01-like noisy LiDAR profile
 - `config/sensors/lidar/lds-02.json`: TurtleBot3 LDS-02-like longer-range LiDAR profile
