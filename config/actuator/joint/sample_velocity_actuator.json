@@ -1,0 +1,13 @@
+{
+  "$schema": "../schema/joint-actuator.schema.json",
+  "joint_name": "velocity_hinge",
+  "type": "velocity",
+  "limit": {
+    "velocity": 4.0
+  },
+  "RuntimeBinding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "actuator_name": "velocity_servo"
+  }
+}

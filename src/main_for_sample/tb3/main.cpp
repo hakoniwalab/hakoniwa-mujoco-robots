@@ -58,6 +58,19 @@ std::filesystem::path repo_root_path()
         return std::filesystem::path(env).lexically_normal();
     }
 
+    auto path = std::filesystem::current_path().lexically_normal();
+    while (!path.empty()) {
+        if (std::filesystem::exists(path / "models/tb3/turtlebot3_burger_world.xml") &&
+            std::filesystem::exists(path / "config/tb3-pdudef-compact.json")) {
+            return path;
+        }
+        const auto parent = path.parent_path();
+        if (parent == path) {
+            break;
+        }
+        path = parent;
+    }
+
     return std::filesystem::current_path().lexically_normal();
 }
 const std::string model_path =
@@ -74,6 +87,10 @@ const std::string odom_config_path =
     (repo_root_path() / "config/sensors/odometry/tb3-ground-truth-odom.json").string();
 const std::string tf_config_path =
     (repo_root_path() / "config/sensors/tf/tb3-basic-tf.json").string();
+const std::string left_actuator_config_path =
+    (repo_root_path() / "config/actuator/joint/tb3_left_wheel.json").string();
+const std::string right_actuator_config_path =
+    (repo_root_path() / "config/actuator/joint/tb3_right_wheel.json").string();
 
 std::string resolve_repo_path(const std::string& path)
 {
@@ -126,6 +143,10 @@ Tb3RuntimeConfig load_runtime_config()
         resolve_repo_path(get_env_string("HAKO_TB3_JOINT_STATE_CONFIG_PATH", joint_state_config_path));
     config.odom_config = resolve_repo_path(get_env_string("HAKO_TB3_ODOM_CONFIG_PATH", odom_config_path));
     config.tf_config = resolve_repo_path(get_env_string("HAKO_TB3_TF_CONFIG_PATH", tf_config_path));
+    config.left_wheel_actuator_config =
+        resolve_repo_path(get_env_string("HAKO_TB3_LEFT_ACTUATOR_CONFIG_PATH", left_actuator_config_path));
+    config.right_wheel_actuator_config =
+        resolve_repo_path(get_env_string("HAKO_TB3_RIGHT_ACTUATOR_CONFIG_PATH", right_actuator_config_path));
     config.drive_gain = get_env_double("HAKO_TB3_DRIVE_GAIN", 0.1);
     config.turn_gain = get_env_double("HAKO_TB3_TURN_GAIN", 0.15);
     config.max_torque = get_env_double("HAKO_TB3_MAX_TORQUE", 1.0);

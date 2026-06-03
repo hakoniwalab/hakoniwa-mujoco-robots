@@ -143,15 +143,41 @@ public:
     explicit Drive(std::shared_ptr<hako::robots::physics::IWorld> world)
         : base_(world->getRigidBody("base_link"))
         , base_scan_(world->getRigidBody("base_scan"))
-        , left_motor_(world->getTorqueActuator("left_motor"))
-        , right_motor_(world->getTorqueActuator("right_motor"))
+        , left_actuator_(world->createJointActuator())
+        , right_actuator_(world->createJointActuator())
     {
+    }
+
+    bool LoadConfig(const std::string& left, const std::string& right)
+    {
+        if (left_actuator_ == nullptr || right_actuator_ == nullptr) {
+            std::cerr << "[ERROR] Joint actuator is not supported by this physics world." << std::endl;
+            return false;
+        }
+        if (left.empty() || right.empty()) {
+            std::cerr << "[ERROR] TB3 actuator config path is empty."
+                      << " left='" << left << "'"
+                      << " right='" << right << "'"
+                      << std::endl;
+            return false;
+        }
+        if (!left_actuator_->LoadConfig(left)) {
+            std::cerr << "[ERROR] Failed to load left wheel actuator config: "
+                      << left << std::endl;
+            return false;
+        }
+        if (!right_actuator_->LoadConfig(right)) {
+            std::cerr << "[ERROR] Failed to load right wheel actuator config: "
+                      << right << std::endl;
+            return false;
+        }
+        return true;
     }
 
     void set_torque(double left, double right)
     {
-        left_motor_->SetTorque(left);
-        right_motor_->SetTorque(right);
+        left_actuator_->SetTarget(left);
+        right_actuator_->SetTarget(right);
     }
 
     hako::robots::types::Position position() const { return base_->GetPosition(); }
@@ -163,8 +189,8 @@ public:
 private:
     std::shared_ptr<hako::robots::physics::IRigidBody> base_;
     std::shared_ptr<hako::robots::physics::IRigidBody> base_scan_;
-    std::shared_ptr<hako::robots::actuator::ITorqueActuator> left_motor_;
-    std::shared_ptr<hako::robots::actuator::ITorqueActuator> right_motor_;
+    std::shared_ptr<hako::robots::actuator::IJointActuator> left_actuator_;
+    std::shared_ptr<hako::robots::actuator::IJointActuator> right_actuator_;
 };
 
 Tb3Robot::Tb3Robot(std::shared_ptr<hako::robots::physics::IWorld> world, Tb3RuntimeConfig config)
@@ -190,6 +216,13 @@ bool Tb3Robot::Initialize(std::string* error_message)
         return false;
     }
     lidar_sensor_.SetRuntimeOptions(config_.lidar_yaw_bias_deg, config_.lidar_origin_offset);
+
+    if (!drive_->LoadConfig(config_.left_wheel_actuator_config, config_.right_wheel_actuator_config)) {
+        if (error_message != nullptr) {
+            *error_message = "failed to load TB3 actuator configs";
+        }
+        return false;
+    }
 
     if (!imu_sensor_.LoadConfig(config_.imu_config) ||
         !joint_state_sensor_.LoadConfig(config_.joint_state_config) ||

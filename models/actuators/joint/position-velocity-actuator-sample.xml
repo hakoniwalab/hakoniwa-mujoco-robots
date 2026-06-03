@@ -1,0 +1,31 @@
+<mujoco model="position_velocity_actuator_sample">
+  <compiler angle="radian"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+
+  <default>
+    <joint damping="0.02" armature="0.02"/>
+    <geom rgba="0.45 0.45 0.45 1"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 -3 4" dir="0 1 -1"/>
+    <geom name="ground" type="plane" size="2 2 0.02" rgba="0.9 0.9 0.9 1"/>
+
+    <body name="position_demo" pos="-0.5 0 0.5">
+      <joint name="position_hinge" type="hinge" axis="0 0 1" limited="true" range="-1.0 1.0"/>
+      <geom name="position_arm" type="capsule" fromto="0 0 0 0.45 0 0" size="0.035" rgba="0.85 0.25 0.25 1"/>
+      <geom name="position_tip" type="sphere" pos="0.45 0 0" size="0.055" rgba="0.15 0.15 0.15 1"/>
+    </body>
+
+    <body name="velocity_demo" pos="0.5 0 0.5">
+      <joint name="velocity_hinge" type="hinge" axis="0 0 1"/>
+      <geom name="velocity_wheel" type="cylinder" size="0.18 0.04" rgba="0.2 0.45 0.85 1"/>
+      <geom name="velocity_marker" type="capsule" fromto="0 0 0.05 0.18 0 0.05" size="0.018" rgba="1.0 0.85 0.1 1"/>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="position_servo" joint="position_hinge" kp="6" dampratio="1.0" ctrllimited="true" ctrlrange="-0.8 0.8"/>
+    <velocity name="velocity_servo" joint="velocity_hinge" kv="3" ctrllimited="true" ctrlrange="-4.0 4.0"/>
+  </actuator>
+</mujoco>

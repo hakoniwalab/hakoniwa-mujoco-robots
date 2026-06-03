@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/joint-actuator.schema.json",
+  "title": "Hakoniwa Joint Actuator profile",
+  "description": "SDF-like but MJCF-resolved JSON config for joint actuators used by Hakoniwa MuJoCo controllers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "joint_name",
+    "type"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "joint_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The name of the target hinge/revolute joint to actuate."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["position", "velocity", "torque"],
+      "description": "The control mode: position (angle), velocity (speed), or torque (force)."
+    },
+    "limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lower": {
+          "type": "number",
+          "description": "Lower limit of the joint (radians for hinge)."
+        },
+        "upper": {
+          "type": "number",
+          "description": "Upper limit of the joint (radians for hinge)."
+        },
+        "effort": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum torque/force allowed."
+        },
+        "velocity": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum velocity allowed."
+        }
+      }
+    },
+    "dynamics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "damping": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Damping coefficient."
+        },
+        "friction": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Friction coefficient."
+        }
+      }
+    },
+    "RuntimeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "actuator_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional name of the matching MJCF actuator element. If omitted, resolved by joint name."
+        }
+      }
+    }
+  }
+}

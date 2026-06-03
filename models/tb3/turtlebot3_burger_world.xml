@@ -60,7 +60,7 @@
       <geom type="cylinder" size="0.08 0.3" rgba="0.75 0.20 0.85 1"/>
     </body>
 
-    <body name="base_footprint" pos="0 0 0.5">
+    <body name="base_footprint" pos="0 0 0.0">
       <freejoint/>
       <body name="base_link" pos="0 0 0.01">
         <inertial pos="0 0 0" quat="0.994532 -0.0072214 -0.0815456 -0.0648458" mass="0.825735" diaginertia="0.00221987 0.00211778 0.00200059"/>

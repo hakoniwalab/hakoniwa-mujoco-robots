@@ -45,6 +45,7 @@ namespace hako::robots::physics
         virtual void advanceTimeStep() = 0;
         virtual std::shared_ptr<IRigidBody> getRigidBody(const std::string& model_name) = 0;
         virtual std::shared_ptr<actuator::ITorqueActuator> getTorqueActuator(const std::string& name) = 0;
+        virtual std::shared_ptr<actuator::IJointActuator> createJointActuator() { return nullptr; }
     };
 
 }

@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/joint-actuator.schema.json",
+  "joint_name": "wheel_right_joint",
+  "type": "torque",
+  "limit": {
+    "effort": 10.0,
+    "velocity": 20.0
+  },
+  "dynamics": {
+    "damping": 0.1,
+    "friction": 0.0
+  },
+  "RuntimeBinding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "actuator_name": "right_motor"
+  }
+}

@@ -30,6 +30,8 @@ namespace hako::robots::tb3
         std::string tf_config {};
         std::string asset_name {};
         std::string asset_config_path {};
+        std::string left_wheel_actuator_config {};
+        std::string right_wheel_actuator_config {};
         double drive_gain {0.1};
         double turn_gain {0.15};
         double max_torque {1.0};

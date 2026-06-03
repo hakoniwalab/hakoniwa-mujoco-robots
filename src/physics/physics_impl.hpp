@@ -2,6 +2,7 @@
 
 #include "physics.hpp"
 #include "actuator/actuator_impl.hpp"
+#include "actuator/joint_actuator_impl.hpp"
 
 #include <cmath>
 #include <stdexcept>
@@ -174,6 +175,9 @@ namespace impl {
         }
         std::shared_ptr<actuator::ITorqueActuator> getTorqueActuator(const std::string& name) override {
             return std::make_shared<actuator::impl::TorqueActuatorImpl>(model, data, name);
+        }
+        std::shared_ptr<actuator::IJointActuator> createJointActuator() override {
+            return std::make_shared<actuator::impl::JointActuatorImpl>(model, data);
         }
         
     };
