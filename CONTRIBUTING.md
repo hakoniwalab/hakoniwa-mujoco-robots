@@ -12,6 +12,12 @@ From the repository root:
 ./doctor.bash
 ```
 
+If you need a specific Python environment, run:
+
+```bash
+PYTHON_CMD=/path/to/python ./doctor.bash
+```
+
 Fix any `FAIL` items before building. If you cannot fix one locally, mention it in your issue or pull request.
 
 ## Build

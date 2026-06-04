@@ -599,6 +599,13 @@ python -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
 
 `./doctor.bash` prints the Python executable it checks.
 
+If you want to check a specific Python environment, pass `PYTHON_CMD`:
+
+```bash
+PYTHON_CMD=/path/to/python ./doctor.bash
+/path/to/python -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
+```
+
 ### Q3. CMake cannot find `hakoniwa-core-pro` or `hakoniwa-pdu-endpoint`.
 
 Install both packages first, then re-run `./doctor.bash`.

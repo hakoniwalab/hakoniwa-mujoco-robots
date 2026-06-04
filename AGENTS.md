@@ -25,6 +25,8 @@ Run these before making broad assumptions about the local machine:
 ./doctor.bash
 ```
 
+Use `PYTHON_CMD=/path/to/python ./doctor.bash` when a specific Python environment should be checked.
+
 If the doctor reports missing prerequisites, fix those first or clearly mention the failure in your final note.
 
 Configure/build uses `src/cmake-build`:
@@ -91,7 +93,7 @@ When adding or changing user-facing behavior:
 
 ## Common Pitfalls
 
-- `pip` and `python` can point to different environments. Use `python -m pip`.
+- `pip` and `python` can point to different environments. Use `python -m pip`, and use `PYTHON_CMD` with `doctor.bash` when needed.
 - CMake package roots should point to install prefixes, not build directories.
 - Docker on macOS should be treated as headless.
 - RD-light and context save/restore are advanced topics; keep them out of first-run instructions.

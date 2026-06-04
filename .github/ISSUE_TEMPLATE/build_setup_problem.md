@@ -42,7 +42,7 @@ Paste the first relevant error block:
 
 - OS:
 - CPU architecture:
-- Python command used:
+- Python command used, for example `python3` or `PYTHON_CMD=/path/to/python`:
 - `python -m pip show hakoniwa-pdu` output:
 - Install prefix for `hakoniwa-core-pro`:
 - Install prefix for `hakoniwa-pdu-endpoint`:

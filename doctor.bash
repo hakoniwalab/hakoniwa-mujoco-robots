@@ -139,7 +139,9 @@ printf 'root: %s\n\n' "$ROOT_DIR"
 check_command cmake "Install CMake 3.20 or newer."
 check_command git "Install Git."
 
-if have_command python3; then
+if [ -n "${PYTHON_CMD:-}" ]; then
+    :
+elif have_command python3; then
     PYTHON_CMD=python3
 elif have_command python; then
     PYTHON_CMD=python
