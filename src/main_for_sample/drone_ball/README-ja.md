@@ -53,10 +53,14 @@ Python から `Ball-1` を操作するサンプルとして、[python/drone_ball
 
 前提:
 
-- `hakoniwa-pdu-python`
-- `hakopy`
+- `hakoniwa-pdu >= 1.6.1`
+- Hakoniwa core 対応の Python runtime
 
-が `pip install` 済みであること
+が利用できること。通常は次で導入します。
+
+```bash
+python -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
+```
 
 このスクリプトは内部で [models/drone/drone_ball_service.json](/Users/tmori/project/oss/hakoniwa-mujoco-robots/models/drone/drone_ball_service.json:1) を参照して、`Ball-1` の channel id を解決します。
 
