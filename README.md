@@ -1,4 +1,5 @@
 # hakoniwa-mujoco-robots
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/hakoniwalab/hakoniwa-mujoco-robots)
 
 English | [日本語](README-ja.md)
 
