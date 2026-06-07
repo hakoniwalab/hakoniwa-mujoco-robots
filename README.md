@@ -25,6 +25,8 @@ Use these entry points first. The rest of this README includes advanced notes an
 | Try small sensor examples | [examples/sensors/README.md](examples/sensors/README.md) |
 | Try color-camera PNG capture | [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md) |
 | Try MJCF position / velocity actuators | [examples/actuators/joint/README.md](examples/actuators/joint/README.md) |
+| Understand sensor/actuator PDU design | [docs/sensor-actuator-design.md](docs/sensor-actuator-design.md) |
+| Understand sensor/actuator config schemas | [docs/sensor-actuator-config-schema.md](docs/sensor-actuator-config-schema.md) |
 | Read RD-light / context save-restore notes | [docs/forklift-context-rd.md](docs/forklift-context-rd.md) |
 
 Current standalone examples:
@@ -92,8 +94,9 @@ Directory map:
 - `config/sensors/`: LiDAR / sensor spec JSON
 - `config/actuator/`: actuator binding JSON
 - `src/`: C++ simulator implementation
-- `src/sensors/`: sensor implementations and PDU converters
+- `src/sensors/`: sensor implementations
 - `src/actuator/`: joint actuator implementation
+- `include/hakoniwa/pdu/`: PDU converters and adapters
 - `python/`: Python controllers / visualizers
 - `examples/`: small standalone examples for individual features
 - `tests/sensors/`: focused sensor unit / smoke tests
@@ -514,6 +517,11 @@ Camera / depth / RGBD sensor components are available under `include/sensors/cam
 ## Sensor Components And Examples
 
 Reusable sensor components live under `src/sensors/`, with JSON profiles under `config/sensors/` and schemas under `config/sensors/schema/`.
+PDU converters and adapters live under `include/hakoniwa/pdu/`.
+
+Design and schema references:
+- [Sensor/Actuator PDU Design](docs/sensor-actuator-design.md)
+- [Sensor/Actuator Config Schemas](docs/sensor-actuator-config-schema.md)
 
 Current sensor areas:
 - camera / depth / RGBD / multicamera
@@ -652,6 +660,8 @@ Advanced forklift context save/restore and RD-light notes are split out of the t
 
 - [Forklift Context Save/Restore And RD-light](docs/forklift-context-rd.md)
 - [RD design notes](rd-design.md)
+- [Sensor/Actuator PDU Design](docs/sensor-actuator-design.md)
+- [Sensor/Actuator Config Schemas](docs/sensor-actuator-config-schema.md)
 
 The top-level README keeps only the entry points, setup, and sample commands. Use the advanced documents when you need restore evidence, RD-light handoff details, or continuity evaluation workflow.
 
@@ -666,7 +676,10 @@ The top-level README keeps only the entry points, setup, and sample commands. Us
 - `examples/sensors/ultrasonic/README.md`: ultrasonic sensor example
 - `examples/sensors/color_camera/README.md`: color camera PNG example
 - `examples/actuators/joint/README.md`: MJCF-native position / velocity joint actuator example
-- `src/sensors/`: reusable sensor components and PDU conversion helpers
+- `src/sensors/`: reusable sensor components
+- `include/hakoniwa/pdu/`: PDU conversion and endpoint adapter helpers
+- `docs/sensor-actuator-design.md`: sensor/actuator PDU design notes
+- `docs/sensor-actuator-config-schema.md`: sensor/actuator config schema guide
 - `config/sensors/lidar/lds-01.json`: TurtleBot3 LDS-01-like noisy LiDAR profile
 - `config/sensors/lidar/lds-02.json`: TurtleBot3 LDS-02-like longer-range LiDAR profile
 - `config/sensors/lidar/urg-04lx-ug01.json`: Hokuyo URG-04LX-UG01-like cleaner LiDAR profile
