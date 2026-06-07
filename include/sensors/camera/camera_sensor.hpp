@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -96,6 +99,74 @@ namespace hako::robots::sensor::camera
         double timestamp = 0.0;
     };
 
+    struct RGBAColor
+    {
+        float r = 0.0F;
+        float g = 0.0F;
+        float b = 0.0F;
+        float a = 0.0F;
+    };
+
+    inline bool TryExtractRGBAColor(
+        const ImageFrame& frame,
+        RGBAColor& out,
+        int x = -1,
+        int y = -1)
+    {
+        out = {};
+        if (frame.width <= 0 || frame.height <= 0) {
+            return false;
+        }
+
+        int channels = 0;
+        if (frame.format == "R8G8B8" || frame.format == "B8G8R8") {
+            channels = 3;
+        } else if (frame.format == "L8") {
+            channels = 1;
+        } else {
+            return false;
+        }
+
+        const std::size_t expected_size =
+            static_cast<std::size_t>(frame.width) *
+            static_cast<std::size_t>(frame.height) *
+            static_cast<std::size_t>(channels);
+        if (frame.data.size() != expected_size) {
+            return false;
+        }
+
+        const int px = (x < 0) ? (frame.width / 2) : std::clamp(x, 0, frame.width - 1);
+        const int py = (y < 0) ? (frame.height / 2) : std::clamp(y, 0, frame.height - 1);
+        const std::size_t idx =
+            (static_cast<std::size_t>(py) * static_cast<std::size_t>(frame.width) +
+             static_cast<std::size_t>(px)) *
+            static_cast<std::size_t>(channels);
+
+        constexpr float kInv255 = 1.0F / 255.0F;
+        if (frame.format == "R8G8B8") {
+            out = {
+                static_cast<float>(frame.data[idx + 0]) * kInv255,
+                static_cast<float>(frame.data[idx + 1]) * kInv255,
+                static_cast<float>(frame.data[idx + 2]) * kInv255,
+                1.0F
+            };
+            return true;
+        }
+        if (frame.format == "B8G8R8") {
+            out = {
+                static_cast<float>(frame.data[idx + 2]) * kInv255,
+                static_cast<float>(frame.data[idx + 1]) * kInv255,
+                static_cast<float>(frame.data[idx + 0]) * kInv255,
+                1.0F
+            };
+            return true;
+        }
+
+        const float luminance = static_cast<float>(frame.data[idx]) * kInv255;
+        out = {luminance, luminance, luminance, 1.0F};
+        return true;
+    }
+
     // --- Base Class for common logic ---
     class CameraSensorBase : public ISensor
     {
@@ -139,6 +210,15 @@ namespace hako::robots::sensor::camera
         virtual bool LoadConfig(const CameraConfig& config) = 0;
         virtual const CameraConfig& GetConfig() const = 0;
         virtual void Capture(ImageFrame& out) = 0;
+
+        virtual RGBAColor CaptureAsRGBA(int x = -1, int y = -1)
+        {
+            ImageFrame frame {};
+            Capture(frame);
+            RGBAColor color {};
+            TryExtractRGBAColor(frame, color, x, y);
+            return color;
+        }
     };
 
     // Interface for a depth camera sensor

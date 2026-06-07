@@ -1,3 +1,4 @@
+#include "hakoniwa/pdu/converter/sensor_msgs/range.hpp"
 #include "sensors/ultrasonic/ultrasonic_sensor.hpp"
 #include "tests/sensors/support/sensor_test_utils.hpp"
 
@@ -29,7 +30,7 @@ void TestRangePduConversion()
     frame.variance = 0.25;
     frame.status = UltrasonicStatus::OK;
 
-    const HakoCpp_Range pdu = IUltrasonicSensor::ToRangePdu(config, frame);
+    const HakoCpp_Range pdu = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(config, frame);
 
     HAKO_TEST_EXPECT(pdu.header.frame_id == "front_ultrasonic", "unexpected frame_id");
     HAKO_TEST_EXPECT(pdu.radiation_type == 0, "unexpected radiation type");
@@ -51,7 +52,7 @@ void TestInfraredRadiationTypeConversion()
     UltrasonicFrame frame {};
     frame.range = 1.25;
 
-    const HakoCpp_Range pdu = IUltrasonicSensor::ToRangePdu(config, frame);
+    const HakoCpp_Range pdu = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(config, frame);
 
     HAKO_TEST_EXPECT(pdu.header.frame_id == "ir_range", "unexpected infrared frame_id");
     HAKO_TEST_EXPECT(pdu.radiation_type == 1, "unexpected infrared radiation type");

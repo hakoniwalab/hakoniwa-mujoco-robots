@@ -1,4 +1,5 @@
-#include "sensors/camera/camera_pdu_converter.hpp"
+#include "hakoniwa/pdu/converter/sensor_msgs/camera_info.hpp"
+#include "hakoniwa/pdu/converter/sensor_msgs/image.hpp"
 #include "tests/sensors/camera/support/camera_test_utils.hpp"
 
 #include <cmath>
@@ -29,7 +30,7 @@ void TestRgbImageConversion()
         {1, 2, 3, 4, 5, 6});
 
     HakoCpp_Image out {};
-    const bool ok = hako::robots::sensor::camera::ConvertImageFrameToSensorMsgsImage(frame, out);
+    const bool ok = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame, out);
     HAKO_TEST_EXPECT(ok, "RGB image conversion should succeed");
     HAKO_TEST_EXPECT(out.encoding == "rgb8", "unexpected RGB encoding");
     HAKO_TEST_EXPECT(out.step == 6, "unexpected RGB step");
@@ -52,7 +53,7 @@ void TestBgrImageConversion()
         {6, 5, 4, 3, 2, 1});
 
     HakoCpp_Image out {};
-    const bool ok = hako::robots::sensor::camera::ConvertImageFrameToSensorMsgsImage(frame, out);
+    const bool ok = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame, out);
     HAKO_TEST_EXPECT(ok, "BGR image conversion should succeed");
     HAKO_TEST_EXPECT(out.encoding == "bgr8", "unexpected BGR encoding");
     HAKO_TEST_EXPECT(out.step == 6, "unexpected BGR step");
@@ -70,7 +71,7 @@ void TestMonoImageConversion()
         {0, 1, 2, 3, 4, 5});
 
     HakoCpp_Image out {};
-    const bool ok = hako::robots::sensor::camera::ConvertImageFrameToSensorMsgsImage(frame, out);
+    const bool ok = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame, out);
     HAKO_TEST_EXPECT(ok, "mono image conversion should succeed");
     HAKO_TEST_EXPECT(out.encoding == "mono8", "unexpected mono encoding");
     HAKO_TEST_EXPECT(out.step == 3, "unexpected mono step");
@@ -88,7 +89,7 @@ void TestDepthF32Conversion()
         {1.25F, std::numeric_limits<float>::quiet_NaN(), 2.5F});
 
     HakoCpp_Image out {};
-    const bool ok = hako::robots::sensor::camera::ConvertDepthFrameToSensorMsgsImage(frame, out);
+    const bool ok = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame, out);
     HAKO_TEST_EXPECT(ok, "DEPTH_F32_M conversion should succeed");
     HAKO_TEST_EXPECT(out.encoding == "32FC1", "unexpected DEPTH_F32_M encoding");
     HAKO_TEST_EXPECT(out.step == 3 * sizeof(float), "unexpected DEPTH_F32_M step");
@@ -115,7 +116,7 @@ void TestDepthU16Conversion()
         {1.234F, std::numeric_limits<float>::quiet_NaN(), -1.0F, 1000.0F});
 
     HakoCpp_Image out {};
-    const bool ok = hako::robots::sensor::camera::ConvertDepthFrameToSensorMsgsImage(frame, out);
+    const bool ok = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame, out);
     HAKO_TEST_EXPECT(ok, "DEPTH_U16_MM conversion should succeed");
     HAKO_TEST_EXPECT(out.encoding == "16UC1", "unexpected DEPTH_U16_MM encoding");
     HAKO_TEST_EXPECT(out.step == 4 * sizeof(std::uint16_t), "unexpected DEPTH_U16_MM step");
@@ -138,7 +139,7 @@ void TestCameraInfoConversion()
     config.horizontal_fov = 1.0;
 
     HakoCpp_CameraInfo out {};
-    const bool ok = hako::robots::sensor::camera::ConvertCameraConfigToCameraInfo(config, 12.345678, out);
+    const bool ok = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(config, 12.345678, out);
     HAKO_TEST_EXPECT(ok, "CameraInfo conversion should succeed");
 
     const double vertical_fov = 2.0 * std::atan(std::tan(0.5) * 480.0 / 640.0);
@@ -177,7 +178,7 @@ void TestDepthCameraInfoConversion()
     config.horizontal_fov = 1.2;
 
     HakoCpp_CameraInfo out {};
-    const bool ok = hako::robots::sensor::camera::ConvertDepthCameraConfigToCameraInfo(config, 1.5, out);
+    const bool ok = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(config, 1.5, out);
     HAKO_TEST_EXPECT(ok, "Depth CameraInfo conversion should succeed");
     HAKO_TEST_EXPECT(out.header.frame_id == "camera_depth_frame", "unexpected depth CameraInfo frame_id");
     HAKO_TEST_EXPECT_TIME(out.header.stamp, 1, 500000000);
@@ -190,12 +191,12 @@ void TestInvalidInputFailures()
     const ImageFrame bad_image = MakeImageFrame(1, 1, "R8G8B8", "bad", 0.0, {1, 2});
     HakoCpp_Image out_image {};
     HAKO_TEST_EXPECT(
-        !hako::robots::sensor::camera::ConvertImageFrameToSensorMsgsImage(bad_image, out_image),
+        !hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(bad_image, out_image),
         "invalid RGB image should fail");
 
     const DepthFrame bad_depth = MakeDepthFrame(2, 2, "DEPTH_F32_M", "bad", 0.0, {1.0F});
     HAKO_TEST_EXPECT(
-        !hako::robots::sensor::camera::ConvertDepthFrameToSensorMsgsImage(bad_depth, out_image),
+        !hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(bad_depth, out_image),
         "invalid depth image should fail");
 }
 }
@@ -211,6 +212,6 @@ int main()
     TestDepthCameraInfoConversion();
     TestInvalidInputFailures();
 
-    std::cout << "camera_pdu_converter_test passed" << std::endl;
+    std::cout << "camera_sensor_msgs_converter_test passed" << std::endl;
     return 0;
 }

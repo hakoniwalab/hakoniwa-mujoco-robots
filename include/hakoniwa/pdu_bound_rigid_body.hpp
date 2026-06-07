@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "physics.hpp"
-#include "geometry_msgs/pdu_cpptype_Twist.hpp"
 
 namespace hakoniwa
 {
@@ -46,6 +45,23 @@ struct PduBoundRigidBodyConfig
         }
         return std::nullopt;
     }
+};
+
+struct PduRigidBodyPose
+{
+    hako::robots::types::Position position {};
+    hako::robots::types::Euler euler {};
+};
+
+struct PduRigidBodyVelocity
+{
+    hako::robots::types::Velocity linear {};
+    hako::robots::types::BodyAngularVelocity angular {};
+};
+
+struct PduRigidBodyForce
+{
+    hako::robots::types::Vector3 force {};
 };
 
 class PduBoundRigidBody
@@ -107,7 +123,7 @@ protected:
         return nullptr;
     }
 
-    void apply_pose_twist(const HakoCpp_Twist& pose)
+    void apply_pose(const PduRigidBodyPose& pose)
     {
         mjModel* model = world_->getModel();
         mjData* data = world_->getData();
@@ -128,14 +144,14 @@ protected:
 
         const int qpos_adr = model->jnt_qposadr[joint_id];
         const int qvel_adr = model->jnt_dofadr[joint_id];
-        data->qpos[qpos_adr + 0] = pose.linear.x;
-        data->qpos[qpos_adr + 1] = pose.linear.y;
-        data->qpos[qpos_adr + 2] = pose.linear.z;
+        data->qpos[qpos_adr + 0] = pose.position.x;
+        data->qpos[qpos_adr + 1] = pose.position.y;
+        data->qpos[qpos_adr + 2] = pose.position.z;
 
         mjtNum euler[3] = {
-            static_cast<mjtNum>(pose.angular.x),
-            static_cast<mjtNum>(pose.angular.y),
-            static_cast<mjtNum>(pose.angular.z)
+            static_cast<mjtNum>(pose.euler.x),
+            static_cast<mjtNum>(pose.euler.y),
+            static_cast<mjtNum>(pose.euler.z)
         };
         mjtNum quat[4] = {};
         mju_euler2Quat(quat, euler, "XYZ");
@@ -150,31 +166,19 @@ protected:
         mj_forward(model, data);
     }
 
-    HakoCpp_Twist build_pose_twist() const
+    PduRigidBodyPose build_pose() const
     {
-        HakoCpp_Twist out {};
-        const auto pos = position();
-        const auto ang = euler();
-        out.linear.x = pos.x;
-        out.linear.y = pos.y;
-        out.linear.z = pos.z;
-        out.angular.x = ang.x;
-        out.angular.y = ang.y;
-        out.angular.z = ang.z;
+        PduRigidBodyPose out {};
+        out.position = position();
+        out.euler = euler();
         return out;
     }
 
-    HakoCpp_Twist build_velocity_twist() const
+    PduRigidBodyVelocity build_velocity() const
     {
-        HakoCpp_Twist out {};
-        const auto vel = velocity();
-        const auto ang = body_angular_velocity();
-        out.linear.x = vel.x;
-        out.linear.y = vel.y;
-        out.linear.z = vel.z;
-        out.angular.x = ang.x;
-        out.angular.y = ang.y;
-        out.angular.z = ang.z;
+        PduRigidBodyVelocity out {};
+        out.linear = velocity();
+        out.angular = body_angular_velocity();
         return out;
     }
 

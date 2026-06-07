@@ -19,28 +19,16 @@
 #include "mujoco_viewer.hpp"
 #endif
 
-#include "geometry_msgs/pdu_cpptype_Twist.hpp"
-#include "geometry_msgs/pdu_cpptype_conv_Twist.hpp"
 #include "hako_asset.h"
 #include "hako_conductor.h"
 #include "hakoniwa/pdu/endpoint.hpp"
-#include "hako_msgs/pdu_cpptype_GameControllerOperation.hpp"
-#include "hako_msgs/pdu_cpptype_conv_GameControllerOperation.hpp"
-#include "nav_msgs/pdu_cpptype_Odometry.hpp"
-#include "nav_msgs/pdu_cpptype_conv_Odometry.hpp"
-#include "sensor_msgs/pdu_cpptype_Imu.hpp"
-#include "sensor_msgs/pdu_cpptype_JointState.hpp"
-#include "sensor_msgs/pdu_cpptype_LaserScan.hpp"
-#include "sensor_msgs/pdu_cpptype_conv_Imu.hpp"
-#define hako_convert_pdu2cpp_array_string_varray hako_convert_pdu2ros_array_string_varray
-#define hako_convert_cpp2pdu_array_string_varray hako_convert_ros2pdu_array_string_varray
-#include "sensor_msgs/pdu_cpptype_conv_JointState.hpp"
-#undef hako_convert_pdu2cpp_array_string_varray
-#undef hako_convert_cpp2pdu_array_string_varray
-#include "sensor_msgs/pdu_cpptype_conv_LaserScan.hpp"
-#include "tf2_msgs/pdu_cpptype_TFMessage.hpp"
-#include "tf2_msgs/pdu_cpptype_conv_TFMessage.hpp"
-#include "hakoniwa/pdu/type_endpoint.hpp"
+#include "hakoniwa/pdu/adapter/geometry_msgs/twist.hpp"
+#include "hakoniwa/pdu/adapter/hako_msgs/game_controller_operation.hpp"
+#include "hakoniwa/pdu/adapter/nav_msgs/odometry.hpp"
+#include "hakoniwa/pdu/adapter/sensor_msgs/imu.hpp"
+#include "hakoniwa/pdu/adapter/sensor_msgs/joint_state.hpp"
+#include "hakoniwa/pdu/adapter/sensor_msgs/laser_scan.hpp"
+#include "hakoniwa/pdu/adapter/tf2_msgs/tf_message.hpp"
 #include "physics/physics_impl.hpp"
 #include "robots/tb3/tb3_robot.hpp"
 
@@ -132,11 +120,6 @@ double get_env_double_compat(const char* name, const char* legacy_name, double d
     return get_env_double(legacy_name, default_value);
 }
 
-struct Tb3CommandState {
-    HakoCpp_GameControllerOperation gamepad {};
-    bool has_input {false};
-};
-
 Tb3RuntimeConfig load_runtime_config()
 {
     Tb3RuntimeConfig config {};
@@ -216,23 +199,21 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     endpoint.post_start();
     std::cout << "[INFO] TB3 endpoint started successfully." << std::endl;
 
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist>
-        base_pos_ep(endpoint, base_pos_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_Twist, hako::pdu::msgs::geometry_msgs::Twist>
-        base_scan_pos_ep(endpoint, base_scan_pos_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_LaserScan, hako::pdu::msgs::sensor_msgs::LaserScan>
-        laser_scan_ep(endpoint, laser_scan_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_Imu, hako::pdu::msgs::sensor_msgs::Imu>
-        imu_ep(endpoint, imu_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_JointState, hako::pdu::msgs::sensor_msgs::JointState>
-        joint_state_ep(endpoint, joint_state_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_Odometry, hako::pdu::msgs::nav_msgs::Odometry>
-        odom_ep(endpoint, odom_key);
-    hakoniwa::pdu::TypedEndpoint<HakoCpp_TFMessage, hako::pdu::msgs::tf2_msgs::TFMessage>
-        tf_ep(endpoint, tf_key);
-
-    hako::pdu::msgs::hako_msgs::GameControllerOperation gamepad_conv;
-    std::vector<std::byte> gamepad_buf(endpoint.get_pdu_size(gamepad_key), std::byte{0});
+    hako::robots::pdu::adapter::sensor_msgs::LaserScanPduAdapter laser_scan_adapter(endpoint, laser_scan_key);
+    hako::robots::pdu::adapter::sensor_msgs::ImuPduAdapter imu_adapter(endpoint, imu_key);
+    hako::robots::pdu::adapter::sensor_msgs::JointStatePduAdapter joint_state_adapter(endpoint, joint_state_key);
+    hako::robots::pdu::adapter::nav_msgs::OdometryPduAdapter odom_adapter(endpoint, odom_key);
+    hako::robots::pdu::adapter::tf2_msgs::TfPduAdapter tf_adapter(endpoint, tf_key);
+    hako::robots::pdu::adapter::geometry_msgs::TwistPosePduAdapter base_pos_adapter(endpoint, base_pos_key);
+    hako::robots::pdu::adapter::geometry_msgs::TwistPosePduAdapter base_scan_pos_adapter(endpoint, base_scan_pos_key);
+    hako::robots::tb3::Tb3CommandConfig command_config {};
+    command_config.max_linear_velocity = runtime.max_linear_velocity;
+    command_config.max_yaw_rate = runtime.max_yaw_rate;
+    command_config.command_deadzone = runtime.command_deadzone;
+    hako::robots::pdu::adapter::hako_msgs::GamepadCommandPduAdapter gamepad_adapter(
+        endpoint,
+        gamepad_key,
+        command_config);
 
     std::string tb3_error;
     if (!tb3.Initialize(&tb3_error)) {
@@ -242,80 +223,49 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         return -1;
     }
 
-    HakoCpp_LaserScan laser_scan {};
-    HakoCpp_Imu imu {};
-    HakoCpp_JointState joint_state {};
-    HakoCpp_Odometry odom {};
-    HakoCpp_TFMessage tf {};
-    HakoCpp_Twist base_scan_pos {};
+    hako::robots::sensor::ImuFrame imu_frame {};
+    hako::robots::sensor::lidar::LaserScanFrame laser_scan_frame {};
+    hako::robots::sensor::JointStateFrame joint_state_frame {};
+    hako::robots::sensor::OdometryFrame odom_frame {};
+    hako::robots::sensor::TfFrame tf_frame {};
 
     int step = 0;
-    Tb3CommandState command_state {};
+    hako::robots::tb3::Tb3Command command {};
 
     while (running_flag) {
         auto start = std::chrono::steady_clock::now();
         {
             std::lock_guard<std::mutex> lock(data_mutex);
 
-            // --- gamepad 受信 ---
-            HakoCpp_GameControllerOperation latest {};
-            size_t gamepad_received = 0;
-            const auto gamepad_rc = endpoint.recv(
-                gamepad_key,
-                std::span<std::byte>(gamepad_buf.data(), gamepad_buf.size()),
-                gamepad_received);
-            if ((gamepad_rc == HAKO_PDU_ERR_OK) && (gamepad_received > 0)) {
-                if (gamepad_conv.pdu2cpp(reinterpret_cast<char*>(gamepad_buf.data()), latest)) {
-                    command_state.gamepad = latest;
-                    command_state.has_input = true;
-                    #if 0
-                    std::cout << "[DEBUG] Gamepad axis: ";
-                    for (size_t i = 0; i < latest.axis.size(); ++i) {
-                        std::cout << latest.axis[i] << (i < latest.axis.size() - 1 ? ", " : "");
-                    }
-                    std::cout << "; buttons: ";
-                    for (size_t i = 0; i < latest.button.size(); ++i) {
-                        std::cout << latest.button[i] << (i < latest.button.size() - 1 ? ", " : "");
-                    }
-                    std::cout << std::endl;
-                    #endif
-                } else {
-                    hako_asset_usleep(delta_time_usec * 1000);
-                    std::this_thread::sleep_for(std::chrono::duration<double>(1));
-                    continue;
-                }
-            }
+            (void)gamepad_adapter.recv(command);
             // --- 制御 ---
-            tb3.ApplyCommand(command_state.gamepad, command_state.has_input);
+            tb3.ApplyCommand(command);
             tb3.Step();
             // --- base_link_pos 送信（1ms周期） ---
-            HakoCpp_Twist base_pos {};
-            tb3.FillBasePose(base_pos);
-            (void)base_pos_ep.send(base_pos);
+            (void)base_pos_adapter.send(tb3.GetBasePosition(), tb3.GetBaseEuler());
 
             const double sim_time_sec = static_cast<double>(hako_asset_simulation_time()) / 1.0e6;
-            if (tb3.MaybeBuildImu(sim_timestep, sim_time_sec, imu)) {
-                (void)imu_ep.send(imu);
+            if (tb3.MaybeBuildImu(sim_timestep, sim_time_sec, imu_frame)) {
+                (void)imu_adapter.send(imu_frame);
             }
-            if (tb3.MaybeBuildJointState(sim_timestep, sim_time_sec, joint_state)) {
-                (void)joint_state_ep.send(joint_state);
+            if (tb3.MaybeBuildJointState(sim_timestep, sim_time_sec, joint_state_frame)) {
+                (void)joint_state_adapter.send(joint_state_frame);
             }
 
-            if (tb3.MaybeBuildOdometry(sim_timestep, sim_time_sec, odom)) {
-                (void)odom_ep.send(odom);
+            if (tb3.MaybeBuildOdometry(sim_timestep, sim_time_sec, odom_frame)) {
+                (void)odom_adapter.send(odom_frame);
             }
-            if (tb3.MaybeBuildTf(sim_timestep, sim_time_sec, tf)) {
-                (void)tf_ep.send(tf);
+            if (tb3.MaybeBuildTf(sim_timestep, sim_time_sec, tf_frame)) {
+                (void)tf_adapter.send(tf_frame);
             }
 
             // --- LiDAR スキャン（lidar_period_sec 周期） ---
             // Unity: EventTick() — update_cycle ごとに Scan() → FlushNamedPdu()
-            if (tb3.MaybeBuildLaserScan(sim_timestep, laser_scan)) {
-                (void)laser_scan_ep.send(laser_scan);
+            if (tb3.MaybeBuildLaserScan(sim_timestep, laser_scan_frame)) {
+                (void)laser_scan_adapter.send(laser_scan_frame);
 
                 // base_scan_pos も同じタイミングでだけ送る
-                tb3.FillBaseScanPose(base_scan_pos);
-                (void)base_scan_pos_ep.send(base_scan_pos);
+                (void)base_scan_pos_adapter.send(tb3.GetBaseScanPosition(), tb3.GetBaseScanEuler());
             }
 
             // --- デバッグログ（500ステップごと） ---

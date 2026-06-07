@@ -34,6 +34,10 @@ namespace hako::robots::actuator
         std::string actuator_name;
     };
 
+    struct JointActuatorTarget {
+        double value {0.0};
+    };
+
     class IJointActuator
     {
     public:
@@ -41,5 +45,9 @@ namespace hako::robots::actuator
         virtual bool LoadConfig(const std::string& config_path) = 0;
         virtual const JointActuatorConfig& GetConfig() const = 0;
         virtual void SetTarget(double target) = 0;
+        virtual void SetTarget(const JointActuatorTarget& target)
+        {
+            SetTarget(target.value);
+        }
     };
 }

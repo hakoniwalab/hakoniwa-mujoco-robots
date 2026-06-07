@@ -1,12 +1,9 @@
 #pragma once
 
-#include <mutex>
 #include <optional>
 #include <stdexcept>
-#include <vector>
 
-#include "geometry_msgs/pdu_cpptype_conv_Twist.hpp"
-#include "hakoniwa/pdu/type_endpoint.hpp"
+#include "hakoniwa/pdu/adapter/geometry_msgs/twist.hpp"
 #include "hakoniwa/pdu_bound_rigid_body.hpp"
 
 namespace hakoniwa
@@ -35,14 +32,14 @@ public:
             set_pos_channel_ = channel;
             set_pos_key_ = hakoniwa::pdu::PduKey{robot_name(), channel->pdu_name};
             if (set_pos_channel_->kind == PduChannelKind::SubscribeEvent) {
-                register_set_pos_callback_();
+                get_set_pos_event_reader_().subscribe();
             }
         }
         if (const auto* channel = find_channel_or_null("add_force"); channel != nullptr) {
             add_force_channel_ = channel;
             add_force_key_ = hakoniwa::pdu::PduKey{robot_name(), channel->pdu_name};
             if (add_force_channel_->kind == PduChannelKind::SubscribeEvent) {
-                register_add_force_callback_();
+                get_add_force_event_reader_().subscribe();
             }
         }
     }
@@ -53,7 +50,8 @@ public:
     {
         const bool set_pos_applied =
             handle_set_pos_latest() || handle_set_pos_event();
-        const bool force_applied = handle_add_force_event();
+        const bool force_applied =
+            handle_add_force_latest() || handle_add_force_event();
         return set_pos_applied || force_applied;
     }
 
@@ -65,54 +63,61 @@ public:
     }
 
 protected:
-    using TwistEndpoint = hakoniwa::pdu::TypedEndpoint<
-        HakoCpp_Twist,
-        hako::pdu::msgs::geometry_msgs::Twist>;
-
     bool handle_set_pos_latest()
     {
         if (set_pos_channel_ == nullptr || set_pos_channel_->kind != PduChannelKind::SubscribeLatest) {
             return false;
         }
-        HakoCpp_Twist pose {};
-        if (get_set_pos_endpoint_().recv(pose) != HAKO_PDU_ERR_OK) {
+        PduRigidBodyPose pose {};
+        if (!get_set_pos_reader_().recv_pose(pose)) {
             return false;
         }
-        apply_pose_twist(pose);
+        apply_pose(pose);
         return true;
     }
 
     bool handle_set_pos_event()
     {
-        std::optional<HakoCpp_Twist> pending;
-        {
-            std::lock_guard<std::mutex> lock(set_pos_event_mutex_);
-            pending = pending_set_pos_event_;
-            pending_set_pos_event_.reset();
-        }
-        if (!pending.has_value()) {
+        if (set_pos_channel_ == nullptr || set_pos_channel_->kind != PduChannelKind::SubscribeEvent) {
             return false;
         }
-        apply_pose_twist(*pending);
+        PduRigidBodyPose pose {};
+        if (!get_set_pos_event_reader_().take_pose(pose)) {
+            return false;
+        }
+        apply_pose(pose);
         return true;
     }
 
     bool handle_add_force_event()
     {
-        std::optional<HakoCpp_Twist> pending;
-        {
-            std::lock_guard<std::mutex> lock(force_event_mutex_);
-            pending = pending_force_event_;
-            pending_force_event_.reset();
+        if (add_force_channel_ != nullptr && add_force_channel_->kind == PduChannelKind::SubscribeEvent) {
+            PduRigidBodyForce pending {};
+            if (get_add_force_event_reader_().take_force(pending)) {
+                active_force_ = pending.force;
+                active_force_steps_remaining_ = kAddForceHoldSteps;
+            }
         }
-        if (pending.has_value()) {
-            active_force_ = hako::robots::types::Vector3{
-                pending->linear.x,
-                pending->linear.y,
-                pending->linear.z
-            };
-            active_force_steps_remaining_ = kAddForceHoldSteps;
+        if (active_force_steps_remaining_ <= 0) {
+            rigid_body()->SetForce(hako::robots::types::Vector3{0.0, 0.0, 0.0});
+            return false;
         }
+        rigid_body()->SetForce(active_force_);
+        active_force_steps_remaining_--;
+        return true;
+    }
+
+    bool handle_add_force_latest()
+    {
+        if (add_force_channel_ == nullptr || add_force_channel_->kind != PduChannelKind::SubscribeLatest) {
+            return false;
+        }
+        PduRigidBodyForce force {};
+        if (!get_add_force_reader_().recv_force(force)) {
+            return false;
+        }
+        active_force_ = force.force;
+        active_force_steps_remaining_ = kAddForceHoldSteps;
         if (active_force_steps_remaining_ <= 0) {
             rigid_body()->SetForce(hako::robots::types::Vector3{0.0, 0.0, 0.0});
             return false;
@@ -127,7 +132,7 @@ protected:
         if (pos_channel_ == nullptr) {
             return false;
         }
-        return get_pos_endpoint_().send(build_pose_twist()) == HAKO_PDU_ERR_OK;
+        return get_pos_writer_().send_pose(build_pose());
     }
 
     bool publish_velocity()
@@ -135,78 +140,56 @@ protected:
         if (velocity_channel_ == nullptr) {
             return false;
         }
-        return get_velocity_endpoint_().send(build_velocity_twist()) == HAKO_PDU_ERR_OK;
+        return get_velocity_writer_().send_velocity(build_velocity());
     }
 
 private:
-    void register_set_pos_callback_()
+    hako::robots::pdu::adapter::geometry_msgs::TwistWriter& get_pos_writer_()
     {
-        const auto resolved_key = hakoniwa::pdu::PduResolvedKey{
-            robot_name(),
-            endpoint_.get_pdu_channel_id(set_pos_key_)
-        };
-        if (resolved_key.channel_id < 0) {
-            throw std::runtime_error("failed to resolve set_pos PDU channel for " + robot_name());
+        if (!pos_writer_cache_) {
+            pos_writer_cache_.emplace(endpoint_, pos_key_);
         }
-        endpoint_.subscribe_on_recv_callback(
-            resolved_key,
-            [this](const hakoniwa::pdu::PduResolvedKey&, std::span<const std::byte> payload) {
-                HakoCpp_Twist pose {};
-                hako::pdu::msgs::geometry_msgs::Twist convertor;
-                std::vector<std::byte> copy(payload.begin(), payload.end());
-                if (!convertor.pdu2cpp(reinterpret_cast<char*>(copy.data()), pose)) {
-                    return;
-                }
-                std::lock_guard<std::mutex> lock(set_pos_event_mutex_);
-                pending_set_pos_event_ = pose;
-            });
+        return *pos_writer_cache_;
     }
 
-    void register_add_force_callback_()
+    hako::robots::pdu::adapter::geometry_msgs::TwistWriter& get_velocity_writer_()
     {
-        const auto resolved_key = hakoniwa::pdu::PduResolvedKey{
-            robot_name(),
-            endpoint_.get_pdu_channel_id(add_force_key_)
-        };
-        if (resolved_key.channel_id < 0) {
-            throw std::runtime_error("failed to resolve add_force PDU channel for " + robot_name());
+        if (!velocity_writer_cache_) {
+            velocity_writer_cache_.emplace(endpoint_, velocity_key_);
         }
-        endpoint_.subscribe_on_recv_callback(
-            resolved_key,
-            [this](const hakoniwa::pdu::PduResolvedKey&, std::span<const std::byte> payload) {
-                HakoCpp_Twist force {};
-                hako::pdu::msgs::geometry_msgs::Twist convertor;
-                std::vector<std::byte> copy(payload.begin(), payload.end());
-                if (!convertor.pdu2cpp(reinterpret_cast<char*>(copy.data()), force)) {
-                    return;
-                }
-                std::lock_guard<std::mutex> lock(force_event_mutex_);
-                pending_force_event_ = force;
-            });
+        return *velocity_writer_cache_;
     }
 
-    TwistEndpoint& get_pos_endpoint_()
+    hako::robots::pdu::adapter::geometry_msgs::TwistReader& get_set_pos_reader_()
     {
-        if (!pos_endpoint_cache_) {
-            pos_endpoint_cache_.emplace(endpoint_, pos_key_);
+        if (!set_pos_reader_cache_) {
+            set_pos_reader_cache_.emplace(endpoint_, set_pos_key_);
         }
-        return *pos_endpoint_cache_;
+        return *set_pos_reader_cache_;
     }
 
-    TwistEndpoint& get_velocity_endpoint_()
+    hako::robots::pdu::adapter::geometry_msgs::TwistReader& get_add_force_reader_()
     {
-        if (!velocity_endpoint_cache_) {
-            velocity_endpoint_cache_.emplace(endpoint_, velocity_key_);
+        if (!add_force_reader_cache_) {
+            add_force_reader_cache_.emplace(endpoint_, add_force_key_);
         }
-        return *velocity_endpoint_cache_;
+        return *add_force_reader_cache_;
     }
 
-    TwistEndpoint& get_set_pos_endpoint_()
+    hako::robots::pdu::adapter::geometry_msgs::TwistEventReader& get_set_pos_event_reader_()
     {
-        if (!set_pos_endpoint_cache_) {
-            set_pos_endpoint_cache_.emplace(endpoint_, set_pos_key_);
+        if (!set_pos_event_reader_cache_) {
+            set_pos_event_reader_cache_.emplace(endpoint_, set_pos_key_);
         }
-        return *set_pos_endpoint_cache_;
+        return *set_pos_event_reader_cache_;
+    }
+
+    hako::robots::pdu::adapter::geometry_msgs::TwistEventReader& get_add_force_event_reader_()
+    {
+        if (!add_force_event_reader_cache_) {
+            add_force_event_reader_cache_.emplace(endpoint_, add_force_key_);
+        }
+        return *add_force_event_reader_cache_;
     }
 
     hakoniwa::pdu::Endpoint& endpoint_;
@@ -218,13 +201,12 @@ private:
     hakoniwa::pdu::PduKey velocity_key_ {"", ""};
     hakoniwa::pdu::PduKey set_pos_key_ {"", ""};
     hakoniwa::pdu::PduKey add_force_key_ {"", ""};
-    std::optional<TwistEndpoint> pos_endpoint_cache_ {};
-    std::optional<TwistEndpoint> velocity_endpoint_cache_ {};
-    std::optional<TwistEndpoint> set_pos_endpoint_cache_ {};
-    std::mutex set_pos_event_mutex_ {};
-    std::optional<HakoCpp_Twist> pending_set_pos_event_ {};
-    std::mutex force_event_mutex_ {};
-    std::optional<HakoCpp_Twist> pending_force_event_ {};
+    std::optional<hako::robots::pdu::adapter::geometry_msgs::TwistWriter> pos_writer_cache_ {};
+    std::optional<hako::robots::pdu::adapter::geometry_msgs::TwistWriter> velocity_writer_cache_ {};
+    std::optional<hako::robots::pdu::adapter::geometry_msgs::TwistReader> set_pos_reader_cache_ {};
+    std::optional<hako::robots::pdu::adapter::geometry_msgs::TwistReader> add_force_reader_cache_ {};
+    std::optional<hako::robots::pdu::adapter::geometry_msgs::TwistEventReader> set_pos_event_reader_cache_ {};
+    std::optional<hako::robots::pdu::adapter::geometry_msgs::TwistEventReader> add_force_event_reader_cache_ {};
     hako::robots::types::Vector3 active_force_ {0.0, 0.0, 0.0};
     int active_force_steps_remaining_ {0};
 };

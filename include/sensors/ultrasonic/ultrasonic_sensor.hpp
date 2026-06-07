@@ -10,9 +10,6 @@
 #include "sensors/common/update_scheduler.hpp"
 #include "sensors/noise/noise.hpp"
 
-#include "sensor_msgs/pdu_cpptype_Range.hpp"
-#include "sensor_msgs/pdu_cpptype_conv_Range.hpp"
-
 namespace hako::robots::sensor::ultrasonic
 {
     enum class RangeRadiationType : uint8_t
@@ -356,21 +353,6 @@ namespace hako::robots::sensor::ultrasonic
         virtual void Measure(UltrasonicFrame& out) = 0;
 
 
-        static HakoCpp_Range ToRangePdu(
-            const UltrasonicConfig& config,
-            const UltrasonicFrame& frame)
-        {
-            HakoCpp_Range pdu_range {};
-
-            pdu_range.header.frame_id = config.frame_id;
-            pdu_range.radiation_type = static_cast<Hako_uint8>(config.radiation_type);
-            pdu_range.field_of_view = static_cast<float>(config.cone.horizontal);
-            pdu_range.min_range = static_cast<float>(config.detection_distance.min);
-            pdu_range.max_range = static_cast<float>(config.detection_distance.max);
-            pdu_range.range = static_cast<float>(frame.range);
-
-            return pdu_range;
-        }
     };
 
     /**

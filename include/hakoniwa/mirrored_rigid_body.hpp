@@ -1,9 +1,10 @@
 #pragma once
 
+#include <optional>
 #include <stdexcept>
 
-#include "geometry_msgs/pdu_cpptype_conv_Twist.hpp"
 #include "hako_msgs/pdu_cpptype_conv_ImpulseCollision.hpp"
+#include "hakoniwa/pdu/adapter/geometry_msgs/twist.hpp"
 #include "hakoniwa/pdu/type_endpoint.hpp"
 #include "hakoniwa/pdu_bound_rigid_body.hpp"
 
@@ -40,11 +41,11 @@ public:
         if (pos_channel_ == nullptr) {
             return false;
         }
-        HakoCpp_Twist pose {};
-        if (get_pos_endpoint_().recv(pose) != HAKO_PDU_ERR_OK) {
+        PduRigidBodyPose pose {};
+        if (!get_pos_reader_().recv_pose(pose)) {
             return false;
         }
-        apply_pose_twist(pose);
+        apply_pose(pose);
         return true;
     }
 
@@ -58,19 +59,16 @@ public:
     }
 
 private:
-    using TwistEndpoint = hakoniwa::pdu::TypedEndpoint<
-        HakoCpp_Twist,
-        hako::pdu::msgs::geometry_msgs::Twist>;
     using ImpulseEndpoint = hakoniwa::pdu::TypedEndpoint<
         HakoCpp_ImpulseCollision,
         hako::pdu::msgs::hako_msgs::ImpulseCollision>;
 
-    TwistEndpoint& get_pos_endpoint_()
+    hako::robots::pdu::adapter::geometry_msgs::TwistReader& get_pos_reader_()
     {
-        if (!pos_endpoint_cache_) {
-            pos_endpoint_cache_.emplace(endpoint_, pos_key_);
+        if (!pos_reader_cache_) {
+            pos_reader_cache_.emplace(endpoint_, pos_key_);
         }
-        return *pos_endpoint_cache_;
+        return *pos_reader_cache_;
     }
 
     ImpulseEndpoint& get_impulse_endpoint_()
@@ -86,7 +84,7 @@ private:
     const PduChannelConfig* impulse_channel_ {nullptr};
     hakoniwa::pdu::PduKey pos_key_ {"", ""};
     hakoniwa::pdu::PduKey impulse_key_ {"", ""};
-    std::optional<TwistEndpoint> pos_endpoint_cache_ {};
+    std::optional<hako::robots::pdu::adapter::geometry_msgs::TwistReader> pos_reader_cache_ {};
     std::optional<ImpulseEndpoint> impulse_endpoint_cache_ {};
 };
 }  // namespace hakoniwa

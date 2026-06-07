@@ -3,13 +3,6 @@
 #include <memory>
 #include <string>
 
-#include "geometry_msgs/pdu_cpptype_Twist.hpp"
-#include "hako_msgs/pdu_cpptype_GameControllerOperation.hpp"
-#include "nav_msgs/pdu_cpptype_Odometry.hpp"
-#include "sensor_msgs/pdu_cpptype_Imu.hpp"
-#include "sensor_msgs/pdu_cpptype_JointState.hpp"
-#include "sensor_msgs/pdu_cpptype_LaserScan.hpp"
-#include "tf2_msgs/pdu_cpptype_TFMessage.hpp"
 #include "physics.hpp"
 #include "sensors/imu/imu_sensor.hpp"
 #include "sensors/joint_state/joint_state_sensor.hpp"
@@ -45,6 +38,19 @@ namespace hako::robots::tb3
         double lidar_origin_offset {0.0};
     };
 
+    struct Tb3Command
+    {
+        double linear_velocity {0.0};
+        double yaw_rate {0.0};
+    };
+
+    struct Tb3CommandConfig
+    {
+        double max_linear_velocity {0.22};
+        double max_yaw_rate {0.5};
+        double command_deadzone {0.1};
+    };
+
     class Tb3Robot
     {
     public:
@@ -52,17 +58,33 @@ namespace hako::robots::tb3
         ~Tb3Robot();
 
         bool Initialize(std::string* error_message = nullptr);
-        void ApplyCommand(const HakoCpp_GameControllerOperation& gamepad, bool has_input);
+        void ApplyCommand(const Tb3Command& command);
         void Step();
 
-        void FillBasePose(HakoCpp_Twist& out) const;
-        void FillBaseScanPose(HakoCpp_Twist& out) const;
+        hako::robots::types::Position GetBasePosition() const;
+        hako::robots::types::Euler GetBaseEuler() const;
+        hako::robots::types::Position GetBaseScanPosition() const;
+        hako::robots::types::Euler GetBaseScanEuler() const;
 
-        bool MaybeBuildImu(double sim_timestep, double sim_time_sec, HakoCpp_Imu& out);
-        bool MaybeBuildJointState(double sim_timestep, double sim_time_sec, HakoCpp_JointState& out);
-        bool MaybeBuildOdometry(double sim_timestep, double sim_time_sec, HakoCpp_Odometry& out);
-        bool MaybeBuildTf(double sim_timestep, double sim_time_sec, HakoCpp_TFMessage& out);
-        bool MaybeBuildLaserScan(double sim_timestep, HakoCpp_LaserScan& out);
+        bool MaybeBuildImu(
+            double sim_timestep,
+            double sim_time_sec,
+            hako::robots::sensor::ImuFrame& out);
+        bool MaybeBuildJointState(
+            double sim_timestep,
+            double sim_time_sec,
+            hako::robots::sensor::JointStateFrame& out);
+        bool MaybeBuildOdometry(
+            double sim_timestep,
+            double sim_time_sec,
+            hako::robots::sensor::OdometryFrame& out);
+        bool MaybeBuildTf(
+            double sim_timestep,
+            double sim_time_sec,
+            hako::robots::sensor::TfFrame& out);
+        bool MaybeBuildLaserScan(
+            double sim_timestep,
+            hako::robots::sensor::lidar::LaserScanFrame& out);
 
         void EmitDebugLog(int step) const;
 
@@ -77,7 +99,7 @@ namespace hako::robots::tb3
         hako::robots::sensor::JointStateSensor joint_state_sensor_;
         hako::robots::sensor::OdometryPublisher odom_sensor_;
         hako::robots::sensor::TfPublisher tf_sensor_;
-        HakoCpp_LaserScan last_laser_scan_ {};
+        hako::robots::sensor::lidar::LaserScanFrame last_laser_scan_ {};
         hako::robots::sensor::JointStateFrame last_joint_state_frame_ {};
         double last_left_wheel_target_ {0.0};
         double last_right_wheel_target_ {0.0};

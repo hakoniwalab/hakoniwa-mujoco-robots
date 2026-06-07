@@ -6,7 +6,6 @@ option(HAKO_BUILD_CAMERA_SMOKE_TESTS "Build camera OpenGL/MuJoCo smoke tests" OF
 add_library(
     msensors
     camera/camera_config_loader.cpp
-    camera/camera_pdu_converter.cpp
     camera/camera_encoding_utils.cpp
     camera/image_frame_writer.cpp
     camera/camera_sensor.cpp
@@ -71,8 +70,12 @@ if(HAKO_BUILD_SENSOR_TESTS)
         ${PROJECT_ROOT_DIR}/tests/sensors/camera/unit/camera_config_loader_test.cpp
     )
     hako_add_sensor_test(
-        camera_pdu_converter_test
-        ${PROJECT_ROOT_DIR}/tests/sensors/camera/unit/camera_pdu_converter_test.cpp
+        camera_sensor_msgs_converter_test
+        ${PROJECT_ROOT_DIR}/tests/sensors/camera/unit/camera_sensor_msgs_converter_test.cpp
+    )
+    hako_add_sensor_test(
+        camera_rgba_color_test
+        ${PROJECT_ROOT_DIR}/tests/sensors/camera/unit/camera_rgba_color_test.cpp
     )
     hako_add_sensor_test(
         depth_encoding_test
@@ -95,7 +98,8 @@ if(HAKO_BUILD_SENSOR_TESTS)
         camera_unit_tests
         DEPENDS
             camera_config_loader_test
-            camera_pdu_converter_test
+            camera_sensor_msgs_converter_test
+            camera_rgba_color_test
             depth_encoding_test
     )
     add_custom_target(
@@ -114,7 +118,8 @@ if(HAKO_BUILD_SENSOR_TESTS)
     add_custom_target(
         run_sensor_unit_tests
         COMMAND $<TARGET_FILE:camera_config_loader_test>
-        COMMAND $<TARGET_FILE:camera_pdu_converter_test>
+        COMMAND $<TARGET_FILE:camera_sensor_msgs_converter_test>
+        COMMAND $<TARGET_FILE:camera_rgba_color_test>
         COMMAND $<TARGET_FILE:depth_encoding_test>
         COMMAND $<TARGET_FILE:ultrasonic_config_loader_test>
         COMMAND $<TARGET_FILE:ultrasonic_range_pdu_converter_test>
@@ -126,7 +131,8 @@ if(HAKO_BUILD_SENSOR_TESTS)
     add_custom_target(
         run_camera_unit_tests
         COMMAND $<TARGET_FILE:camera_config_loader_test>
-        COMMAND $<TARGET_FILE:camera_pdu_converter_test>
+        COMMAND $<TARGET_FILE:camera_sensor_msgs_converter_test>
+        COMMAND $<TARGET_FILE:camera_rgba_color_test>
         COMMAND $<TARGET_FILE:depth_encoding_test>
         DEPENDS camera_unit_tests
         WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
