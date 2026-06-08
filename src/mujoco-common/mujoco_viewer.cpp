@@ -8,36 +8,68 @@
 #include <mutex>
 #include <stdexcept>
 
-WorldViewer::WorldViewer(
+MujocoRenderRuntime::MujocoRenderRuntime(
     mjModel* model,
     mjData* data,
     bool& running_flag,
     std::mutex& mutex)
+    : MujocoRenderRuntime(
+          model,
+          data,
+          running_flag,
+          mutex,
+          MujocoRenderWindowMode::Visible)
+{
+}
+
+MujocoRenderRuntime::MujocoRenderRuntime(
+    mjModel* model,
+    mjData* data,
+    bool& running_flag,
+    std::mutex& mutex,
+    MujocoRenderWindowMode window_mode)
     : model_(model),
       data_(data),
       running_flag_(&running_flag),
-      mutex_(mutex)
+      mutex_(mutex),
+      window_mode_(window_mode)
 {
     Initialize();
 }
 
-WorldViewer::WorldViewer(
+MujocoRenderRuntime::MujocoRenderRuntime(
     mjModel* model,
     mjData* data,
     std::atomic_bool& running_flag,
     std::mutex& mutex)
+    : MujocoRenderRuntime(
+          model,
+          data,
+          running_flag,
+          mutex,
+          MujocoRenderWindowMode::Visible)
+{
+}
+
+MujocoRenderRuntime::MujocoRenderRuntime(
+    mjModel* model,
+    mjData* data,
+    std::atomic_bool& running_flag,
+    std::mutex& mutex,
+    MujocoRenderWindowMode window_mode)
     : model_(model),
       data_(data),
       atomic_running_flag_(&running_flag),
-      mutex_(mutex)
+      mutex_(mutex),
+      window_mode_(window_mode)
 {
     Initialize();
 }
 
-void WorldViewer::Initialize()
+void MujocoRenderRuntime::Initialize()
 {
     if (model_ == nullptr || data_ == nullptr) {
-        throw std::invalid_argument("WorldViewer requires non-null mjModel and mjData");
+        throw std::invalid_argument("MujocoRenderRuntime requires non-null mjModel and mjData");
     }
 
     if (!glfwInit()) {
@@ -51,7 +83,15 @@ void WorldViewer::Initialize()
         throw std::runtime_error(message);
     }
 
-    window_ = glfwCreateWindow(800, 600, "MuJoCo Simulation Viewer", nullptr, nullptr);
+    glfwWindowHint(GLFW_VISIBLE, HasVisibleWindow() ? GLFW_TRUE : GLFW_FALSE);
+    const int window_width = HasVisibleWindow() ? 800 : 1;
+    const int window_height = HasVisibleWindow() ? 600 : 1;
+    window_ = glfwCreateWindow(
+        window_width,
+        window_height,
+        HasVisibleWindow() ? "MuJoCo Simulation Viewer" : "MuJoCo Render Runtime",
+        nullptr,
+        nullptr);
     if (window_ == nullptr) {
         glfwTerminate();
         throw std::runtime_error("[ERROR] GLFW window creation failed");
@@ -60,10 +100,12 @@ void WorldViewer::Initialize()
     glfwSetWindowUserPointer(window_, this);
     MakeContextCurrent();
     glfwSwapInterval(1);
-    glfwSetKeyCallback(window_, KeyboardCallback);
-    glfwSetMouseButtonCallback(window_, MouseButtonCallback);
-    glfwSetCursorPosCallback(window_, MouseMoveCallback);
-    glfwSetScrollCallback(window_, ScrollCallback);
+    if (HasVisibleWindow()) {
+        glfwSetKeyCallback(window_, KeyboardCallback);
+        glfwSetMouseButtonCallback(window_, MouseButtonCallback);
+        glfwSetCursorPosCallback(window_, MouseMoveCallback);
+        glfwSetScrollCallback(window_, ScrollCallback);
+    }
 
     mjv_defaultCamera(&camera_);
     mjv_defaultOption(&option_);
@@ -73,7 +115,7 @@ void WorldViewer::Initialize()
     mjr_makeContext(model_, &context_, mjFONTSCALE_150);
 }
 
-WorldViewer::~WorldViewer()
+MujocoRenderRuntime::~MujocoRenderRuntime()
 {
     if (window_ != nullptr) {
         MakeContextCurrent();
@@ -85,18 +127,22 @@ WorldViewer::~WorldViewer()
     }
 }
 
-void WorldViewer::SetOverlayCallback(ViewerOverlayCallback overlay)
+void MujocoRenderRuntime::SetOverlayCallback(ViewerOverlayCallback overlay)
 {
     overlay_ = std::move(overlay);
 }
 
-void WorldViewer::SetKeyCallback(ViewerKeyCallback key_callback)
+void MujocoRenderRuntime::SetKeyCallback(ViewerKeyCallback key_callback)
 {
     key_callback_ = std::move(key_callback);
 }
 
-void WorldViewer::Run()
+void MujocoRenderRuntime::Run()
 {
+    if (!HasVisibleWindow()) {
+        return;
+    }
+
     while (IsRunning() && !glfwWindowShouldClose(window_)) {
         int framebuffer_width = 0;
         int framebuffer_height = 0;
@@ -129,7 +175,7 @@ void WorldViewer::Run()
     }
 }
 
-bool WorldViewer::IsRunning() const
+bool MujocoRenderRuntime::IsRunning() const
 {
     if (atomic_running_flag_ != nullptr) {
         return atomic_running_flag_->load();
@@ -137,46 +183,51 @@ bool WorldViewer::IsRunning() const
     return running_flag_ != nullptr && *running_flag_;
 }
 
-void WorldViewer::MakeContextCurrent()
+void MujocoRenderRuntime::MakeContextCurrent()
 {
     glfwMakeContextCurrent(window_);
 }
 
-void WorldViewer::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+bool MujocoRenderRuntime::HasVisibleWindow() const
 {
-    auto* viewer = static_cast<WorldViewer*>(glfwGetWindowUserPointer(window));
-    if (viewer != nullptr) {
-        viewer->HandleMouseButton(button, action, mods);
+    return window_mode_ == MujocoRenderWindowMode::Visible;
+}
+
+void MujocoRenderRuntime::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    auto* runtime = static_cast<MujocoRenderRuntime*>(glfwGetWindowUserPointer(window));
+    if (runtime != nullptr) {
+        runtime->HandleMouseButton(button, action, mods);
     }
 }
 
-void WorldViewer::MouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
+void MujocoRenderRuntime::MouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
 {
-    auto* viewer = static_cast<WorldViewer*>(glfwGetWindowUserPointer(window));
-    if (viewer != nullptr) {
-        viewer->HandleMouseMove(xpos, ypos);
+    auto* runtime = static_cast<MujocoRenderRuntime*>(glfwGetWindowUserPointer(window));
+    if (runtime != nullptr) {
+        runtime->HandleMouseMove(xpos, ypos);
     }
 }
 
-void WorldViewer::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+void MujocoRenderRuntime::ScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
 {
     (void)xoffset;
-    auto* viewer = static_cast<WorldViewer*>(glfwGetWindowUserPointer(window));
-    if (viewer != nullptr) {
-        viewer->HandleScroll(yoffset);
+    auto* runtime = static_cast<MujocoRenderRuntime*>(glfwGetWindowUserPointer(window));
+    if (runtime != nullptr) {
+        runtime->HandleScroll(yoffset);
     }
 }
 
-void WorldViewer::KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void MujocoRenderRuntime::KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     (void)scancode;
-    auto* viewer = static_cast<WorldViewer*>(glfwGetWindowUserPointer(window));
-    if (viewer != nullptr) {
-        viewer->HandleKeyboard(key, action, mods);
+    auto* runtime = static_cast<MujocoRenderRuntime*>(glfwGetWindowUserPointer(window));
+    if (runtime != nullptr) {
+        runtime->HandleKeyboard(key, action, mods);
     }
 }
 
-void WorldViewer::HandleMouseButton(int button, int action, int mods)
+void MujocoRenderRuntime::HandleMouseButton(int button, int action, int mods)
 {
     mouse_button_left_ = (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS);
     mouse_button_right_ = (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS);
@@ -184,7 +235,7 @@ void WorldViewer::HandleMouseButton(int button, int action, int mods)
     glfwGetCursorPos(window_, &last_x_, &last_y_);
 }
 
-void WorldViewer::HandleMouseMove(double xpos, double ypos)
+void MujocoRenderRuntime::HandleMouseMove(double xpos, double ypos)
 {
     if (!mouse_button_left_ && !mouse_button_right_) {
         return;
@@ -205,12 +256,12 @@ void WorldViewer::HandleMouseMove(double xpos, double ypos)
     mjv_moveCamera(model_, mode, dx / 200.0, dy / 200.0, &scene_, &camera_);
 }
 
-void WorldViewer::HandleScroll(double yoffset)
+void MujocoRenderRuntime::HandleScroll(double yoffset)
 {
     mjv_moveCamera(model_, mjMOUSE_ZOOM, 0.0, 0.05 * yoffset, &scene_, &camera_);
 }
 
-void WorldViewer::HandleKeyboard(int key, int action, int mods)
+void MujocoRenderRuntime::HandleKeyboard(int key, int action, int mods)
 {
     if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
@@ -242,9 +293,9 @@ void viewer_thread_with_overlay(
     ViewerOverlayCallback overlay)
 {
     try {
-        WorldViewer viewer(model, data, running_flag, mutex);
-        viewer.SetOverlayCallback(std::move(overlay));
-        viewer.Run();
+        MujocoRenderRuntime runtime(model, data, running_flag, mutex);
+        runtime.SetOverlayCallback(std::move(overlay));
+        runtime.Run();
     } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }

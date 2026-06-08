@@ -32,28 +32,47 @@ class MujocoCameraRenderer;
 using ViewerOverlayCallback = std::function<void(mjvScene& scene)>;
 using ViewerKeyCallback = std::function<void(int key, int action, int mods)>;
 
-class WorldViewer
+enum class MujocoRenderWindowMode
+{
+    Visible,
+    Hidden
+};
+
+class MujocoRenderRuntime
 {
 public:
-    WorldViewer(
+    MujocoRenderRuntime(
         mjModel* model,
         mjData* data,
         bool& running_flag,
         std::mutex& mutex);
-    WorldViewer(
+    MujocoRenderRuntime(
+        mjModel* model,
+        mjData* data,
+        bool& running_flag,
+        std::mutex& mutex,
+        MujocoRenderWindowMode window_mode);
+    MujocoRenderRuntime(
         mjModel* model,
         mjData* data,
         std::atomic_bool& running_flag,
         std::mutex& mutex);
-    ~WorldViewer();
+    MujocoRenderRuntime(
+        mjModel* model,
+        mjData* data,
+        std::atomic_bool& running_flag,
+        std::mutex& mutex,
+        MujocoRenderWindowMode window_mode);
+    ~MujocoRenderRuntime();
 
-    WorldViewer(const WorldViewer&) = delete;
-    WorldViewer& operator=(const WorldViewer&) = delete;
+    MujocoRenderRuntime(const MujocoRenderRuntime&) = delete;
+    MujocoRenderRuntime& operator=(const MujocoRenderRuntime&) = delete;
 
     void SetOverlayCallback(ViewerOverlayCallback overlay);
     void SetKeyCallback(ViewerKeyCallback key_callback);
     void Run();
     void MakeContextCurrent();
+    bool HasVisibleWindow() const;
 
     std::shared_ptr<hako::robots::sensor::camera::MujocoCameraRenderer>
     CreateCameraRenderer(std::shared_ptr<hako::robots::physics::IWorld> world);
@@ -76,6 +95,7 @@ private:
     bool* running_flag_ {nullptr};
     std::atomic_bool* atomic_running_flag_ {nullptr};
     std::mutex& mutex_;
+    MujocoRenderWindowMode window_mode_ {MujocoRenderWindowMode::Visible};
     ViewerOverlayCallback overlay_;
     ViewerKeyCallback key_callback_;
 

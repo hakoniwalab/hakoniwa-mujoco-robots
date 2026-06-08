@@ -83,8 +83,13 @@ int main(int argc, char* argv[])
     std::atomic_bool viewer_running {true};
     std::mutex mujoco_mutex;
 
-    WorldViewer viewer(model, data, viewer_running, mujoco_mutex);
-    viewer.SetKeyCallback(
+    MujocoRenderRuntime render_runtime(
+        model,
+        data,
+        viewer_running,
+        mujoco_mutex,
+        MujocoRenderWindowMode::Visible);
+    render_runtime.SetKeyCallback(
         [&](int key, int action, int mods) {
             (void)mods;
             hako::examples::sensors::color_camera::HandleViewerKey(
@@ -97,7 +102,7 @@ int main(int argc, char* argv[])
             }
         });
 
-    auto sensor_renderer = viewer.CreateCameraRenderer(world);
+    auto sensor_renderer = render_runtime.CreateCameraRenderer(world);
     auto camera_sensor = std::make_unique<hako::robots::sensor::camera::CameraSensor>(
         sensor_renderer,
         kCameraName);
@@ -118,7 +123,7 @@ int main(int argc, char* argv[])
         std::ref(state),
         std::ref(*camera_motion));
 
-    viewer.SetOverlayCallback([&](mjvScene& scene) {
+    render_runtime.SetOverlayCallback([&](mjvScene& scene) {
         (void)scene;
         if (!state.running.load()) {
             viewer_running.store(false);
@@ -146,7 +151,7 @@ int main(int argc, char* argv[])
         }
     });
 
-    viewer.Run();
+    render_runtime.Run();
 
     state.running.store(false);
     viewer_running.store(false);
