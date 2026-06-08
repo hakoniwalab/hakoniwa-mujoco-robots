@@ -11,6 +11,7 @@ add_library(
     camera/camera_sensor.cpp
     camera/depth_camera_sensor.cpp
     camera/mujoco_camera_renderer.cpp
+    camera/world_viewer_camera_renderer.cpp
     camera/rgbd_camera_sensor.cpp
     camera/stereo_camera_sensor.cpp
     imu/imu_sensor.cpp

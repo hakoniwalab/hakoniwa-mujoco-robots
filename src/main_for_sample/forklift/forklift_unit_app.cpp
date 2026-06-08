@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "mujoco_debug.hpp"
-#include "mujoco_viewer.hpp"
+#include "viewer/mujoco_viewer.hpp"
 
 #include "physics/physics_impl.hpp"
 #include "actuator/actuator_impl.hpp"

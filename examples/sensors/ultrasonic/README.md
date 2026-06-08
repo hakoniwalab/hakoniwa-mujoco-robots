@@ -49,7 +49,7 @@ Read these first:
 The example uses the range sensor through `UltrasonicSensor`.
 
 ```cpp
-auto world = std::make_shared<ExampleWorld>();
+auto world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
 world->loadModel(model_path);
 
 UltrasonicSensor sensor(

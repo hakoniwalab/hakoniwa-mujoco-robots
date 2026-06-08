@@ -10,7 +10,7 @@
 
 #include "mujoco_debug.hpp"
 #if USE_VIEWER
-#include "mujoco_viewer.hpp"
+#include "viewer/mujoco_viewer.hpp"
 #endif
 
 #include "hako_asset.h"

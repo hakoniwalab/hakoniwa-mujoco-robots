@@ -411,7 +411,10 @@ if(USE_VIEWER)
     find_package(OpenGL REQUIRED)
     find_package(glfw3 REQUIRED)
     add_library(mujoco-common STATIC mujoco-common/mujoco_viewer.cpp mujoco-common/mujoco_debug.cpp)
-    target_include_directories(mujoco-common PUBLIC mujoco-common)
+    target_include_directories(mujoco-common
+        PUBLIC mujoco-common
+        PUBLIC ${PROJECT_ROOT_DIR}/include
+    )
     target_include_directories(mujoco-common SYSTEM PUBLIC "${MUJOCO_SOURCE_DIR}")
     hako_configure_target_warnings(mujoco-common)
     if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -422,7 +425,10 @@ if(USE_VIEWER)
 else()
     MESSAGE(STATUS "MuJoCo viewer disabled")
     add_library(mujoco-common STATIC mujoco-common/mujoco_debug.cpp)
-    target_include_directories(mujoco-common PUBLIC mujoco-common)
+    target_include_directories(mujoco-common
+        PUBLIC mujoco-common
+        PUBLIC ${PROJECT_ROOT_DIR}/include
+    )
     target_include_directories(mujoco-common SYSTEM PUBLIC "${MUJOCO_SOURCE_DIR}")
     hako_configure_target_warnings(mujoco-common)
 endif()

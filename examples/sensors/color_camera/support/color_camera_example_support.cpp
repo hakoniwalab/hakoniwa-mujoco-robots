@@ -2,6 +2,8 @@
 
 #include "examples/sensors/common/freejoint_motion.hpp"
 
+#include <GLFW/glfw3.h>
+
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -77,38 +79,80 @@ void PrintUsage(
         << "  output: " << default_output_path << "\n";
 }
 
-void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+CameraMotionController::CameraMotionController(
+    mjModel* model,
+    mjData* data,
+    const char* sensor_joint_name,
+    double move_step)
+    : model_(model),
+      data_(data),
+      qpos_addr_(hako::examples::sensors::FindFreejointQposAddr(model, sensor_joint_name)),
+      move_step_(move_step)
 {
-    (void)scancode;
-    (void)mods;
+}
+
+void CameraMotionController::MoveForward(int steps)
+{
+    pending_forward_steps_.fetch_add(steps);
+}
+
+void CameraMotionController::MoveLeft(int steps)
+{
+    pending_left_steps_.fetch_add(steps);
+}
+
+void CameraMotionController::Update()
+{
+    const int forward_steps = pending_forward_steps_.exchange(0);
+    const int left_steps = pending_left_steps_.exchange(0);
+    if (forward_steps == 0 && left_steps == 0) {
+        return;
+    }
+
+    hako::examples::sensors::MoveFreejointPlanarSteps(
+        model_,
+        data_,
+        qpos_addr_,
+        forward_steps,
+        left_steps,
+        move_step_);
+    hako::examples::sensors::PrintPlanarStepMove(
+        "camera",
+        forward_steps,
+        left_steps,
+        move_step_);
+    PrintPosition("camera_pos");
+}
+
+void CameraMotionController::PrintPosition(const char* label) const
+{
+    hako::examples::sensors::PrintFreejointPosition(data_, qpos_addr_, label);
+}
+
+void HandleViewerKey(AppState& state, CameraMotionController& motion, int key, int action)
+{
     if (action != GLFW_PRESS) {
         return;
     }
 
-    auto* state = static_cast<AppState*>(glfwGetWindowUserPointer(window));
-    if (state == nullptr) {
-        return;
-    }
-
     if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q) {
-        state->running.store(false);
-        glfwSetWindowShouldClose(window, GLFW_TRUE);
+        state.running.store(false);
     } else if (key == GLFW_KEY_S) {
-        state->pending_shot.store(true);
+        state.pending_shot.store(true);
     } else if (key == GLFW_KEY_H) {
-        state->print_help.store(true);
+        state.print_help.store(true);
     } else if (key == GLFW_KEY_I) {
-        state->move_forward.fetch_add(1);
+        motion.MoveForward(1);
     } else if (key == GLFW_KEY_K) {
-        state->move_forward.fetch_sub(1);
+        motion.MoveForward(-1);
     } else if (key == GLFW_KEY_J) {
-        state->move_left.fetch_add(1);
+        motion.MoveLeft(1);
     } else if (key == GLFW_KEY_L) {
-        state->move_left.fetch_sub(1);
+        motion.MoveLeft(-1);
     }
 }
 
-void TerminalCommandLoop(AppState& state)
+void TerminalCommandLoop(AppState& state, CameraMotionController& motion)
 {
     while (state.running.load()) {
         char key = '\0';
@@ -130,52 +174,25 @@ void TerminalCommandLoop(AppState& state)
             continue;
         }
         if (key == 'i') {
-            state.move_forward.fetch_add(1);
+            motion.MoveForward(1);
             continue;
         }
         if (key == 'k') {
-            state.move_forward.fetch_sub(1);
+            motion.MoveForward(-1);
             continue;
         }
         if (key == 'j') {
-            state.move_left.fetch_add(1);
+            motion.MoveLeft(1);
             continue;
         }
         if (key == 'l') {
-            state.move_left.fetch_sub(1);
+            motion.MoveLeft(-1);
             continue;
         }
 
         std::cout << "unknown command: " << key << std::endl;
         state.print_help.store(true);
     }
-}
-
-void MoveCamera(
-    mjModel* model,
-    mjData* data,
-    int qpos_addr,
-    int forward_steps,
-    int left_steps,
-    double move_step)
-{
-    if (forward_steps == 0 && left_steps == 0) {
-        return;
-    }
-
-    hako::examples::sensors::MoveFreejointPlanarSteps(
-        model,
-        data,
-        qpos_addr,
-        forward_steps,
-        left_steps,
-        move_step);
-    hako::examples::sensors::PrintPlanarStepMove(
-        "camera",
-        forward_steps,
-        left_steps,
-        move_step);
-    hako::examples::sensors::PrintFreejointPosition(data, qpos_addr, "camera_pos");
 }
 
 void PrintImageSamples(

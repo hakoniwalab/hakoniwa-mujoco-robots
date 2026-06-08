@@ -1,7 +1,7 @@
-#include "examples/sensors/common/example_world.hpp"
 #include "examples/sensors/common/freejoint_motion.hpp"
 #include "examples/sensors/ultrasonic/support/ultrasonic_example_support.hpp"
-#include "mujoco_viewer.hpp"
+#include "physics/physics_impl.hpp"
+#include "viewer/mujoco_viewer.hpp"
 #include "sensors/debug/raycast_debug.hpp"
 #include "sensors/ultrasonic/ultrasonic_sensor.hpp"
 
@@ -43,7 +43,7 @@ int main(int argc, char** argv)
     std::thread command_thread;
 
     try {
-        auto world = std::make_shared<hako::examples::sensors::ExampleWorld>();
+        auto world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
         world->loadModel(model_path);
 
         auto* model = world->getModel();

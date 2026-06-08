@@ -1,20 +1,22 @@
-#include "examples/sensors/common/example_world.hpp"
 #include "examples/sensors/common/freejoint_motion.hpp"
 #include "examples/sensors/color_camera/support/color_camera_example_support.hpp"
+#include "physics/physics_impl.hpp"
 #include "sensors/camera/camera_config_loader.hpp"
 #include "sensors/camera/camera_sensor.hpp"
 #include "sensors/camera/image_frame_writer.hpp"
 #include "sensors/camera/mujoco_camera_renderer.hpp"
+#include "viewer/mujoco_viewer.hpp"
 
-#include <GLFW/glfw3.h>
 #include <mujoco/mujoco.h>
 
+#include <atomic>
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
-#include <algorithm>
 
 namespace {
 
@@ -56,7 +58,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    auto world = std::make_shared<hako::examples::sensors::ExampleWorld>();
+    auto world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
     try {
         world->loadModel(model_path);
     } catch (const std::exception& e) {
@@ -65,54 +67,41 @@ int main(int argc, char* argv[])
     }
     mjModel* model = world->getModel();
     mjData* data = world->getData();
-    int camera_qpos_addr = -1;
+
+    hako::examples::sensors::color_camera::AppState state {};
+    std::unique_ptr<hako::examples::sensors::color_camera::CameraMotionController> camera_motion;
     try {
-        camera_qpos_addr = hako::examples::sensors::FindFreejointQposAddr(model, kSensorJointName);
+        camera_motion = std::make_unique<hako::examples::sensors::color_camera::CameraMotionController>(
+            model,
+            data,
+            kSensorJointName,
+            kMoveStep);
     } catch (const std::exception& e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
         return 1;
     }
+    std::atomic_bool viewer_running {true};
+    std::mutex mujoco_mutex;
 
-    if (!glfwInit()) {
-        std::cerr << "GLFW initialization failed." << std::endl;
-        return 1;
-    }
+    WorldViewer viewer(model, data, viewer_running, mujoco_mutex);
+    viewer.SetKeyCallback(
+        [&](int key, int action, int mods) {
+            (void)mods;
+            hako::examples::sensors::color_camera::HandleViewerKey(
+                state,
+                *camera_motion,
+                key,
+                action);
+            if (!state.running.load()) {
+                viewer_running.store(false);
+            }
+        });
 
-    GLFWwindow* window = glfwCreateWindow(900, 650, "Hakoniwa Color Camera Example", nullptr, nullptr);
-    if (window == nullptr) {
-        glfwTerminate();
-        std::cerr << "GLFW window creation failed." << std::endl;
-        return 1;
-    }
-
-    hako::examples::sensors::color_camera::AppState state {};
-    glfwSetWindowUserPointer(window, &state);
-    glfwSetKeyCallback(window, hako::examples::sensors::color_camera::KeyCallback);
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
-
-    mjvCamera viewer_camera;
-    mjvOption viewer_option;
-    mjvScene viewer_scene;
-    mjrContext context;
-    mjv_defaultCamera(&viewer_camera);
-    mjv_defaultOption(&viewer_option);
-    mjv_defaultScene(&viewer_scene);
-    mjr_defaultContext(&context);
-    mjv_makeScene(model, &viewer_scene, 2000);
-    mjr_makeContext(model, &context, mjFONTSCALE_150);
-
-    auto sensor_renderer = std::make_shared<hako::robots::sensor::camera::MujocoCameraRenderer>(
-        world,
-        false);
+    auto sensor_renderer = viewer.CreateCameraRenderer(world);
     auto camera_sensor = std::make_unique<hako::robots::sensor::camera::CameraSensor>(
         sensor_renderer,
         kCameraName);
     if (!camera_sensor->LoadConfig(config)) {
-        mjr_freeContext(&context);
-        mjv_freeScene(&viewer_scene);
-        glfwDestroyWindow(window);
-        glfwTerminate();
         std::cerr << "Failed to validate camera config: " << config_path << std::endl;
         return 1;
     }
@@ -121,41 +110,22 @@ int main(int argc, char* argv[])
     std::cout << "model : " << model_path << std::endl;
     std::cout << "config: " << config_path << std::endl;
     std::cout << "output: " << output_path << std::endl;
-    hako::examples::sensors::PrintFreejointPosition(data, camera_qpos_addr, "camera_pos");
+    camera_motion->PrintPosition("camera_pos");
     hako::examples::sensors::color_camera::PrintHelp();
 
     std::thread terminal_thread(
         hako::examples::sensors::color_camera::TerminalCommandLoop,
-        std::ref(state));
+        std::ref(state),
+        std::ref(*camera_motion));
 
-    while (state.running.load() && !glfwWindowShouldClose(window)) {
-        int framebuffer_width = 0;
-        int framebuffer_height = 0;
-        glfwGetFramebufferSize(window, &framebuffer_width, &framebuffer_height);
-        const mjrRect viewport = {0, 0, framebuffer_width, framebuffer_height};
+    viewer.SetOverlayCallback([&](mjvScene& scene) {
+        (void)scene;
+        if (!state.running.load()) {
+            viewer_running.store(false);
+            return;
+        }
 
-        mjr_setBuffer(mjFB_WINDOW, &context);
-        mjv_updateScene(
-            model,
-            data,
-            &viewer_option,
-            nullptr,
-            &viewer_camera,
-            mjCAT_ALL,
-            &viewer_scene);
-        mjr_render(viewport, &viewer_scene, &context);
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-
-        const int forward_steps = state.move_forward.exchange(0);
-        const int left_steps = state.move_left.exchange(0);
-        hako::examples::sensors::color_camera::MoveCamera(
-            model,
-            data,
-            camera_qpos_addr,
-            forward_steps,
-            left_steps,
-            kMoveStep);
+        camera_motion->Update();
 
         if (state.pending_shot.exchange(false)) {
             hako::robots::sensor::camera::ImageFrame frame {};
@@ -174,9 +144,12 @@ int main(int argc, char* argv[])
         if (state.print_help.exchange(false)) {
             hako::examples::sensors::color_camera::PrintHelp();
         }
-    }
+    });
+
+    viewer.Run();
 
     state.running.store(false);
+    viewer_running.store(false);
     if (terminal_thread.joinable()) {
         terminal_thread.detach();
     }
@@ -184,10 +157,6 @@ int main(int argc, char* argv[])
     camera_sensor.reset();
     sensor_renderer.reset();
 
-    mjr_freeContext(&context);
-    mjv_freeScene(&viewer_scene);
-    glfwDestroyWindow(window);
-    glfwTerminate();
     std::cout << "bye" << std::endl;
-    return 0;
+    return EXIT_SUCCESS;
 }
