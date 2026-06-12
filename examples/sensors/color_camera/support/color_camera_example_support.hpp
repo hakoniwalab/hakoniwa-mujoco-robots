@@ -49,4 +49,14 @@ namespace hako::examples::sensors::color_camera
     void PrintImageSamples(
         const hako::robots::sensor::camera::ImageFrame& frame,
         const char* camera_name);
+    void PrintCenterRgbaSample(
+        const hako::robots::sensor::camera::RGBAColor& color,
+        int x,
+        int y);
+    void PrintRegionAverageRgbaSample(
+        const hako::robots::sensor::camera::RGBAColor& color,
+        int x,
+        int y,
+        int width,
+        int height);
 }

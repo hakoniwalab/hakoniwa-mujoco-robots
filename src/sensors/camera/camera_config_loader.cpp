@@ -130,45 +130,95 @@ void LoadNoiseConfigIfPresent(const json& root, CameraNoiseConfig& out)
 
 bool ParseCameraConfigJson(const json& root, const std::string& path, CameraConfig& out)
 {
+    const json* spec = &root;
+    std::string spec_path = path;
+    if (root.contains("spec")) {
+        if (!root.at("spec").is_object()) {
+            std::cerr << "Failed to load camera config JSON: field 'spec' must be an object in '"
+                      << path << "'" << std::endl;
+            return false;
+        }
+        spec = &root.at("spec");
+        spec_path = path + ":spec";
+    }
+
     CameraConfig config {};
-    if (!RequireStringField(root, "frame_id", path, config.frame_id)) {
+    if (!RequireStringField(*spec, "frame_id", spec_path, config.frame_id)) {
         return false;
     }
-    if (!RequireNumberField(root, "update_rate", path, config.update_rate)) {
+    if (!RequireNumberField(*spec, "update_rate", spec_path, config.update_rate)) {
         return false;
     }
-    if (!RequireNumberField(root, "horizontal_fov", path, config.horizontal_fov)) {
+    if (!RequireNumberField(*spec, "horizontal_fov", spec_path, config.horizontal_fov)) {
         return false;
     }
 
     json image;
-    if (!RequireObjectField(root, "image", path, image)) {
+    if (!RequireObjectField(*spec, "image", spec_path, image)) {
         return false;
     }
-    if (!RequireIntField(image, "width", path + ":image", config.image.width)) {
+    if (!RequireIntField(image, "width", spec_path + ":image", config.image.width)) {
         return false;
     }
-    if (!RequireIntField(image, "height", path + ":image", config.image.height)) {
+    if (!RequireIntField(image, "height", spec_path + ":image", config.image.height)) {
         return false;
     }
-    if (!RequireStringField(image, "format", path + ":image", config.image.format)) {
+    if (!RequireStringField(image, "format", spec_path + ":image", config.image.format)) {
         return false;
     }
 
     json clip;
-    if (!RequireObjectField(root, "clip", path, clip)) {
+    if (!RequireObjectField(*spec, "clip", spec_path, clip)) {
         return false;
     }
-    if (!RequireNumberField(clip, "near", path + ":clip", config.clip.near)) {
+    if (!RequireNumberField(clip, "near", spec_path + ":clip", config.clip.near)) {
         return false;
     }
-    if (!RequireNumberField(clip, "far", path + ":clip", config.clip.far)) {
+    if (!RequireNumberField(clip, "far", spec_path + ":clip", config.clip.far)) {
         return false;
     }
 
-    LoadNoiseConfigIfPresent(root, config.noise);
+    LoadNoiseConfigIfPresent(*spec, config.noise);
     out = config;
     return true;
+}
+
+void LoadCameraMjcfBindingIfPresent(const json& root, CameraMjcfBinding& out)
+{
+    const json* binding = nullptr;
+    if (root.contains("mjcf_binding") && root.at("mjcf_binding").is_object()) {
+        binding = &root.at("mjcf_binding");
+    } else if (root.contains("RuntimeBinding") && root.at("RuntimeBinding").is_object()) {
+        binding = &root.at("RuntimeBinding");
+    }
+    if (binding == nullptr) {
+        return;
+    }
+
+    if (binding->contains("camera_name") && binding->at("camera_name").is_string()) {
+        out.camera_name = binding->at("camera_name").get<std::string>();
+    }
+    if (binding->contains("body_name") && binding->at("body_name").is_string()) {
+        out.body_name = binding->at("body_name").get<std::string>();
+    }
+    if (binding->contains("freejoint_name") && binding->at("freejoint_name").is_string()) {
+        out.freejoint_name = binding->at("freejoint_name").get<std::string>();
+    }
+}
+
+void LoadCameraPduConfigIfPresent(const json& root, CameraPduConfig& out)
+{
+    if (!root.contains("pdu_config") || !root.at("pdu_config").is_object()) {
+        return;
+    }
+
+    const auto& pdu = root.at("pdu_config");
+    if (pdu.contains("pdu_name") && pdu.at("pdu_name").is_string()) {
+        out.pdu_name = pdu.at("pdu_name").get<std::string>();
+    }
+    if (pdu.contains("update_rate_hz") && pdu.at("update_rate_hz").is_number()) {
+        out.update_rate_hz = pdu.at("update_rate_hz").get<double>();
+    }
 }
 
 bool ParseDepthCameraConfigJson(const json& root, const std::string& path, DepthCameraConfig& out)
@@ -222,6 +272,23 @@ bool LoadCameraConfigFromJson(const std::string& path, CameraConfig& out)
         return false;
     }
     return ParseCameraConfigJson(root, path, out);
+}
+
+bool LoadCameraProfileConfigFromJson(const std::string& path, CameraProfileConfig& out)
+{
+    json root;
+    if (!LoadRootJson(path, root)) {
+        return false;
+    }
+
+    CameraProfileConfig config {};
+    if (!ParseCameraConfigJson(root, path, config.spec)) {
+        return false;
+    }
+    LoadCameraMjcfBindingIfPresent(root, config.mjcf_binding);
+    LoadCameraPduConfigIfPresent(root, config.pdu_config);
+    out = config;
+    return true;
 }
 
 bool LoadDepthCameraConfigFromJson(const std::string& path, DepthCameraConfig& out)

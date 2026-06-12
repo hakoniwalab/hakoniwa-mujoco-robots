@@ -47,11 +47,18 @@ int main(int argc, char* argv[])
     const std::string config_path = argc > 2 ? argv[2] : kDefaultConfigPath;
     const std::filesystem::path output_path = argc > 3 ? argv[3] : kDefaultOutputPath;
 
-    hako::robots::sensor::camera::CameraConfig config {};
-    if (!hako::robots::sensor::camera::LoadCameraConfigFromJson(config_path, config)) {
+    hako::robots::sensor::camera::CameraProfileConfig profile {};
+    if (!hako::robots::sensor::camera::LoadCameraProfileConfigFromJson(config_path, profile)) {
         std::cerr << "Failed to load camera config: " << config_path << std::endl;
         return 1;
     }
+    const auto& config = profile.spec;
+    const std::string camera_name = profile.mjcf_binding.camera_name.empty()
+        ? kCameraName
+        : profile.mjcf_binding.camera_name;
+    const std::string sensor_joint_name = profile.mjcf_binding.freejoint_name.empty()
+        ? kSensorJointName
+        : profile.mjcf_binding.freejoint_name;
     if (config.image.format != "R8G8B8") {
         std::cerr << "This example expects R8G8B8 format, got: "
                   << config.image.format << std::endl;
@@ -74,7 +81,7 @@ int main(int argc, char* argv[])
         camera_motion = std::make_unique<hako::examples::sensors::color_camera::CameraMotionController>(
             model,
             data,
-            kSensorJointName,
+            sensor_joint_name.c_str(),
             kMoveStep);
     } catch (const std::exception& e) {
         std::cerr << "ERROR: " << e.what() << std::endl;
@@ -105,7 +112,7 @@ int main(int argc, char* argv[])
     auto sensor_renderer = render_runtime.CreateCameraRenderer(world);
     auto camera_sensor = std::make_unique<hako::robots::sensor::camera::CameraSensor>(
         sensor_renderer,
-        kCameraName);
+        camera_name);
     if (!camera_sensor->LoadConfig(config)) {
         std::cerr << "Failed to validate camera config: " << config_path << std::endl;
         return 1;
@@ -114,6 +121,7 @@ int main(int argc, char* argv[])
     std::cout << "Hakoniwa Color Camera Example" << std::endl;
     std::cout << "model : " << model_path << std::endl;
     std::cout << "config: " << config_path << std::endl;
+    std::cout << "camera: " << camera_name << std::endl;
     std::cout << "output: " << output_path << std::endl;
     camera_motion->PrintPosition("camera_pos");
     hako::examples::sensors::color_camera::PrintHelp();
@@ -138,7 +146,28 @@ int main(int argc, char* argv[])
             if (frame.data.empty()) {
                 std::cerr << "CameraSensor::Capture produced an empty image." << std::endl;
             } else {
-                hako::examples::sensors::color_camera::PrintImageSamples(frame, kCameraName);
+                hako::examples::sensors::color_camera::PrintImageSamples(frame, camera_name.c_str());
+                const int center_x = frame.width / 2;
+                const int center_y = frame.height / 2;
+                const auto center_rgba = camera_sensor->CaptureAsRGBA(center_x, center_y);
+                hako::examples::sensors::color_camera::PrintCenterRgbaSample(
+                    center_rgba,
+                    center_x,
+                    center_y);
+                const int region_size = std::max(1, std::min(frame.width, frame.height) / 8);
+                const int region_x = center_x - region_size / 2;
+                const int region_y = center_y - region_size / 2;
+                const auto region_rgba = camera_sensor->CaptureRegionAverageRGBA(
+                    region_x,
+                    region_y,
+                    region_size,
+                    region_size);
+                hako::examples::sensors::color_camera::PrintRegionAverageRgbaSample(
+                    region_rgba,
+                    region_x,
+                    region_y,
+                    region_size,
+                    region_size);
                 if (hako::robots::sensor::camera::WriteImageFrameToPng(frame, output_path)) {
                     std::cout << "Wrote PNG: " << output_path << "\n" << std::endl;
                 } else {

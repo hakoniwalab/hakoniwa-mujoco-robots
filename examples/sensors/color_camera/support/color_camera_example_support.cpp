@@ -207,4 +207,38 @@ void PrintImageSamples(
     print_sample("center", frame.data, frame.width, frame.width / 2, y);
     print_sample("right", frame.data, frame.width, (frame.width * 5) / 6, y);
 }
+
+void PrintCenterRgbaSample(
+    const hako::robots::sensor::camera::RGBAColor& color,
+    int x,
+    int y)
+{
+    std::cout << std::fixed << std::setprecision(3)
+              << "center_rgba pixel=(" << x << ", " << y << ")"
+              << " rgba=("
+              << color.r << ", "
+              << color.g << ", "
+              << color.b << ", "
+              << color.a << ")"
+              << std::defaultfloat << std::endl;
+}
+
+void PrintRegionAverageRgbaSample(
+    const hako::robots::sensor::camera::RGBAColor& color,
+    int x,
+    int y,
+    int width,
+    int height)
+{
+    std::cout << std::fixed << std::setprecision(3)
+              << "region_average_rgba rect=("
+              << x << ", " << y << ", "
+              << width << ", " << height << ")"
+              << " rgba=("
+              << color.r << ", "
+              << color.g << ", "
+              << color.b << ", "
+              << color.a << ")"
+              << std::defaultfloat << std::endl;
+}
 }

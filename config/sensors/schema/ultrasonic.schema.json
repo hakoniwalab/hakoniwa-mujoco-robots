@@ -104,13 +104,13 @@
       "properties": {
         "Horizontal": {
           "type": "number",
-          "exclusiveMinimum": 0,
-          "description": "Horizontal field of view in radians."
+          "minimum": 0,
+          "description": "Horizontal field of view in radians. Use 0 for a single center ray."
         },
         "Vertical": {
           "type": "number",
-          "exclusiveMinimum": 0,
-          "description": "Vertical field of view in radians."
+          "minimum": 0,
+          "description": "Vertical field of view in radians. Use 0 for a single center ray."
         },
         "RayCount": {
           "type": "integer",

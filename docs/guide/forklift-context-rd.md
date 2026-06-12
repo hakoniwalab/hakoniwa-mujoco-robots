@@ -26,7 +26,7 @@ Not saved:
 - Cargo, shelves, and other external object states.
 - Internal state of external processes such as Python controllers.
 
-Restore assumes the same model XML and the same MuJoCo version. The active MuJoCo version is managed by [`MUJOCO_VERSION.txt`](../MUJOCO_VERSION.txt).
+Restore assumes the same model XML and the same MuJoCo version. The active MuJoCo version is managed by [`MUJOCO_VERSION.txt`](../../MUJOCO_VERSION.txt).
 
 ## State Format
 
@@ -103,7 +103,7 @@ Confirmed in `forklift_unit` restart tests:
 - MuJoCo: v3.5.0 at the time of this evidence capture
 - State format: `v8`
 
-The current MuJoCo version used by this repository is managed separately in [`MUJOCO_VERSION.txt`](../MUJOCO_VERSION.txt).
+The current MuJoCo version used by this repository is managed separately in [`MUJOCO_VERSION.txt`](../../MUJOCO_VERSION.txt).
 
 Observed:
 
@@ -184,4 +184,4 @@ Entry points:
 - `forklift-1.bash`: initial owner.
 - `forklift-2.bash`: initial standby.
 
-More detailed RD transition notes are in [`rd-design.md`](../rd-design.md).
+More detailed RD transition notes are in [`rd-design.md`](../../rd-design.md).

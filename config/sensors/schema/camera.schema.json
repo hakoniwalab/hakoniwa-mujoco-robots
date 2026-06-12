@@ -5,12 +5,21 @@
   "description": "SDF-like but MJCF-resolved JSON config for standard Camera profiles used by Hakoniwa MuJoCo sensors.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "frame_id",
-    "update_rate",
-    "image",
-    "clip",
-    "horizontal_fov"
+  "oneOf": [
+    {
+      "required": [
+        "frame_id",
+        "update_rate",
+        "image",
+        "clip",
+        "horizontal_fov"
+      ]
+    },
+    {
+      "required": [
+        "spec"
+      ]
+    }
   ],
   "properties": {
     "$schema": {
@@ -39,9 +48,59 @@
     },
     "noise": {
       "$ref": "#/$defs/noise"
+    },
+    "spec": {
+      "$ref": "#/$defs/cameraSpec"
+    },
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
+    },
+    "RuntimeBinding": {
+      "$ref": "#/$defs/mjcfBinding",
+      "description": "Backward-compatible key for mjcf_binding."
+    },
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
     }
   },
   "$defs": {
+    "cameraSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame_id",
+        "update_rate",
+        "image",
+        "clip",
+        "horizontal_fov"
+      ],
+      "properties": {
+        "frame_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "update_rate": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "The frequency at which the sensor generates data, in Hz."
+        },
+        "horizontal_fov": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 3.141592653589793,
+          "description": "Horizontal field of view, in radians."
+        },
+        "image": {
+          "$ref": "#/$defs/image"
+        },
+        "clip": {
+          "$ref": "#/$defs/clip"
+        },
+        "noise": {
+          "$ref": "#/$defs/noise"
+        }
+      }
+    },
     "image": {
       "type": "object",
       "additionalProperties": false,
@@ -88,13 +147,9 @@
     "noise": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "stddev"
-      ],
       "properties": {
         "type": {
-          "enum": ["gaussian"],
+          "enum": ["none", "gaussian"],
           "description": "The type of noise model."
         },
         "mean": {
@@ -105,6 +160,50 @@
           "type": "number",
           "minimum": 0,
           "description": "The standard deviation of the noise distribution."
+        }
+      }
+    },
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "camera_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "MJCF camera name used by the camera renderer."
+        },
+        "body_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional MJCF body that owns or moves with the camera."
+        },
+        "freejoint_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional MJCF freejoint used by examples or tools to move the camera body."
+        }
+      }
+    },
+    "pduConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pdu_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "message_type": {
+          "enum": ["sensor_msgs/Image"]
         }
       }
     }

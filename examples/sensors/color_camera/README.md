@@ -5,10 +5,11 @@ This example opens a MuJoCo viewer and captures a simple color-camera shot when 
 The goal is to make the Color Sensor API easy to understand from the example code:
 
 - the model contains red, green, and blue panels
-- the config defines the RGB image size, format, and field of view
+- the config separates camera `spec`, `mjcf_binding`, and `pdu_config`
 - `CameraSensor` is created in `color-camera-example.cpp`
 - `CameraSensor::LoadConfig()` applies the JSON config
-- `CameraSensor::Capture()` captures the camera named `color_camera`
+- `CameraSensor::Capture()` captures the camera named by `mjcf_binding.camera_name`
+- `CameraSensor::CaptureAsRGBA()` reads a normalized RGBA sample from the camera
 - `WriteImageFrameToPng()` writes the captured RGB frame to `./camera_color_sample.png`
 
 The viewer, keyboard input, and pixel-print helpers are intentionally kept as support code so the main file shows the sensor usage directly.
@@ -34,22 +35,32 @@ Read these first:
 - [`color-camera-example.cpp`](./color-camera-example.cpp): the Color Sensor API usage
 - [`simple-color-camera.json`](../../../config/sensors/color_camera/simple-color-camera.json): the camera config
 - [`color-camera-sample.xml`](../../../models/sensors/color_camera/color-camera-sample.xml): the MuJoCo model and camera name
+- [`docs/tutorial/camera-sensor-ja.md`](../../../docs/tutorial/camera-sensor-ja.md): step-by-step camera setup tutorial in Japanese
 
 ## Color Sensor API
 
 The example uses the RGB color camera through `CameraSensor`.
 
 ```cpp
-CameraConfig config {};
-LoadCameraConfigFromJson(config_path, config);
+CameraProfileConfig profile {};
+LoadCameraProfileConfigFromJson(config_path, profile);
 
 auto renderer = std::make_shared<MujocoCameraRenderer>(world, false);
-auto camera_sensor = std::make_unique<CameraSensor>(renderer, "color_camera");
-camera_sensor->LoadConfig(config);
+auto camera_sensor = std::make_unique<CameraSensor>(
+    renderer,
+    profile.mjcf_binding.camera_name);
+camera_sensor->LoadConfig(profile.spec);
 
 ImageFrame frame {};
 camera_sensor->Capture(frame);
 WriteImageFrameToPng(frame, output_path);
+
+RGBAColor center = camera_sensor->CaptureAsRGBA(frame.width / 2, frame.height / 2);
+RGBAColor average = camera_sensor->CaptureRegionAverageRGBA(
+    frame.width / 2 - 8,
+    frame.height / 2 - 8,
+    16,
+    16);
 ```
 
 The full version is in [`color-camera-example.cpp`](./color-camera-example.cpp). The surrounding code only prepares the MuJoCo model, OpenGL context, viewer, and keyboard controls.
@@ -84,18 +95,39 @@ Important fields:
 
 ```json
 {
-  "frame_id": "color_camera_frame",
-  "update_rate": 10,
-  "horizontal_fov": 1.2,
-  "image": {
-    "width": 256,
-    "height": 128,
-    "format": "R8G8B8"
+  "spec": {
+    "frame_id": "color_camera_frame",
+    "update_rate": 10,
+    "horizontal_fov": 1.2,
+    "image": {
+      "width": 256,
+      "height": 128,
+      "format": "R8G8B8"
+    }
+  },
+  "mjcf_binding": {
+    "camera_name": "color_camera",
+    "body_name": "color_sensor_body",
+    "freejoint_name": "color_sensor_freejoint"
+  },
+  "pdu_config": {
+    "pdu_name": "camera_image",
+    "update_rate_hz": 10,
+    "message_type": "sensor_msgs/Image"
   }
 }
 ```
 
-Noise is disabled so the output is easy to inspect.
+`spec` is the camera sensor specification. `mjcf_binding` names the MJCF camera
+and optional movable body/freejoint used by this example. `pdu_config` records
+the intended PDU output settings when this camera is connected to a Hakoniwa
+endpoint. Noise is disabled so the output is easy to inspect.
+
+`Capture()` returns the full RGB image. `CaptureAsRGBA(x, y)` is a convenience
+API for reading one pixel as a normalized color value, which is useful when you
+want a color-sensor-like sample from a camera image.
+`CaptureRegionAverageRGBA(x, y, width, height)` averages a rectangular image
+region and is useful when a single pixel is too noisy.
 
 ## Build
 
@@ -152,6 +184,7 @@ You can also pass paths explicitly:
 Hakoniwa Color Camera Example
 model : models/sensors/color_camera/color-camera-sample.xml
 config: config/sensors/color_camera/simple-color-camera.json
+camera: color_camera
 output: ./camera_color_sample.png
 
 Controls:
@@ -167,6 +200,8 @@ Captured color_camera 256x128
 left    pixel=( 42,  64) rgb=(...)
 center  pixel=(128,  64) rgb=(...)
 right   pixel=(213,  64) rgb=(...)
+center_rgba pixel=(128, 64) rgba=(..., ..., ..., 1.000)
+region_average_rgba rect=(120, 56, 16, 16) rgba=(..., ..., ..., 1.000)
 
 Wrote PNG: ./camera_color_sample.png
 ```

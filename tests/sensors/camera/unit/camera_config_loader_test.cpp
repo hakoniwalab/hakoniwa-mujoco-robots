@@ -30,6 +30,28 @@ void TestCameraConfigLoader()
     HAKO_TEST_EXPECT(NearlyEqual(config.noise.stddev, 0.007), "unexpected noise.stddev");
 }
 
+void TestCameraProfileConfigLoader()
+{
+    hako::robots::sensor::camera::CameraProfileConfig config {};
+    const auto path = (RepoRoot() / "config/sensors/color_camera/simple-color-camera.json").string();
+    const bool ok = hako::robots::sensor::camera::LoadCameraProfileConfigFromJson(path, config);
+    HAKO_TEST_EXPECT(ok, "simple-color-camera.json should load");
+    HAKO_TEST_EXPECT(config.spec.frame_id == "color_camera_frame", "unexpected profile frame_id");
+    HAKO_TEST_EXPECT(NearlyEqual(config.spec.update_rate, 10.0), "unexpected profile update_rate");
+    HAKO_TEST_EXPECT(NearlyEqual(config.spec.horizontal_fov, 1.2), "unexpected profile horizontal_fov");
+    HAKO_TEST_EXPECT(config.spec.image.width == 256, "unexpected profile image.width");
+    HAKO_TEST_EXPECT(config.spec.image.height == 128, "unexpected profile image.height");
+    HAKO_TEST_EXPECT(config.spec.image.format == "R8G8B8", "unexpected profile image.format");
+    HAKO_TEST_EXPECT(NearlyEqual(config.spec.clip.near, 0.05), "unexpected profile clip.near");
+    HAKO_TEST_EXPECT(NearlyEqual(config.spec.clip.far, 10.0), "unexpected profile clip.far");
+    HAKO_TEST_EXPECT(config.spec.noise.type == "none", "unexpected profile noise.type");
+    HAKO_TEST_EXPECT(config.mjcf_binding.camera_name == "color_camera", "unexpected camera_name");
+    HAKO_TEST_EXPECT(config.mjcf_binding.body_name == "color_sensor_body", "unexpected body_name");
+    HAKO_TEST_EXPECT(config.mjcf_binding.freejoint_name == "color_sensor_freejoint", "unexpected freejoint_name");
+    HAKO_TEST_EXPECT(config.pdu_config.pdu_name == "camera_image", "unexpected pdu_name");
+    HAKO_TEST_EXPECT(NearlyEqual(config.pdu_config.update_rate_hz, 10.0), "unexpected pdu update_rate_hz");
+}
+
 void TestDepthCameraConfigLoader()
 {
     hako::robots::sensor::camera::DepthCameraConfig config {};
@@ -105,6 +127,7 @@ void TestInvalidJsonFailure()
 int main()
 {
     TestCameraConfigLoader();
+    TestCameraProfileConfigLoader();
     TestDepthCameraConfigLoader();
     TestRgbdCameraConfigLoader();
     TestStereoCameraConfigLoader();

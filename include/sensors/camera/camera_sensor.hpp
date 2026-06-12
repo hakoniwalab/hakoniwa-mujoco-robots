@@ -167,6 +167,85 @@ namespace hako::robots::sensor::camera
         return true;
     }
 
+    inline bool TryExtractAverageRGBAColor(
+        const ImageFrame& frame,
+        RGBAColor& out,
+        int x,
+        int y,
+        int width,
+        int height)
+    {
+        out = {};
+        if (frame.width <= 0 || frame.height <= 0 || width <= 0 || height <= 0) {
+            return false;
+        }
+
+        int channels = 0;
+        if (frame.format == "R8G8B8" || frame.format == "B8G8R8") {
+            channels = 3;
+        } else if (frame.format == "L8") {
+            channels = 1;
+        } else {
+            return false;
+        }
+
+        const std::size_t expected_size =
+            static_cast<std::size_t>(frame.width) *
+            static_cast<std::size_t>(frame.height) *
+            static_cast<std::size_t>(channels);
+        if (frame.data.size() != expected_size) {
+            return false;
+        }
+
+        const int x0 = std::clamp(x, 0, frame.width);
+        const int y0 = std::clamp(y, 0, frame.height);
+        const int x1 = std::clamp(x + width, 0, frame.width);
+        const int y1 = std::clamp(y + height, 0, frame.height);
+        if (x0 >= x1 || y0 >= y1) {
+            return false;
+        }
+
+        double r = 0.0;
+        double g = 0.0;
+        double b = 0.0;
+        std::size_t count = 0;
+        for (int py = y0; py < y1; ++py) {
+            for (int px = x0; px < x1; ++px) {
+                const std::size_t idx =
+                    (static_cast<std::size_t>(py) * static_cast<std::size_t>(frame.width) +
+                     static_cast<std::size_t>(px)) *
+                    static_cast<std::size_t>(channels);
+                if (frame.format == "R8G8B8") {
+                    r += frame.data[idx + 0];
+                    g += frame.data[idx + 1];
+                    b += frame.data[idx + 2];
+                } else if (frame.format == "B8G8R8") {
+                    r += frame.data[idx + 2];
+                    g += frame.data[idx + 1];
+                    b += frame.data[idx + 0];
+                } else {
+                    r += frame.data[idx];
+                    g += frame.data[idx];
+                    b += frame.data[idx];
+                }
+                ++count;
+            }
+        }
+
+        if (count == 0) {
+            return false;
+        }
+
+        constexpr float kInv255 = 1.0F / 255.0F;
+        out = {
+            static_cast<float>(r / static_cast<double>(count)) * kInv255,
+            static_cast<float>(g / static_cast<double>(count)) * kInv255,
+            static_cast<float>(b / static_cast<double>(count)) * kInv255,
+            1.0F
+        };
+        return true;
+    }
+
     // --- Base Class for common logic ---
     class CameraSensorBase : public ISensor
     {
@@ -217,6 +296,15 @@ namespace hako::robots::sensor::camera
             Capture(frame);
             RGBAColor color {};
             TryExtractRGBAColor(frame, color, x, y);
+            return color;
+        }
+
+        virtual RGBAColor CaptureRegionAverageRGBA(int x, int y, int width, int height)
+        {
+            ImageFrame frame {};
+            Capture(frame);
+            RGBAColor color {};
+            TryExtractAverageRGBAColor(frame, color, x, y, width, height);
             return color;
         }
     };

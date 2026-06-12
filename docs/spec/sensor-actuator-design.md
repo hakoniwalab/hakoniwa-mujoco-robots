@@ -4,7 +4,7 @@ This note describes the current design boundary between MuJoCo sensor/actuator
 implementations and Hakoniwa PDU I/O.
 
 Configuration schemas are documented separately in
-`docs/sensor-actuator-config-schema.md`.
+`sensor-actuator-config-schema.md`.
 
 ## Goals
 

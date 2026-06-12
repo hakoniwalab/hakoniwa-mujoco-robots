@@ -21,6 +21,17 @@ config/actuator/
 
 There are two main categories.
 
+For user-facing explanations, it is useful to split each config into three
+conceptual containers:
+
+- `spec`: the physical or behavioral specification
+- `mjcf_binding`: names of MJCF objects used by the runtime
+- `pdu_config`: PDU channel and publish-rate settings
+
+Current JSON files do not always use those exact container keys. Many `spec`
+fields are top-level fields, and `mjcf_binding` is currently represented by
+`RuntimeBinding`.
+
 ### Sensor Profiles
 
 Sensor profile configs describe a concrete sensor model or sensor behavior.
@@ -34,9 +45,9 @@ Examples:
 - 2D LiDAR scan angle and distance accuracy
 - GPS, contact, force/torque profile settings
 
-### Runtime Output Bindings
+### PDU Output Configs
 
-Runtime output configs describe how runtime data should be exposed as named
+PDU output configs describe how MuJoCo/runtime data should be exposed as named
 sensor outputs and PDU channels.
 
 Examples:
@@ -94,18 +105,19 @@ Examples:
 
 Frequency in Hz.
 
-The repository currently has both SDF-like profile naming and runtime output
-binding naming:
+The repository currently has both SDF-like profile naming and PDU output
+config naming:
 
 - `update_rate`: camera-style profiles
 - `UpdateRate`: ultrasonic-style profiles
-- `update_rate_hz`: runtime output bindings
+- `update_rate_hz`: PDU output configs
 
 Prefer matching the existing schema for the sensor type being edited.
 
-### `RuntimeBinding`
+### MJCF Binding (`RuntimeBinding`)
 
-Optional block that connects a profile to MuJoCo runtime names.
+Optional block that connects a profile to MuJoCo object names. In user-facing
+docs, this is the MJCF binding block.
 
 Common fields:
 
@@ -484,7 +496,7 @@ Schema:
 config/sensors/schema/tb3-basic-sensors.schema.json
 ```
 
-This schema aggregates runtime output bindings for the TurtleBot3 sample.
+This schema aggregates PDU output configs for the TurtleBot3 sample.
 
 Key fields:
 
@@ -572,8 +584,5 @@ Common fields:
 
 These schemas describe configuration. They do not perform PDU conversion.
 
-PDU conversion and endpoint I/O are documented separately in:
-
-```text
-docs/sensor-actuator-design.md
-```
+PDU conversion and endpoint I/O are documented separately in
+[`sensor-actuator-design.md`](sensor-actuator-design.md).

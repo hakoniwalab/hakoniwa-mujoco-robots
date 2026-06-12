@@ -22,12 +22,16 @@ Use these entry points first. The rest of this README includes advanced notes an
 | Diagnose the local environment | [`./doctor.bash`](#environment-diagnostics) |
 | Run TurtleBot3 with gamepad and LiDAR | [Quick Start: TurtleBot3 + 2D LiDAR](#quick-start-turtlebot3--2d-lidar) |
 | Run the forklift sample | [Quick Start: Forklift](#quick-start-forklift) |
+| Browse documentation by category | [docs/README.md](docs/README.md) |
 | Try small sensor examples | [examples/sensors/README.md](examples/sensors/README.md) |
 | Try color-camera PNG capture | [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md) |
 | Try MJCF position / velocity actuators | [examples/actuators/joint/README.md](examples/actuators/joint/README.md) |
-| Understand sensor/actuator PDU design | [docs/sensor-actuator-design.md](docs/sensor-actuator-design.md) |
-| Understand sensor/actuator config schemas | [docs/sensor-actuator-config-schema.md](docs/sensor-actuator-config-schema.md) |
-| Read RD-light / context save-restore notes | [docs/forklift-context-rd.md](docs/forklift-context-rd.md) |
+| Learn the sensor/actuator workflow | [docs/guide/sensor-actuator-user.md](docs/guide/sensor-actuator-user.md) |
+| Understand JSON config structure | [docs/guide/json-config.md](docs/guide/json-config.md) |
+| Learn MJCF XML / JSON authoring and standalone checks | [docs/guide/mjcf-json-authoring.md](docs/guide/mjcf-json-authoring.md) |
+| Understand sensor/actuator PDU design | [docs/spec/sensor-actuator-design.md](docs/spec/sensor-actuator-design.md) |
+| Understand sensor/actuator config schemas | [docs/spec/sensor-actuator-config-schema.md](docs/spec/sensor-actuator-config-schema.md) |
+| Read RD-light / context save-restore notes | [docs/guide/forklift-context-rd.md](docs/guide/forklift-context-rd.md) |
 
 Current standalone examples:
 
@@ -69,7 +73,7 @@ It runs two MuJoCo forklift assets and performs single-node ownership handoff wi
 
 - RD-light is an **advanced / experimental** handoff demo
 - It is not RD-full
-- See [docs/forklift-context-rd.md](docs/forklift-context-rd.md) and [rd-design.md](rd-design.md) for details
+- See [docs/guide/forklift-context-rd.md](docs/guide/forklift-context-rd.md) and [rd-design.md](rd-design.md) for details
 
 ---
 
@@ -520,8 +524,11 @@ Reusable sensor components live under `src/sensors/`, with JSON profiles under `
 PDU converters and adapters live under `include/hakoniwa/pdu/`.
 
 Design and schema references:
-- [Sensor/Actuator PDU Design](docs/sensor-actuator-design.md)
-- [Sensor/Actuator Config Schemas](docs/sensor-actuator-config-schema.md)
+- [Sensor/Actuator User Guide](docs/guide/sensor-actuator-user.md)
+- [JSON Config Guide](docs/guide/json-config.md)
+- [MJCF / JSON Authoring Guide](docs/guide/mjcf-json-authoring.md)
+- [Sensor/Actuator PDU Design](docs/spec/sensor-actuator-design.md)
+- [Sensor/Actuator Config Schemas](docs/spec/sensor-actuator-config-schema.md)
 
 Current sensor areas:
 - camera / depth / RGBD / multicamera
@@ -658,10 +665,10 @@ HAKO_DOCKER_GUI=off bash docker/run.bash
 
 Advanced forklift context save/restore and RD-light notes are split out of the top-level README.
 
-- [Forklift Context Save/Restore And RD-light](docs/forklift-context-rd.md)
+- [Forklift Context Save/Restore And RD-light](docs/guide/forklift-context-rd.md)
 - [RD design notes](rd-design.md)
-- [Sensor/Actuator PDU Design](docs/sensor-actuator-design.md)
-- [Sensor/Actuator Config Schemas](docs/sensor-actuator-config-schema.md)
+- [Sensor/Actuator PDU Design](docs/spec/sensor-actuator-design.md)
+- [Sensor/Actuator Config Schemas](docs/spec/sensor-actuator-config-schema.md)
 
 The top-level README keeps only the entry points, setup, and sample commands. Use the advanced documents when you need restore evidence, RD-light handoff details, or continuity evaluation workflow.
 
@@ -678,8 +685,8 @@ The top-level README keeps only the entry points, setup, and sample commands. Us
 - `examples/actuators/joint/README.md`: MJCF-native position / velocity joint actuator example
 - `src/sensors/`: reusable sensor components
 - `include/hakoniwa/pdu/`: PDU conversion and endpoint adapter helpers
-- `docs/sensor-actuator-design.md`: sensor/actuator PDU design notes
-- `docs/sensor-actuator-config-schema.md`: sensor/actuator config schema guide
+- `docs/spec/sensor-actuator-design.md`: sensor/actuator PDU design notes
+- `docs/spec/sensor-actuator-config-schema.md`: sensor/actuator config schema guide
 - `config/sensors/lidar/lds-01.json`: TurtleBot3 LDS-01-like noisy LiDAR profile
 - `config/sensors/lidar/lds-02.json`: TurtleBot3 LDS-02-like longer-range LiDAR profile
 - `config/sensors/lidar/urg-04lx-ug01.json`: Hokuyo URG-04LX-UG01-like cleaner LiDAR profile

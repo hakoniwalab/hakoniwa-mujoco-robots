@@ -10,6 +10,7 @@ using hako::robots::sensor::camera::CameraConfig;
 using hako::robots::sensor::camera::ICameraSensor;
 using hako::robots::sensor::camera::ImageFrame;
 using hako::robots::sensor::camera::RGBAColor;
+using hako::robots::sensor::camera::TryExtractAverageRGBAColor;
 using hako::robots::sensor::camera::TryExtractRGBAColor;
 using hako::robots::sensor::camera::test::MakeImageFrame;
 using hako::robots::sensor::camera::test::NearlyEqual;
@@ -125,6 +126,46 @@ void TestCaptureAsRGBA()
     ExpectColor(color, 64.0F / 255.0F, 128.0F / 255.0F, 1.0F, 1.0F, "CaptureAsRGBA");
 }
 
+void TestCaptureRegionAverageRGBA()
+{
+    const ImageFrame frame = MakeImageFrame(
+        2,
+        2,
+        "R8G8B8",
+        "camera_rgb_frame",
+        0.0,
+        {
+            0, 0, 0,
+            255, 0, 0,
+            0, 255, 0,
+            0, 0, 255
+        });
+
+    FakeCameraSensor sensor(frame);
+    const RGBAColor color = sensor.CaptureRegionAverageRGBA(0, 0, 2, 2);
+    ExpectColor(color, 63.75F / 255.0F, 63.75F / 255.0F, 63.75F / 255.0F, 1.0F, "CaptureRegionAverageRGBA");
+}
+
+void TestExtractRegionAverageClampsToImage()
+{
+    const ImageFrame frame = MakeImageFrame(
+        2,
+        1,
+        "R8G8B8",
+        "camera_rgb_frame",
+        0.0,
+        {
+            100, 50, 0,
+            200, 150, 100
+        });
+
+    RGBAColor color {};
+    HAKO_TEST_EXPECT(
+        TryExtractAverageRGBAColor(frame, color, -10, 0, 20, 1),
+        "clamped region average should succeed");
+    ExpectColor(color, 150.0F / 255.0F, 100.0F / 255.0F, 50.0F / 255.0F, 1.0F, "clamped average");
+}
+
 void TestInvalidFrame()
 {
     const ImageFrame frame = MakeImageFrame(1, 1, "R8G8B8", "bad", 0.0, {1, 2});
@@ -150,6 +191,8 @@ int main()
     TestExtractExplicitBgr();
     TestExtractMono();
     TestCaptureAsRGBA();
+    TestCaptureRegionAverageRGBA();
+    TestExtractRegionAverageClampsToImage();
     TestInvalidFrame();
     TestColorRGBAPduConversion();
 
