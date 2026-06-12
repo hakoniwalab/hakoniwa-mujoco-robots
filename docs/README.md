@@ -7,6 +7,7 @@ This directory is organized by reader intent.
 Step-by-step tasks that attach, configure, and run a concrete component.
 
 - [Camera sensor tutorial](tutorial/camera-sensor-ja.md)
+- [Hakoniwa camera sensor asset tutorial](tutorial/camera-sensor-hakoniwa-ja.md)
 
 ## Guide
 
