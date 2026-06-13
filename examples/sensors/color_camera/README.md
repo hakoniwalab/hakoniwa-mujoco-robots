@@ -20,6 +20,8 @@ The viewer, keyboard input, and pixel-print helpers are intentionally kept as su
 examples/sensors/color_camera/
   README.md
   color-camera-example.cpp
+  color-camera-hakoniwa-asset.cpp
+  read_camera.py
   support/color_camera_example_support.hpp
   support/color_camera_example_support.cpp
 
@@ -28,14 +30,23 @@ models/sensors/color_camera/
 
 config/sensors/color_camera/
   simple-color-camera.json
+
+config/
+  camera-pdudef-compact.json
+  camera-pdutypes.json
+  endpoint/camera_endpoint.json
+  endpoint/comm/shm_camera_comm.json
 ```
 
 Read these first:
 
 - [`color-camera-example.cpp`](./color-camera-example.cpp): the Color Sensor API usage
+- [`color-camera-hakoniwa-asset.cpp`](./color-camera-hakoniwa-asset.cpp): publishes captured images as Hakoniwa PDU
+- [`read_camera.py`](./read_camera.py): Python Hakoniwa asset that receives and displays the image PDU
 - [`simple-color-camera.json`](../../../config/sensors/color_camera/simple-color-camera.json): the camera config
 - [`color-camera-sample.xml`](../../../models/sensors/color_camera/color-camera-sample.xml): the MuJoCo model and camera name
 - [`docs/tutorial/camera-sensor-ja.md`](../../../docs/tutorial/camera-sensor-ja.md): step-by-step camera setup tutorial in Japanese
+- [`docs/tutorial/camera-sensor-hakoniwa-ja.md`](../../../docs/tutorial/camera-sensor-hakoniwa-ja.md): Hakoniwa PDU asset tutorial in Japanese
 
 ## Color Sensor API
 
@@ -143,6 +154,12 @@ Or, if CMake has already been configured:
 cmake --build src/cmake-build --target color-camera-example
 ```
 
+To build the Hakoniwa PDU publisher example only:
+
+```bash
+cmake --build src/cmake-build --target color-camera-hakoniwa-asset
+```
+
 ## Run
 
 From the repository root:
@@ -208,8 +225,75 @@ Wrote PNG: ./camera_color_sample.png
 
 Open the PNG and you should see the red, green, and blue panels.
 
+## Hakoniwa PDU Publisher / Reader
+
+The Hakoniwa version publishes the same captured image as `sensor_msgs/Image`.
+
+Terminal 1:
+
+```bash
+./src/cmake-build/examples/sensors/color_camera/color-camera-hakoniwa-asset
+```
+
+This process opens a MuJoCo viewer, starts the local Hakoniwa conductor,
+registers `CameraAsset`, opens/starts the endpoint, and then waits for the
+simulation start trigger.
+
+Terminal 2:
+
+```bash
+python3 examples/sensors/color_camera/read_camera.py
+```
+
+Terminal 3:
+
+```bash
+hako-cmd start
+```
+
+After the start trigger, the C++ asset enters its manual timing loop and
+publishes `CameraAsset/camera_image` periodically.
+
+While the publisher terminal or MuJoCo viewer is active, move the camera with:
+
+```text
+i : move camera forward  (+X)
+k : move camera backward (-X)
+j : move camera left     (+Y)
+l : move camera right    (-Y)
+h : show controls
+q / Esc : quit publisher
+```
+
+The MuJoCo viewer shows the model and movable camera body. The Python OpenCV
+window shows the image published from that camera over Hakoniwa PDU.
+
+The default PDU key is:
+
+```text
+robot/channel: CameraAsset/camera_image
+type         : sensor_msgs/Image
+size         : 98616 bytes
+```
+
+`read_camera.py` registers itself as a Hakoniwa controller asset named
+`CameraReader`. It receives `CameraAsset/camera_image`, converts `rgb8` to BGR,
+and displays the image with OpenCV.
+
+If the Python window only shows a waiting screen, no image PDU has arrived yet.
+Check that `color-camera-hakoniwa-asset` is running, the producer asset name is
+`CameraAsset`, the PDU channel name is `camera_image`, and `hako-cmd start` has
+been executed.
+The reader skips invalid initial PDU bytes until the C++ publisher writes the
+first complete `sensor_msgs/Image` frame.
+
+On platforms where OpenCV GUI work must run on the main thread, keep this
+threading model: the Python main thread owns `cv2.imshow()` / `cv2.waitKey()`,
+and `hakopy.start()` runs on a worker thread.
+
 ## Notes
 
 - This is an RGB camera example, not a full camera pipeline demo.
 - PNG output uses the shared `WriteImageFrameToPng()` helper and does not add an external dependency.
 - The example needs a MuJoCo / OpenGL render context.
+- The Hakoniwa publisher uses a hidden GLFW/OpenGL context for camera capture.

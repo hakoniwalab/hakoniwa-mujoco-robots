@@ -1,0 +1,6 @@
+{
+  "name": "camera_endpoint",
+  "pdu_def_path": "../camera-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_camera_comm.json"
+}

@@ -1,0 +1,16 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "camera_shm",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "CameraAsset",
+        "pdu": [
+          { "name": "camera_image", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

@@ -14,12 +14,12 @@
   [ C++ Asset (プログラム) ]
              |
              v (Endpoint名指定でロード)
-    [ endpoint_config.json ] 
+    [ camera_endpoint.json ]
              |
     +--------+--------+------------------+
     | (参照)           | (参照)            | (参照)
     v                 v                  v
-[ pdudef-compact.json ] [ cache/buffer.json ] [ comm/shm_sim_comm.json ]
+[ camera-pdudef-compact.json ] [ cache/buffer.json ] [ comm/shm_camera_comm.json ]
     |
     v (参照)
 [ pdutypes.json ]
@@ -30,7 +30,7 @@
 2. **`pdudef.json` (`*-compact.json`) の設定**: ロボット（アセット）名と PDU型定義を紐付ける。
 3. **Endpoint設定 (`endpoint_config.json`) の定義**: エンドポイント名に PDU定義・Cache・Comm の設定を紐付ける。
 4. **Cache設定 (`cache/buffer.json`) の定義**: バッファの動作モード（最新データのみを保持するなど）を指定する。
-5. **Comm設定 (`comm/shm_sim_comm.json`) の定義**: 共有メモリなどの通信プロトコルと、アセットごとの通信チャネルを指定する。
+5. **Comm設定 (`comm/shm_camera_comm.json`) の定義**: 共有メモリなどの通信プロトコルと、アセットごとの通信チャネルを指定する。
 6. **C++ アプリケーションコードの実装**: アダプタを利用した送信処理。
 
 ---
@@ -47,7 +47,7 @@
 [
   {
     "channel_id": 0,
-    "pdu_size": 1555488,
+    "pdu_size": 98616,
     "name": "camera_image",
     "type": "sensor_msgs/Image"
   }
@@ -64,18 +64,19 @@
 > 
 > カメラ画像（`sensor_msgs/Image`）のように可変長配列を含むメッセージの `pdu_size` は、以下のように計算します。
 > 
-> **総PDUサイズ ＝ 固定部サイズ（288バイト） ＋ 可変長データ（ピクセルデータ）領域**
+> **総PDUサイズ ＝ PDU metadata（24バイト） ＋ 固定部サイズ（288バイト） ＋ 可変長データ（ピクセルデータ）領域**
 > 
 > * **固定部サイズ**: 可変長配列のデータ部分を除いたメッセージ構造自体の基本サイズ。
 >   * 型ごとの基本サイズは `thirdparty/hakoniwa-core-pro/hakoniwa-pdu-registry/pdu/pdu_size/` 以下にテキストとして定義されています。
 >   * `sensor_msgs/Image` の基本サイズは **`288` バイト** です（`sensor_msgs/CompressedImage` は **`272` バイト**）。
+>   * endpoint の channel buffer には、これに加えて PDU metadata **`24` バイト** も含めます。
 > * **可変長データ領域**: 実際に送信するピクセルデータの最大容量。
->   * **計算例**: 960x540 解像度の RGB24 (1ピクセル3バイト) 画像を送信する場合：
->     * ピクセルデータサイズ = `960 * 540 * 3 = 1,555,200` バイト
->     * 総PDUサイズ = `288 (固定部) + 1,555,200 = 1,555,488` バイト
+>   * **このチュートリアルの計算例**: 256x128 解像度の RGB24 (1ピクセル3バイト) 画像を送信する場合：
+>     * ピクセルデータサイズ = `256 * 128 * 3 = 98,304` バイト
+>     * 総PDUサイズ = `24 (metadata) + 288 (固定部) + 98,304 = 98,616` バイト
 > * **注意**: 
 >   * 画像の解像度やカラーフォーマットを変更した場合は可変長部のサイズが変化するため、**実際に撮影して得られるサイズ感に合わせて `pdu_size` を調整する**必要があります。
->   * サイズが不足していると、データ送信時にエラーとなり、データが全く書き込まれなくなります（送信されなくなります）。
+>   * サイズが不足していると、`[ConvertorError][Image] buffer too small` となり、データが全く書き込まれなくなります（送信されなくなります）。
 
 ### ステップ 2: PDU 定義インスタンスの編集 (`*-compact.json`)
 ロボット（アセット）名と上記で作成した型定義ファイルをマッピングします。
@@ -157,14 +158,40 @@
 設定ファイルの準備が整ったら、C++のメインプログラムからこれらのエンドポイントを制御します。
 
 ### ライフサイクルと呼び出し順
-前述の通り、`hako_asset_start()` は復帰しないため、スレッド分離したライフサイクル管理が基本となります。
+この example は MuJoCo viewer を表示しながら、viewer 用の OpenGL context でカメラ画像を capture します。
+そのため、`CameraSensor::Capture()` と PDU 送信は viewer の overlay callback 側で行い、
+Hakoniwa の manual timing callback はアセットのライフサイクル維持に使います。
+
+前述の通り、`hako_asset_start_no_wait()` は箱庭の start trigger を待つため、viewer を main thread で動かす場合は
+スレッド分離したライフサイクル管理が基本となります。
+endpoint の呼び出し順は次を守ります。
+
+1. `main()` で `hako_asset_register()` を呼び、PDU channel を作成する。
+2. `main()` で `endpoint.open()` を呼ぶ。
+3. `main()` で `endpoint.start()` を呼ぶ。
+4. worker thread で `hako_asset_start_no_wait()` を呼び、simulation start trigger を待つ。
+5. `on_initialize` callback で `endpoint.post_start()` を呼ぶ。
+6. `post_start()` 完了後、viewer overlay callback で `world->advanceTimeStep()`、`CameraSensor::Capture()`、`ImagePduAdapter::send()` を行う。
+7. viewer 終了後に `endpoint.stop()` / `endpoint.close()` を呼ぶ。
+
+`endpoint.open()` / `endpoint.start()` を `on_manual_timing_control` の中で呼ばないでください。
+manual timing callback は start trigger 後に呼ばれるため、endpoint の初期化場所としては遅すぎます。
+また、`endpoint.post_start()` は `main()` ではなく `on_initialize` callback で呼びます。
+
+### CameraSensor と viewer renderer
+
+この example では、`color-camera-example.cpp` と同じく `MujocoRenderRuntime::CreateCameraRenderer(world)` を使います。
+`CameraSensor` はこの renderer を受け取り、MuJoCo XML の `camera` 名と JSON の `spec` から画像を取得します。
+OpenGL context を持つ viewer thread で capture するため、capture 処理は overlay callback 側に置きます。
 
 ```cpp
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "hakoniwa/pdu/adapter/sensor_msgs/image.hpp"
 
-// エンドポイントインスタンスの定義
-hakoniwa::pdu::Endpoint endpoint("camera_endpoint", HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
+std::unique_ptr<hakoniwa::pdu::Endpoint> endpoint;
+std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::ImagePduAdapter> image_adapter;
+std::unique_ptr<hako::robots::sensor::camera::CameraSensor> camera_sensor;
+std::atomic_bool endpoint_ready {false};
 
 // --- アセット初期化コールバック ---
 static int my_on_initialize(hako_asset_context_t* context)
@@ -172,10 +199,11 @@ static int my_on_initialize(hako_asset_context_t* context)
     (void)context;
     
     // 【重要】 post_start() は初期化タイミングでコールして有効化する
-    if (endpoint.post_start() != HAKO_PDU_ERR_OK) {
+    if (endpoint->post_start() != HAKO_PDU_ERR_OK) {
         std::cerr << "Failed to complete endpoint post_start." << std::endl;
         return -1;
     }
+    endpoint_ready.store(true);
     return 0;
 }
 
@@ -188,37 +216,28 @@ static int my_on_reset(hako_asset_context_t* context)
 // --- シミュレーション・送信ループコールバック ---
 static int my_manual_timing_control(hako_asset_context_t* context)
 {
+    (void)context;
     const double sim_timestep = world->getModel()->opt.timestep;
     const hako_time_t delta_time_usec = static_cast<hako_time_t>(sim_timestep * 1e6);
 
-    // Image アダプタを作成 (アセット名: CameraAsset, PDUチャネル名: camera_image)
-    const hakoniwa::pdu::PduKey image_key{"CameraAsset", "camera_image"};
-    hako::robots::pdu::adapter::sensor_msgs::ImagePduAdapter image_adapter(endpoint, image_key);
-
-    hako::robots::sensor::camera::ImageFrame image_frame {};
-
     while (running_flag) {
-        // 1. シミュレーションを進める
-        world->step();
-
-        // 2. カメラセンサから画像（RGB24等）を取得
-        camera_sensor->Capture(image_frame);
-
-        // 3. アダプタ経由で箱庭エンドポイントへ画像データを送信
-        (void)image_adapter.send(image_frame);
-
-        // 4. 時間ステップ進行のスリープ
+        // viewer 側の overlay callback が capture/send を行う。
+        // manual timing callback は箱庭アセットの実行状態を維持する。
         hako_asset_usleep(delta_time_usec);
     }
     return 0;
 }
 
-// --- メイン処理 ---
+// --- メイン処理の抜粋 ---
 int main()
 {
-    // アセット開始前に open と start
-    endpoint.open("config/endpoint/camera_endpoint.json");
-    endpoint.start();
+    world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
+    world->loadModel("models/sensors/color_camera/color-camera-sample.xml");
+
+    CameraProfileConfig profile {};
+    LoadCameraProfileConfigFromJson(
+        "config/sensors/color_camera/simple-color-camera.json",
+        profile);
 
     // コールバック設定とアセット登録
     hako_asset_callbacks_t my_callback {};
@@ -228,11 +247,55 @@ int main()
 
     hako_asset_register("CameraAsset", "config/camera-pdudef-compact.json", &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);
 
-    // アセット開始 (ブロックされる)
-    hako_asset_start();
+    // hako_asset_register() 後、hako_asset_start() 前に open と start
+    endpoint = std::make_unique<hakoniwa::pdu::Endpoint>(
+        "camera_endpoint",
+        HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
+    endpoint->open("config/endpoint/camera_endpoint.json");
+    endpoint->start();
 
-    endpoint.stop();
-    endpoint.close();
+    const hakoniwa::pdu::PduKey image_key{"CameraAsset", "camera_image"};
+    image_adapter = std::make_unique<ImagePduAdapter>(*endpoint, image_key);
+
+    MujocoRenderRuntime render_runtime(
+        world->getModel(),
+        world->getData(),
+        viewer_running,
+        mujoco_mutex,
+        MujocoRenderWindowMode::Visible);
+
+    auto renderer = render_runtime.CreateCameraRenderer(world);
+    camera_sensor = std::make_unique<CameraSensor>(
+        renderer,
+        profile.mjcf_binding.camera_name);
+    camera_sensor->LoadConfig(profile.spec);
+
+    ImageFrame image_frame {};
+    render_runtime.SetOverlayCallback([&](mjvScene& scene) {
+        (void)scene;
+        if (!endpoint_ready.load()) {
+            return;
+        }
+
+        world->advanceTimeStep();
+        camera_sensor->Capture(image_frame);
+        if (!image_frame.data.empty()) {
+            (void)image_adapter->send(image_frame);
+        }
+    });
+
+    // アセット開始。ここで start trigger を待つ。
+    // 別 terminal から hako-cmd start を実行すると manual timing callback に入る。
+    std::thread asset_thread([&]() {
+        hako_asset_start_no_wait(IsForceStop);
+    });
+
+    render_runtime.Run();
+
+    running_flag = false;
+    asset_thread.join();
+    endpoint->stop();
+    endpoint->close();
 }
 ```
 
@@ -256,10 +319,19 @@ int main()
 `PduKey("CameraAsset", "camera_image")` とします。
 `"CameraReader"` は Python reader 自身の箱庭アセット名で、`"CameraAsset"` は画像を publish する C++ 側アセット名です。
 
-### 受信スクリプトの作成例 (`read_camera.py`)
+### 受信スクリプトの作成例 (`examples/sensors/color_camera/read_camera.py`)
+
+実装例は [`examples/sensors/color_camera/read_camera.py`](../../examples/sensors/color_camera/read_camera.py) にあります。
+OpenCV の GUI は main thread で動かす必要がある環境があるため、この example では
+`cv2.imshow()` / `cv2.waitKey()` を main thread に置き、`hakopy.start()` を worker thread で起動します。
+以下は構造を示す抜粋です。`image_to_bgr()` や `put_latest()` などの補助関数は実ファイルを参照してください。
+`pdu_to_py_Image()` が返す `Image.data` は環境によって `bytes` ではなく tuple/list になるため、
+実装では `np.frombuffer()` 固定ではなく `np.asarray(..., dtype=np.uint8)` でも受けられるようにします。
 
 ```python
-import numpy as np
+import queue
+import threading
+
 import cv2
 import hakopy
 
@@ -276,12 +348,17 @@ STEP_USEC = 30_000
 
 endpoint = Endpoint("camera_reader", "inout")
 image_key = PduKey(PRODUCER_ASSET_NAME, IMAGE_PDU_NAME)
+frame_queue = queue.Queue(maxsize=1)
+shutdown = threading.Event()
 callback_state = {"result": 0}
+skipped_invalid = {"count": 0}
 
 
 def on_initialize(_context):
     # endpoint.post_start() は箱庭の initialize callback で呼ぶ。
-    if endpoint.post_start() is False:
+    try:
+        endpoint.post_start()
+    except Exception:
         print("[ERROR] endpoint.post_start() failed")
         return 1
     return 0
@@ -293,24 +370,33 @@ def on_reset(_context):
 
 def on_manual_timing_control(_context):
     pdu_size = endpoint.get_pdu_size(image_key)
-    print("Camera reader asset started. Press Ctrl+C or 'q' in viewer to exit.")
 
     try:
-        while True:
+        while not shutdown.is_set():
             raw_bytes = endpoint.recv_by_name(image_key, pdu_size)
 
             if raw_bytes:
-                image_msg = pdu_to_py_Image(raw_bytes)
-                img_data = np.frombuffer(image_msg.data, dtype=np.uint8)
-
-                # この例は RGB24 前提。JSON の spec.image.format と合わせる。
-                expected_data_len = image_msg.height * image_msg.width * 3
-                if len(img_data) == expected_data_len:
-                    img = img_data.reshape((image_msg.height, image_msg.width, 3))
-                    bgr_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                    cv2.imshow("Hakoniwa Camera Data", bgr_img)
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
+                try:
+                    image_msg = pdu_to_py_Image(raw_bytes)
+                except Exception as e:
+                    # publisher が最初の frame を書き込む前は、
+                    # shared memory 上の初期値を読んで decode に失敗することがある。
+                    skipped_invalid["count"] += 1
+                    if skipped_invalid["count"] == 1:
+                        print(f"[INFO] Skipping invalid initial image PDU: {e}")
+                    if hakopy.usleep(STEP_USEC) is False:
                         break
+                    continue
+
+                bgr_img = image_to_bgr(image_msg)
+                if bgr_img is not None:
+                    if skipped_invalid["count"] > 0:
+                        print(
+                            "[INFO] First valid image PDU received after "
+                            f"{skipped_invalid['count']} skipped reads"
+                        )
+                        skipped_invalid["count"] = 0
+                    put_latest(frame_queue, bgr_img)
 
             if hakopy.usleep(STEP_USEC) is False:
                 break
@@ -321,7 +407,7 @@ def on_manual_timing_control(_context):
         print(f"[ERROR] camera reader loop failed: {e}")
         callback_state["result"] = 1
     finally:
-        cv2.destroyAllWindows()
+        shutdown.set()
     return 0
 
 
@@ -351,12 +437,21 @@ def main():
         endpoint.close()
         return 1
 
-    try:
-        start_ret = hakopy.start()
-        print(f"[INFO] hakopy.start() returns {start_ret}")
-    finally:
-        endpoint.stop()
-        endpoint.close()
+    worker = threading.Thread(target=hakopy.start, daemon=True)
+    worker.start()
+
+    # main thread 側で cv2.imshow() / cv2.waitKey() を実行する。
+    while not shutdown.is_set():
+        try:
+            bgr_img = frame_queue.get(timeout=0.03)
+            cv2.imshow("Hakoniwa Camera Data", bgr_img)
+        except queue.Empty:
+            pass
+        if cv2.waitKey(1) & 0xFF in (ord("q"), 27):
+            shutdown.set()
+            break
+
+    cv2.destroyAllWindows()
 
     return int(callback_state["result"])
 
@@ -369,6 +464,11 @@ if __name__ == "__main__":
 > 一方、`PduKey(PRODUCER_ASSET_NAME, IMAGE_PDU_NAME)` の `PRODUCER_ASSET_NAME` は、画像 PDU を publish している C++ 側アセット名です。
 > 受信対象を指定するときは、reader の名前ではなく publish 元の robot / asset 名を指定します。
 
+> [!IMPORTANT]
+> `recv_by_name()` が bytes を返しても、それが有効な `sensor_msgs/Image` とは限りません。
+> publisher が最初の frame を書き込む前に reader が shared memory を読むと、`MetaData not found or corrupted` のような decode error になることがあります。
+> これは異常終了にせず、最初の正常な frame が来るまで skip します。
+
 ---
 
 ## 5. 動作検証方法
@@ -377,4 +477,72 @@ if __name__ == "__main__":
 1. **JSON Validation**: `tools/validate_assets.py` を使って設定ファイルの構文エラーが無いか検証する。
 2. **C++ アセット起動**: コンダクターを起動した状態でシミュレータプロセスを立ち上げ、`hako_asset_register()` および `endpoint.post_start()` がエラー無く通過することを確認する。
 3. **Python アセット登録**: `read_camera.py` を実行し、`hakopy.asset_register()` と `hakopy.start()` がエラー無く通過することを確認する。
-4. **Python アセットからの購読**: GUI ウィンドウ上にシミュレータのカメラ映像がリアルタイムで描画されることを確認する。
+4. **Start trigger**: 別 terminal から `hako-cmd start` を実行する。
+5. **Python アセットからの購読**: GUI ウィンドウ上にシミュレータのカメラ映像がリアルタイムで描画されることを確認する。
+
+### 実行例
+
+まず C++ publisher をビルドします。Python reader はスクリプトなのでビルドは不要です。
+
+```bash
+cmake --build src/cmake-build --target color-camera-hakoniwa-asset -j4
+```
+
+Terminal 1 で C++ publisher を起動します。
+このプロセスは MuJoCo viewer を開き、viewer の overlay callback でカメラ画像を capture して PDU に送信します。
+
+```bash
+./src/cmake-build/examples/sensors/color_camera/color-camera-hakoniwa-asset
+```
+
+Terminal 2 で Python reader を起動します。
+OpenCV の window 操作は main thread で行い、`hakopy.start()` は worker thread で動かします。
+
+```bash
+python3 examples/sensors/color_camera/read_camera.py
+```
+
+Terminal 3 で箱庭の start trigger を送ります。
+
+```bash
+hako-cmd start
+```
+
+`hako-cmd start` 後、C++ publisher 側では `on_initialize` が呼ばれ、`endpoint.post_start()` が完了します。
+その後、MuJoCo viewer の描画 loop 内で `world->advanceTimeStep()`、`CameraSensor::Capture()`、`ImagePduAdapter::send()` が実行されます。
+Python reader 側の OpenCV window にカメラ画像が表示されれば成功です。
+
+### つまづきポイント
+
+- **`CreateCameraRenderer()` を使う**:
+  viewer 付き example では、`MujocoRenderRuntime::CreateCameraRenderer(world)` で renderer を作り、その renderer を `CameraSensor` に渡します。
+  これにより `color-camera-example.cpp` と同じ OpenGL / viewer context 上で capture できます。
+
+- **`endpoint.open()` / `endpoint.start()` は `main()` で呼ぶ**:
+  `on_manual_timing_control` の中で呼ぶと、箱庭 lifecycle と endpoint lifecycle の順序が崩れます。
+  `post_start()` だけを `on_initialize` callback で呼びます。
+
+- **capture/send は viewer 側で行う**:
+  カメラ画像の capture は OpenGL context に依存します。
+  この example では `hako_asset_start_no_wait()` を worker thread で動かし、main thread の MuJoCo viewer overlay callback で capture/send します。
+
+- **Python の OpenCV は main thread に置く**:
+  `cv2.imshow()` / `cv2.waitKey()` は環境によって main thread でないと表示されません。
+  そのため `read_camera.py` は `hakopy.start()` を worker thread に逃がし、main thread で OpenCV window を更新します。
+
+- **最初の PDU はまだ有効でないことがある**:
+  reader が publisher の初回書き込み前に shared memory を読むと、`MetaData not found or corrupted` のような decode error になります。
+  これは起動順の race として起きるため、最初の有効 frame が来るまで skip します。
+
+- **`Image.data` は bytes とは限らない**:
+  Python の `pdu_to_py_Image()` が返す `Image.data` は、環境によって `tuple` / `list` のことがあります。
+  `bytes` 前提の `np.frombuffer()` だけでなく、`np.asarray(image_msg.data, dtype=np.uint8)` でも受けるようにします。
+
+- **`pdu_size` は endpoint buffer 用の metadata も含める**:
+  256x128 RGB24 の場合、ピクセルデータは `98,304` bytes ですが、`sensor_msgs/Image` 固定部 `288` bytes と PDU metadata `24` bytes も必要です。
+  `config/camera-pdutypes.json` の `pdu_size` は `98,616` にします。
+  不足すると `[ConvertorError][Image] buffer too small` で送信に失敗します。
+
+- **アセット登録に失敗した場合は箱庭状態を確認する**:
+  `ERROR: Can not register asset` や `hakopy.asset_register() failed` が出る場合、同名 asset が既に登録済み、または前回実行の shared memory / master 状態が残っている可能性があります。
+  同時起動している同名プロセスがないか確認し、必要に応じて箱庭環境を停止・初期化してから再実行します。

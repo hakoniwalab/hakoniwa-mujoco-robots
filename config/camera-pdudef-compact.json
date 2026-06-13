@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "camera-image",
+      "path": "camera-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "CameraAsset",
+      "pdutypes_id": "camera-image"
+    }
+  ]
+}
