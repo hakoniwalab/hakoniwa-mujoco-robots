@@ -22,11 +22,11 @@
 [ camera-pdudef-compact.json ] [ cache/buffer.json ] [ comm/shm_camera_comm.json ]
     |
     v (参照)
-[ pdutypes.json ]
+[ camera-pdutypes.json ]
 ```
 
 ### 必要な作業手順
-1. **`pdutypes.json` の設定**: PDUチャネルのデータ型やバッファサイズを定義する。
+1. **`camera-pdutypes.json` の設定**: PDUチャネルのデータ型やバッファサイズを定義する。
 2. **`pdudef.json` (`*-compact.json`) の設定**: ロボット（アセット）名と PDU型定義を紐付ける。
 3. **Endpoint設定 (`endpoint_config.json`) の定義**: エンドポイント名に PDU定義・Cache・Comm の設定を紐付ける。
 4. **Cache設定 (`cache/buffer.json`) の定義**: バッファの動作モード（最新データのみを保持するなど）を指定する。
@@ -39,7 +39,7 @@
 
 ここでは、アセット名 `"CameraAsset"`、カメラ画像のチャネル名 `"camera_image"` を新しく定義するケースを例にして説明します。
 
-### ステップ 1: PDU 型定義の編集 (`pdutypes.json`)
+### ステップ 1: PDU 型定義の編集 (`camera-pdutypes.json`)
 箱庭アセットで送受信する PDU チャネルの一覧を配列形式で定義します。
 カメラ画像（RGB）を送る場合は、ROS互換の `sensor_msgs/Image` を使用します。
 
@@ -86,14 +86,14 @@
 {
   "paths": [
     {
-      "id": "camera-endpoint",
+      "id": "camera-image",
       "path": "camera-pdutypes.json"
     }
   ],
   "robots": [
     {
       "name": "CameraAsset",
-      "pdutypes_id": "camera-endpoint"
+      "pdutypes_id": "camera-image"
     }
   ]
 }
@@ -171,8 +171,9 @@ endpoint の呼び出し順は次を守ります。
 3. `main()` で `endpoint.start()` を呼ぶ。
 4. worker thread で `hako_asset_start_no_wait()` を呼び、simulation start trigger を待つ。
 5. `on_initialize` callback で `endpoint.post_start()` を呼ぶ。
-6. `post_start()` 完了後、viewer pre-render callback で `world->advanceTimeStep()`、`CameraSensor::Capture()`、`ImagePduAdapter::send()` を行う。
-7. viewer 終了後に `endpoint.stop()` / `endpoint.close()` を呼ぶ。
+6. `post_start()` 完了後、viewer pre-render callback で `world->advanceTimeStep()` を行う。
+7. `CameraSensor::ShouldUpdate()` が `true` の周期で `CameraSensor::Capture()`、`ImagePduAdapter::send()` を行う。
+8. viewer 終了後に `endpoint.stop()` / `endpoint.close()` を呼ぶ。
 
 `endpoint.open()` / `endpoint.start()` を `on_manual_timing_control` の中で呼ばないでください。
 manual timing callback は start trigger 後に呼ばれるため、endpoint の初期化場所としては遅すぎます。
@@ -184,6 +185,7 @@ manual timing callback は start trigger 後に呼ばれるため、endpoint の
 `CameraSensor` はこの renderer を受け取り、MuJoCo XML の `camera` 名と JSON の `spec` から画像を取得します。
 OpenGL context を持つ viewer thread で capture するため、capture 処理は pre-render callback 側に置きます。
 pre-render callback は `mjv_updateScene()` の前に呼ばれるため、MuJoCo viewer に描かれる姿勢と capture に使う姿勢が一致します。
+測定・publish の周期は `CameraSensor::ShouldUpdate()` に任せ、`spec.update_rate` に従わせます。
 
 ```cpp
 #include "hakoniwa/pdu/endpoint.hpp"
@@ -246,6 +248,9 @@ int main()
     my_callback.on_reset = my_on_reset;
     my_callback.on_manual_timing_control = my_manual_timing_control;
 
+    const hako_time_t delta_time_usec =
+        static_cast<hako_time_t>(world->getModel()->opt.timestep * 1.0e6);
+
     hako_asset_register("CameraAsset", "config/camera-pdudef-compact.json", &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);
 
     // hako_asset_register() 後、hako_asset_start() 前に open と start
@@ -271,13 +276,19 @@ int main()
         profile.mjcf_binding.camera_name);
     camera_sensor->LoadConfig(profile.spec);
 
+    const double sim_timestep = world->getModel()->opt.timestep;
     ImageFrame image_frame {};
     render_runtime.SetPreRenderCallback([&]() {
         if (!endpoint_ready.load()) {
             return;
         }
 
+        // カメラ body を動かす場合は、pose 更新も pre-render 側で行う。
         world->advanceTimeStep();
+        if (!camera_sensor->ShouldUpdate(sim_timestep)) {
+            return;
+        }
+
         camera_sensor->Capture(image_frame);
         if (!image_frame.data.empty()) {
             (void)image_adapter->send(image_frame);
@@ -509,7 +520,7 @@ hako-cmd start
 ```
 
 `hako-cmd start` 後、C++ publisher 側では `on_initialize` が呼ばれ、`endpoint.post_start()` が完了します。
-その後、MuJoCo viewer の描画 loop 内で `world->advanceTimeStep()`、`CameraSensor::Capture()`、`ImagePduAdapter::send()` が実行されます。
+その後、MuJoCo viewer の描画 loop 内で `world->advanceTimeStep()` が実行され、`CameraSensor::ShouldUpdate(sim_timestep)` が `true` になった周期で `CameraSensor::Capture()`、`ImagePduAdapter::send()` が実行されます。
 Python reader 側の OpenCV window にカメラ画像が表示されれば成功です。
 
 ### つまづきポイント
@@ -526,6 +537,11 @@ Python reader 側の OpenCV window にカメラ画像が表示されれば成功
   カメラ画像の capture は OpenGL context に依存します。
   この example では `hako_asset_start_no_wait()` を worker thread で動かし、main thread の MuJoCo viewer pre-render callback で capture/send します。
   `mjv_updateScene()` 後の overlay callback で camera pose を更新すると、viewer 表示と capture 画像の位置がずれるため、pose 更新と capture は pre-render 側で行います。
+
+- **送信周期は `CameraSensor::ShouldUpdate(sim_timestep)` に任せる**:
+  `sim_timestep` は MuJoCo model の `model->opt.timestep` です。
+  `ShouldUpdate(sim_timestep)` は内部のセンサ用クロックを進め、`spec.update_rate` の周期に達したときだけ `true` を返します。
+  PDU 用に別の手動周期カウンタを持つと、JSON の sensor spec と実際の publish 周期がずれやすくなります。
 
 - **Python の OpenCV は main thread に置く**:
   `cv2.imshow()` / `cv2.waitKey()` は環境によって main thread でないと表示されません。

@@ -26,6 +26,8 @@ The ultrasonic example demonstrates:
 - measuring range with `s`
 - visualizing the measured ray in the MuJoCo viewer
 - converting the internal ultrasonic frame to `sensor_msgs/Range`
+- publishing `sensor_msgs/Range` through Hakoniwa PDU with `ultrasonic-hakoniwa-asset`
+- reading the range PDU from Python with `read_range.py`
 
 Run from the repository root:
 

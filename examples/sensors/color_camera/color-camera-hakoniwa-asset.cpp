@@ -256,19 +256,14 @@ int main(int argc, char* argv[])
         return 1;
     }
     const double sim_timestep = world->getModel()->opt.timestep;
-    const double publish_rate_hz = profile.pdu_config.update_rate_hz > 0.0
-        ? profile.pdu_config.update_rate_hz
-        : profile.spec.update_rate;
-    const double publish_period_sec = publish_rate_hz > 0.0
-        ? 1.0 / publish_rate_hz
-        : sim_timestep;
-    double next_publish_time = 0.0;
     hako::robots::sensor::camera::ImageFrame frame {};
     std::cout << "[INFO] asset=" << asset_name
               << " camera=" << camera_name
               << " freejoint=" << sensor_joint_name
               << " pdu=" << image_pdu_name
-              << " publish_rate_hz=" << publish_rate_hz << std::endl;
+              << " sensor_rate_hz=" << profile.spec.update_rate
+              << " pdu_config_rate_hz=" << profile.pdu_config.update_rate_hz
+              << std::endl;
     render_runtime.SetKeyCallback(
         [&](int key, int action, int mods) {
             (void)mods;
@@ -291,15 +286,13 @@ int main(int argc, char* argv[])
         camera_motion->Update();
         if (endpoint_ready.load()) {
             world->advanceTimeStep();
-            const double sim_time = world->getData()->time;
-            if (sim_time + 1.0e-12 >= next_publish_time) {
+            if (camera_sensor->ShouldUpdate(sim_timestep)) {
                 camera_sensor->Capture(frame);
                 if (!frame.data.empty() && image_adapter != nullptr &&
                     !image_adapter->send(frame))
                 {
                     std::cerr << "[WARN] Failed to send camera image PDU." << std::endl;
                 }
-                next_publish_time += publish_period_sec;
             }
         }
         if (app_state.pending_shot.exchange(false)) {

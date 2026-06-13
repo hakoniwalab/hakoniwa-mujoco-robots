@@ -1,0 +1,8 @@
+[
+  {
+    "channel_id": 0,
+    "pdu_size": 184,
+    "name": "range",
+    "type": "sensor_msgs/Range"
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "ultrasonic-range",
+      "path": "ultrasonic-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "UltrasonicAsset",
+      "pdutypes_id": "ultrasonic-range"
+    }
+  ]
+}

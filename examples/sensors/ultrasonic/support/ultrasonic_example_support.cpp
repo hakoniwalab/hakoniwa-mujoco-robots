@@ -109,7 +109,6 @@ void TerminalCommandLoop(AppState& state)
         std::cin >> key;
 
         if (!std::cin) {
-            state.running.store(false);
             return;
         }
 

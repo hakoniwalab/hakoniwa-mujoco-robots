@@ -32,7 +32,7 @@
   "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
-    "parent_body": "base_link",
+    "parent_body": "base_footprint",
     "source_site": "front_ultrasonic_site"
   },
 

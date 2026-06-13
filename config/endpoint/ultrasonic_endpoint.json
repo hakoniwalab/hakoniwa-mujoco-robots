@@ -1,0 +1,6 @@
+{
+  "name": "ultrasonic_endpoint",
+  "pdu_def_path": "../ultrasonic-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_ultrasonic_comm.json"
+}

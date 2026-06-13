@@ -1,0 +1,16 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "ultrasonic_shm",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "UltrasonicAsset",
+        "pdu": [
+          { "name": "range", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

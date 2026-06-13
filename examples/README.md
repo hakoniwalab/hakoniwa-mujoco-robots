@@ -17,6 +17,7 @@ Available examples:
   - interactive keyboard movement
   - measured ray visualization in the MuJoCo viewer
   - `sensor_msgs/Range` PDU conversion path
+  - Hakoniwa PDU publisher and Python reader examples
 - [Color Camera Sensor Example](sensors/color_camera/README.md)
   - minimal MuJoCo RGB camera sensor
   - red / green / blue panels in a small scene
