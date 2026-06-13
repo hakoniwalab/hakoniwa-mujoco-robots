@@ -228,6 +228,9 @@ std::atomic_bool endpoint_ready {false};
 ### Endpoint lifecycle
 
 camera publisher と同じ順序にします。
+`hako_asset_start_no_wait()` は名前に `no_wait` とありますが、箱庭の start trigger は待ちます。
+ここでは `hako_asset_start()` ではなく、停止判定 callback を渡せる `hako_asset_start_no_wait(IsForceStop)` を worker thread で呼びます。
+これにより、MuJoCo viewer を main thread で動かしたまま、viewer close や `q` 入力で asset 側も停止できます。
 
 1. `main()` で `hako_asset_register()` を呼ぶ。
 2. `main()` で `endpoint.open()` を呼ぶ。

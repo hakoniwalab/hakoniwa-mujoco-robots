@@ -162,8 +162,9 @@
 そのため、`CameraSensor::Capture()` と PDU 送信は viewer の pre-render callback 側で行い、
 Hakoniwa の manual timing callback はアセットのライフサイクル維持に使います。
 
-前述の通り、`hako_asset_start_no_wait()` は箱庭の start trigger を待つため、viewer を main thread で動かす場合は
-スレッド分離したライフサイクル管理が基本となります。
+前述の通り、`hako_asset_start_no_wait()` は名前に `no_wait` とありますが、箱庭の start trigger は待ちます。
+ここでのポイントは、`hako_asset_start()` と違って `IsForceStop` のような停止判定 callback を渡せることです。
+viewer を main thread で動かす場合は、この待機・実行処理を worker thread に逃がし、viewer close や `q` 入力で停止できるようにします。
 endpoint の呼び出し順は次を守ります。
 
 1. `main()` で `hako_asset_register()` を呼び、PDU channel を作成する。
