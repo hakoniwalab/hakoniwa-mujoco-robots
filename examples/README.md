@@ -44,3 +44,4 @@ Available examples:
   - MuJoCo viewer with keyboard target control
   - JSON config loaded through `JointActuatorImpl`
   - `SetTarget()` writes targets to MuJoCo `ctrl[]`
+  - Hakoniwa PDU command receiver and Python command sender examples

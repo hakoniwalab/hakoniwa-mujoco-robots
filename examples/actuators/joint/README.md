@@ -14,6 +14,8 @@ This example opens a MuJoCo viewer and shows the MJCF-native way to use joint ac
 examples/actuators/joint/
   README.md
   joint-actuator-example.cpp
+  joint-actuator-hakoniwa-asset.cpp
+  joint_actuator_sender.py
 
 models/actuators/joint/
   position-velocity-actuator-sample.xml
@@ -21,11 +23,18 @@ models/actuators/joint/
 config/actuator/joint/
   sample_position_actuator.json
   sample_velocity_actuator.json
+
+config/
+  joint-actuator-pdudef-compact.json
+  joint-actuator-pdutypes.json
+  endpoint/joint_actuator_endpoint.json
 ```
 
 Read these first:
 
 - [`joint-actuator-example.cpp`](./joint-actuator-example.cpp): the Joint Actuator API usage
+- [`joint-actuator-hakoniwa-asset.cpp`](./joint-actuator-hakoniwa-asset.cpp): Hakoniwa PDU command receiver with a MuJoCo viewer
+- [`joint_actuator_sender.py`](./joint_actuator_sender.py): Python Hakoniwa asset that sends `std_msgs/Float64` commands
 - [`position-velocity-actuator-sample.xml`](../../../models/actuators/joint/position-velocity-actuator-sample.xml): the MJCF `<position>` and `<velocity>` actuators
 - [`sample_position_actuator.json`](../../../config/actuator/joint/sample_position_actuator.json): JSON binding for the position actuator
 - [`sample_velocity_actuator.json`](../../../config/actuator/joint/sample_velocity_actuator.json): JSON binding for the velocity actuator
@@ -93,6 +102,12 @@ Or, if CMake has already been configured:
 cmake --build src/cmake-build --target joint-actuator-example
 ```
 
+The Hakoniwa PDU example target is:
+
+```bash
+cmake --build src/cmake-build --target joint-actuator-hakoniwa-asset
+```
+
 ## Run
 
 From the repository root:
@@ -116,3 +131,31 @@ q / Esc: quit
 ```
 
 Use the mouse to rotate and zoom the viewer.
+
+## Hakoniwa PDU Example
+
+The Hakoniwa version receives position and velocity commands from PDU channels:
+
+```text
+JointActuatorAsset/position_target
+JointActuatorAsset/velocity_target
+```
+
+Run it with three terminals:
+
+```bash
+./src/cmake-build/examples/actuators/joint/joint-actuator-hakoniwa-asset
+```
+
+```bash
+python3 examples/actuators/joint/joint_actuator_sender.py
+```
+
+```bash
+hako-cmd start
+```
+
+The C++ process owns the MuJoCo viewer. The Python sender writes
+`std_msgs/Float64` command PDUs. See
+[`docs/tutorial/joint-actuator-hakoniwa-ja.md`](../../../docs/tutorial/joint-actuator-hakoniwa-ja.md)
+for the full walkthrough.

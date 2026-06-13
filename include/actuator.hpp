@@ -4,7 +4,18 @@
 
 namespace hako::robots::actuator
 {
-    class ITorqueActuator
+    class IActuator
+    {
+    public:
+        virtual ~IActuator() {}
+        virtual bool ShouldUpdate(double delta_sec)
+        {
+            (void)delta_sec;
+            return true;
+        }
+    };
+
+    class ITorqueActuator : public IActuator
     {
     public:
         virtual ~ITorqueActuator() {}
@@ -43,7 +54,7 @@ namespace hako::robots::actuator
         double value {0.0};
     };
 
-    class IJointActuator
+    class IJointActuator : public IActuator
     {
     public:
         virtual ~IJointActuator() {}

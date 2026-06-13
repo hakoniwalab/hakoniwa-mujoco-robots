@@ -1,6 +1,7 @@
 #pragma once
 
 #include "actuator.hpp"
+#include "sensors/common/update_scheduler.hpp"
 #include <mujoco/mujoco.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
@@ -18,6 +19,7 @@ namespace hako::robots::actuator::impl
         mjData* data_;
         int actuator_id_ {-1};
         JointActuatorConfig config_;
+        hako::robots::sensor::common::UpdateScheduler scheduler_;
 
         static const char* ActuatorTypeName(ActuatorType type)
         {
@@ -199,6 +201,7 @@ namespace hako::robots::actuator::impl
                       << " type=" << ActuatorTypeName(config_.type)
                       << " id=" << actuator_id_
                       << std::endl;
+            scheduler_.StartReady(GetUpdatePeriodSec());
             return true;
         }
 
@@ -229,6 +232,19 @@ namespace hako::robots::actuator::impl
                 }
                 data_->ctrl[actuator_id_] = target;
             }
+        }
+
+        bool ShouldUpdate(double delta_sec) override
+        {
+            return scheduler_.ShouldUpdate(delta_sec, GetUpdatePeriodSec());
+        }
+
+    private:
+        double GetUpdatePeriodSec() const
+        {
+            return (config_.pdu_config.update_rate_hz > 0.0)
+                ? (1.0 / config_.pdu_config.update_rate_hz)
+                : 0.0;
         }
     };
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "actuator.hpp"
 #include "hakoniwa/pdu/converter/std_msgs/float64.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "hakoniwa/pdu/type_endpoint.hpp"
@@ -9,43 +8,37 @@
 
 namespace hako::robots::pdu::adapter::std_msgs
 {
-    class JointActuatorPduAdapter
+    class Float64PduAdapter
     {
     public:
-        JointActuatorPduAdapter(
+        Float64PduAdapter(
             hakoniwa::pdu::Endpoint& endpoint,
-            const hakoniwa::pdu::PduKey& key,
-            hako::robots::actuator::IJointActuator& actuator)
+            const hakoniwa::pdu::PduKey& key)
             : endpoint_(endpoint, key)
-            , actuator_(actuator)
         {
         }
 
-        bool recv(hako::robots::actuator::JointActuatorTarget& out)
+        bool recv(double& out)
         {
             HakoCpp_Float64 pdu {};
             const auto rc = endpoint_.recv(pdu);
             if (rc != HAKO_PDU_ERR_OK) {
                 return false;
             }
-            out = hako::robots::pdu::converter::std_msgs::ToJointActuatorTarget(pdu);
+            out = hako::robots::pdu::converter::std_msgs::ToDouble(pdu);
             return true;
         }
 
-        bool recv_and_apply()
+        bool send(double value)
         {
-            hako::robots::actuator::JointActuatorTarget target {};
-            if (!recv(target)) {
-                return false;
-            }
-            actuator_.SetTarget(target);
-            return true;
+            const auto pdu =
+                hako::robots::pdu::converter::std_msgs::FromDouble(value);
+            return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
         }
 
     private:
         hakoniwa::pdu::TypedEndpoint<
             HakoCpp_Float64,
             hako::pdu::msgs::std_msgs::Float64> endpoint_;
-        hako::robots::actuator::IJointActuator& actuator_;
     };
 }
