@@ -51,6 +51,25 @@ void set_invalid(UltrasonicFrame& out, const UltrasonicConfig& config)
     out.status = UltrasonicStatus::INVALID;
 }
 
+const common::json& spec_root(const common::json& root)
+{
+    if (root.contains("spec") && root.at("spec").is_object()) {
+        return root.at("spec");
+    }
+    return root;
+}
+
+const common::json* binding_root(const common::json& root)
+{
+    if (root.contains("mjcf_binding") && root.at("mjcf_binding").is_object()) {
+        return &root.at("mjcf_binding");
+    }
+    if (root.contains("RuntimeBinding") && root.at("RuntimeBinding").is_object()) {
+        return &root.at("RuntimeBinding");
+    }
+    return nullptr;
+}
+
 double find_stddev_for_range(const UltrasonicConfig& config, double range)
 {
     for (const auto& acc : config.distance_accuracy) {
@@ -108,10 +127,11 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
     }
 
     try {
-        config_.frame_id = root.value("frame_id", "ultrasonic");
+        const auto& spec = spec_root(root);
+        config_.frame_id = spec.value("frame_id", "ultrasonic");
 
         std::string radiation_type =
-            root.value("RadiationType", std::string("ultrasound"));
+            spec.value("RadiationType", std::string("ultrasound"));
 
         if (radiation_type == "ultrasound" || radiation_type == "ULTRASOUND") {
             config_.radiation_type = RangeRadiationType::ULTRASOUND;
@@ -122,24 +142,24 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
             return false;
         }
 
-        if (root.contains("DetectionDistance")) {
-            const auto& j_dist = root.at("DetectionDistance");
+        if (spec.contains("DetectionDistance")) {
+            const auto& j_dist = spec.at("DetectionDistance");
             config_.detection_distance.min = common::get_json_number(j_dist, "Min", 0.0);
             config_.detection_distance.max = common::get_json_number(j_dist, "Max", 0.0);
         }
 
-        if (root.contains("Cone")) {
-            const auto& j_cone = root.at("Cone");
+        if (spec.contains("Cone")) {
+            const auto& j_cone = spec.at("Cone");
             config_.cone.horizontal = common::get_json_number(j_cone, "Horizontal", 0.0);
             config_.cone.vertical = common::get_json_number(j_cone, "Vertical", 0.0);
             config_.cone.ray_count = common::get_json_int(j_cone, "RayCount", 1);
         }
 
-        config_.update_rate = root.value("UpdateRate", 10.0);
+        config_.update_rate = spec.value("UpdateRate", 10.0);
 
         config_.distance_accuracy.clear();
-        if (root.contains("DistanceAccuracy") && root.at("DistanceAccuracy").is_array()) {
-            for (const auto& j_acc : root.at("DistanceAccuracy")) {
+        if (spec.contains("DistanceAccuracy") && spec.at("DistanceAccuracy").is_array()) {
+            for (const auto& j_acc : spec.at("DistanceAccuracy")) {
                 DistanceAccuracy accuracy{};
 
                 if (j_acc.contains("Range")) {
@@ -156,20 +176,29 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
             }
         }
 
-        if (root.contains("RuntimeBinding") && root.at("RuntimeBinding").is_object()) {
-            const auto& rb = root.at("RuntimeBinding");
+        if (const auto* rb = binding_root(root); rb != nullptr) {
 
             config_.runtime_binding.config_style =
-                rb.value("config_style", config_.runtime_binding.config_style);
+                rb->value("config_style", config_.runtime_binding.config_style);
 
             config_.runtime_binding.runtime_source =
-                rb.value("runtime_source", config_.runtime_binding.runtime_source);
+                rb->value("runtime_source", config_.runtime_binding.runtime_source);
 
             config_.runtime_binding.parent_body =
-                rb.value("parent_body", config_.runtime_binding.parent_body);
+                rb->value("parent_body", config_.runtime_binding.parent_body);
 
             config_.runtime_binding.source_site =
-                rb.value("source_site", config_.runtime_binding.source_site);
+                rb->value("source_site", config_.runtime_binding.source_site);
+        }
+
+        if (root.contains("pdu_config") && root.at("pdu_config").is_object()) {
+            const auto& pdu = root.at("pdu_config");
+            config_.pdu_config.pdu_name =
+                pdu.value("pdu_name", config_.pdu_config.pdu_name);
+            config_.pdu_config.update_rate_hz =
+                pdu.value("update_rate_hz", config_.pdu_config.update_rate_hz);
+            config_.pdu_config.message_type =
+                pdu.value("message_type", config_.pdu_config.message_type);
         }
 
         if (config_.detection_distance.max <= config_.detection_distance.min) {

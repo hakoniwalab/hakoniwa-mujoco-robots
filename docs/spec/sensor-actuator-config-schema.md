@@ -257,16 +257,19 @@ config/sensors/ultrasonic/lego-spike-distance-sensor.json
 
 Key fields:
 
-- `frame_id`
-- `RadiationType`: `ultrasound` or `infrared`
-- `DetectionDistance.Min`
-- `DetectionDistance.Max`
-- `DistanceAccuracy[]`
-- `Cone.Horizontal`
-- `Cone.Vertical`
-- `Cone.RayCount`
-- `UpdateRate`
-- `RuntimeBinding`
+- `spec.frame_id`
+- `spec.RadiationType`: `ultrasound` or `infrared`
+- `spec.DetectionDistance.Min`
+- `spec.DetectionDistance.Max`
+- `spec.DistanceAccuracy[]`
+- `spec.Cone.Horizontal`
+- `spec.Cone.Vertical`
+- `spec.Cone.RayCount`
+- `spec.UpdateRate`
+- `mjcf_binding.source_site`
+- `pdu_config.pdu_name`
+- `pdu_config.update_rate_hz`
+- `pdu_config.message_type`
 
 PDU mapping:
 

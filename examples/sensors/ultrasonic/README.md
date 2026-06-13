@@ -99,30 +99,42 @@ Important fields:
 
 ```json
 {
-  "DetectionDistance": {
-    "Min": 0.05,
-    "Max": 2.0
+  "spec": {
+    "frame_id": "spike_distance_sensor_link",
+    "DetectionDistance": {
+      "Min": 0.05,
+      "Max": 2.0
+    },
+    "DistanceAccuracy": [
+      {
+        "StdDev": 0.0,
+        "Precision": 0.0,
+        "NoiseDistribution": "none"
+      }
+    ],
+    "Cone": {
+      "Horizontal": 0.0,
+      "Vertical": 0.0,
+      "RayCount": 1
+    },
+    "RadiationType": "ultrasound",
+    "UpdateRate": 100.0
   },
-  "DistanceAccuracy": [
-    {
-      "StdDev": 0.0,
-      "Precision": 0.0,
-      "NoiseDistribution": "none"
-    }
-  ],
-  "Cone": {
-    "Horizontal": 0.0,
-    "Vertical": 0.0,
-    "RayCount": 1
-  },
-  "RadiationType": "ultrasound",
-  "RuntimeBinding": {
+  "mjcf_binding": {
     "source_site": "front_ultrasonic_site"
+  },
+  "pdu_config": {
+    "pdu_name": "range",
+    "update_rate_hz": 100.0,
+    "message_type": "sensor_msgs/Range"
   }
 }
 ```
 
-For this example, noise is disabled and `RayCount` is `1`, so the measurement is deterministic and easy to verify.
+`spec` is the physical sensor specification. `mjcf_binding` names the MJCF site
+used as the sensor origin and direction. `pdu_config` records the intended
+Hakoniwa PDU output settings. For this example, noise is disabled and
+`RayCount` is `1`, so the measurement is deterministic and easy to verify.
 
 ## Expected Distances
 

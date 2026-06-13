@@ -156,6 +156,19 @@ namespace hako::robots::sensor::ultrasonic
     };
 
     /**
+     * @brief Hakoniwa PDU publishing configuration for ultrasonic output.
+     *
+     * This block is not required for standalone sensing, but it records the
+     * channel settings used when the sensor is connected to a Hakoniwa endpoint.
+     */
+    struct UltrasonicPduConfig
+    {
+        std::string pdu_name {"range"};
+        double update_rate_hz {0.0};
+        std::string message_type {"sensor_msgs/Range"};
+    };
+
+    /**
      * @brief Ultrasonic sensor configuration.
      *
      * This configuration corresponds to the Hakoniwa ultrasonic sensor JSON profile.
@@ -209,6 +222,7 @@ namespace hako::robots::sensor::ultrasonic
         Cone cone {};
         double update_rate {10.0};
         RuntimeBinding runtime_binding {};
+        UltrasonicPduConfig pdu_config {};
     };
 
     /**
