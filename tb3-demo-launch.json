@@ -21,13 +21,15 @@
       "activation_timing": "before_start",
       "command": "./src/cmake-build/main_for_sample/tb3/tb3_sim ",
       "args": [
-        "config/sensors/lidar/urg-04lx-ug01.json"
+        "config/sensors/lidar/lds-01.json"
       ],
+      "stdout": "stdout",
+      "stderr": "stderr",
       "cwd": "."
     },
     {
       "name": "gamepad",
-      "activation_timing": "before_start",
+      "activation_timing": "after_start",
       "command": "/Users/tmori/.pyenv/versions/3.12.3/bin/python",
       "args": [
         "python/tb3_gamepad.py"
@@ -36,7 +38,7 @@
     },
     {
       "name": "lidar",
-      "activation_timing": "before_start",
+      "activation_timing": "after_start",
       "command": "python",
       "args": [
         "python/tb3_lidar_visualizer.py"

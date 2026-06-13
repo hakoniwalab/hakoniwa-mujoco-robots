@@ -129,6 +129,7 @@ Tb3RuntimeConfig load_runtime_config()
     if (!lidar_config_override_path.empty()) {
         config.lidar_config = lidar_config_override_path;
     }
+    std::cout << "[INFO] Using LiDAR config: " << config.lidar_config << std::endl;
     config.lidar_config = resolve_repo_path(config.lidar_config);
     config.imu_config = resolve_repo_path(get_env_string("HAKO_TB3_IMU_CONFIG_PATH", imu_config_path));
     config.joint_state_config =
