@@ -1,8 +1,10 @@
 #include "hako_asset.h"
 #include "hako_conductor.h"
+#include "hakoniwa/pdu/adapter/sensor_msgs/joint_state.hpp"
 #include "hakoniwa/pdu/adapter/std_msgs/float64.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "physics/physics_impl.hpp"
+#include "sensors/joint_state/joint_state_sensor.hpp"
 #include "viewer/mujoco_viewer.hpp"
 
 #include <GLFW/glfw3.h>
@@ -26,6 +28,8 @@ constexpr const char* kDefaultPositionConfigPath =
     "config/actuator/joint/sample_position_actuator.json";
 constexpr const char* kDefaultVelocityConfigPath =
     "config/actuator/joint/sample_velocity_actuator.json";
+constexpr const char* kDefaultJointStateConfigPath =
+    "config/sensors/joint_state/joint-actuator-joint-states.json";
 constexpr const char* kDefaultPduDefPath =
     "config/joint-actuator-pdudef-compact.json";
 constexpr const char* kDefaultEndpointConfigPath =
@@ -40,10 +44,14 @@ std::unique_ptr<hako::robots::pdu::adapter::std_msgs::Float64PduAdapter>
     position_adapter;
 std::unique_ptr<hako::robots::pdu::adapter::std_msgs::Float64PduAdapter>
     velocity_adapter;
+std::unique_ptr<hako::robots::sensor::JointStateSensor> joint_state_sensor;
+std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::JointStatePduAdapter>
+    joint_state_adapter;
 
 std::string model_path;
 std::string position_config_path;
 std::string velocity_config_path;
+std::string joint_state_config_path;
 std::string pdu_def_path;
 std::string endpoint_config_path;
 std::string asset_name;
@@ -105,11 +113,12 @@ void PrintUsage(const char* program)
         << "Usage:\n"
         << "  " << program
         << " [model.xml] [position-config.json] [velocity-config.json] "
-           "[pdu-def.json] [endpoint.json]\n\n"
+           "[joint-state-config.json] [pdu-def.json] [endpoint.json]\n\n"
         << "Defaults:\n"
         << "  model.xml             " << kDefaultModelPath << "\n"
         << "  position-config.json  " << kDefaultPositionConfigPath << "\n"
         << "  velocity-config.json  " << kDefaultVelocityConfigPath << "\n"
+        << "  joint-state-config.json " << kDefaultJointStateConfigPath << "\n"
         << "  pdu-def.json          " << kDefaultPduDefPath << "\n"
         << "  endpoint.json         " << kDefaultEndpointConfigPath << "\n\n"
         << "Environment:\n"
@@ -132,6 +141,8 @@ PDU:
   The Python sender writes std_msgs/Float64 commands to:
     JointActuatorAsset/position_target
     JointActuatorAsset/velocity_target
+  This asset publishes sensor_msgs/JointState to:
+    JointActuatorAsset/joint_states
 )" << std::endl;
 }
 
@@ -213,6 +224,18 @@ static int OnManualTimingControl(hako_asset_context_t* context)
             if (!paused.load()) {
                 world->advanceTimeStep();
             }
+            if (joint_state_sensor != nullptr &&
+                joint_state_adapter != nullptr &&
+                joint_state_sensor->ShouldUpdate(sim_timestep))
+            {
+                hako::robots::sensor::JointStateFrame frame {};
+                joint_state_sensor->Build(frame);
+                frame.header.frame_id = "";
+                frame.header.stamp_sec = world->getData()->time;
+                if (!joint_state_adapter->send(frame)) {
+                    std::cerr << "[WARN] Failed to send joint_states PDU." << std::endl;
+                }
+            }
             if ((step % 100) == 0) {
                 PrintState();
             }
@@ -258,8 +281,9 @@ int main(int argc, char** argv)
     model_path = argc > 1 ? argv[1] : kDefaultModelPath;
     position_config_path = argc > 2 ? argv[2] : kDefaultPositionConfigPath;
     velocity_config_path = argc > 3 ? argv[3] : kDefaultVelocityConfigPath;
-    pdu_def_path = argc > 4 ? argv[4] : kDefaultPduDefPath;
-    endpoint_config_path = argc > 5 ? argv[5] : kDefaultEndpointConfigPath;
+    joint_state_config_path = argc > 4 ? argv[4] : kDefaultJointStateConfigPath;
+    pdu_def_path = argc > 5 ? argv[5] : kDefaultPduDefPath;
+    endpoint_config_path = argc > 6 ? argv[6] : kDefaultEndpointConfigPath;
     asset_name =
         EnvOrDefault("HAKO_JOINT_ACTUATOR_ASSET_NAME", kDefaultAssetName);
     endpoint_name =
@@ -290,6 +314,13 @@ int main(int argc, char** argv)
     if (!velocity_actuator->LoadConfig(velocity_config_path)) {
         std::cerr << "[ERROR] Failed to load velocity actuator config: "
                   << velocity_config_path << std::endl;
+        return 1;
+    }
+    joint_state_sensor =
+        std::make_unique<hako::robots::sensor::JointStateSensor>(world);
+    if (!joint_state_sensor->LoadConfig(joint_state_config_path)) {
+        std::cerr << "[ERROR] Failed to load joint state config: "
+                  << joint_state_config_path << std::endl;
         return 1;
     }
 
@@ -343,8 +374,11 @@ int main(int argc, char** argv)
         position_actuator->GetConfig().pdu_config.pdu_name;
     const std::string velocity_pdu_name =
         velocity_actuator->GetConfig().pdu_config.pdu_name;
+    const std::string joint_state_pdu_name =
+        joint_state_sensor->GetConfig().output.pdu_name;
     const hakoniwa::pdu::PduKey position_key {asset_name, position_pdu_name};
     const hakoniwa::pdu::PduKey velocity_key {asset_name, velocity_pdu_name};
+    const hakoniwa::pdu::PduKey joint_state_key {asset_name, joint_state_pdu_name};
     position_adapter =
         std::make_unique<hako::robots::pdu::adapter::std_msgs::Float64PduAdapter>(
             *endpoint,
@@ -353,20 +387,28 @@ int main(int argc, char** argv)
         std::make_unique<hako::robots::pdu::adapter::std_msgs::Float64PduAdapter>(
             *endpoint,
             velocity_key);
+    joint_state_adapter =
+        std::make_unique<hako::robots::pdu::adapter::sensor_msgs::JointStatePduAdapter>(
+            *endpoint,
+            joint_state_key);
 
     std::cout << "[INFO] Starting joint actuator asset with:" << std::endl;
     std::cout << "  model           : " << model_path << std::endl;
     std::cout << "  position config : " << position_config_path << std::endl;
     std::cout << "  velocity config : " << velocity_config_path << std::endl;
+    std::cout << "  joint state cfg : " << joint_state_config_path << std::endl;
     std::cout << "  pdu_def         : " << pdu_def_path << std::endl;
     std::cout << "  endpoint        : " << endpoint_config_path << std::endl;
     std::cout << "[INFO] asset=" << asset_name
               << " position_pdu=" << position_pdu_name
               << " velocity_pdu=" << velocity_pdu_name
+              << " joint_state_pdu=" << joint_state_pdu_name
               << " position_rate_hz="
               << position_actuator->GetConfig().pdu_config.update_rate_hz
               << " velocity_rate_hz="
               << velocity_actuator->GetConfig().pdu_config.update_rate_hz
+              << " joint_state_rate_hz="
+              << joint_state_sensor->GetConfig().output.update_rate_hz
               << std::endl;
 
     int start_result = 0;
@@ -404,6 +446,8 @@ int main(int argc, char** argv)
     }
     position_adapter.reset();
     velocity_adapter.reset();
+    joint_state_adapter.reset();
+    joint_state_sensor.reset();
     position_actuator.reset();
     velocity_actuator.reset();
     hako_conductor_stop();

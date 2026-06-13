@@ -108,7 +108,8 @@ velocity actuator は channel 名を変えます。
 
 ## 3. PDU 設定ファイル
 
-この example では、PDU 上の robot 名を `"JointActuatorAsset"`、command channel 名を `"position_target"` / `"velocity_target"` とします。
+この example では、PDU 上の robot 名を `"JointActuatorAsset"` とします。
+command channel は `"position_target"` / `"velocity_target"`、観測値 channel は `"joint_states"` です。
 
 `PduKey` の第1引数は sender の asset 名ではなく、PDU 定義上の robot 名です。この example では分かりやすさのため、C++ asset 登録名と PDU robot 名をどちらも `"JointActuatorAsset"` にしています。
 
@@ -127,11 +128,18 @@ velocity actuator は channel 名を変えます。
     "pdu_size": 32,
     "name": "velocity_target",
     "type": "std_msgs/Float64"
+  },
+  {
+    "channel_id": 2,
+    "pdu_size": 1024,
+    "name": "joint_states",
+    "type": "sensor_msgs/JointState"
   }
 ]
 ```
 
 `std_msgs/Float64` の値そのものは `8` bytes ですが、endpoint の channel buffer では PDU metadata `24` bytes も含めるため、`pdu_size` は `32` にします。
+`sensor_msgs/JointState` は可変長配列を含むため、この example では TB3 と同じく `1024` bytes を確保します。
 
 ```text
 32 = 24 (PDU metadata) + 8 (std_msgs/Float64)
@@ -158,6 +166,42 @@ velocity actuator は channel 名を変えます。
 
 `robots[].name` が PDU robot 名です。`PduKey("JointActuatorAsset", "position_target")` の `"JointActuatorAsset"` と一致させます。
 
+### `config/sensors/joint_state/joint-actuator-joint-states.json`
+
+```json
+{
+  "$schema": "../schema/joint-state-output.schema.json",
+  "spec": {
+    "type": "joint_state",
+    "name": "joint_states",
+    "joints": [
+      { "name": "position_hinge" },
+      { "name": "velocity_hinge" }
+    ]
+  },
+  "mjcf_binding": {
+    "joints": [
+      {
+        "name": "position_hinge",
+        "mjcf_joint": "position_hinge"
+      },
+      {
+        "name": "velocity_hinge",
+        "mjcf_joint": "velocity_hinge"
+      }
+    ]
+  },
+  "pdu_config": {
+    "pdu_name": "joint_states",
+    "update_rate_hz": 50.0,
+    "message_type": "sensor_msgs/JointState"
+  }
+}
+```
+
+`spec.joints[].name` は PDU に出る joint 名、`mjcf_binding.joints[].mjcf_joint` は実際に読む MJCF joint 名です。
+同名にすることが多いですが、PDU 上の論理名と MJCF 名を分けたい場合に対応できます。
+
 ### `config/endpoint/joint_actuator_endpoint.json`
 
 ```json
@@ -183,7 +227,8 @@ velocity actuator は channel 名を変えます。
         "name": "JointActuatorAsset",
         "pdu": [
           { "name": "position_target", "notify_on_recv": false },
-          { "name": "velocity_target", "notify_on_recv": false }
+          { "name": "velocity_target", "notify_on_recv": false },
+          { "name": "joint_states", "notify_on_recv": false }
         ]
       }
     ]
@@ -204,7 +249,8 @@ endpoint lifecycle は camera / ultrasonic の Hakoniwa 例と同じ順序にし
 5. `on_initialize` callback で `endpoint.post_start()` を呼ぶ。
 6. `post_start()` 完了後、manual timing loop で PDU command を受信する。
 7. command を受信できたら example 側で `IJointActuator::SetTarget()` を呼ぶ。
-8. main thread の MuJoCo viewer で動作を確認する。
+8. `JointStateSensor` で MuJoCo の `qpos` / `qvel` を読み、`joint_states` として publish する。
+9. main thread の MuJoCo viewer で動作を確認する。
 
 `hako_asset_start_no_wait()` は名前に `no_wait` とありますが、箱庭の start trigger は待ちます。ここでは `hako_asset_start()` ではなく、停止判定 callback を渡せる `hako_asset_start_no_wait(IsForceStop)` を worker thread で呼びます。これにより、MuJoCo viewer を main thread で動かしたまま、viewer close や `q` 入力で asset 側も停止できます。
 
@@ -228,10 +274,18 @@ while (running.load() && viewer_running.load()) {
             }
         }
         world->advanceTimeStep();
+        if (joint_state_sensor->ShouldUpdate(sim_timestep)) {
+            JointStateFrame frame {};
+            joint_state_sensor->Build(frame);
+            frame.header.stamp_sec = world->getData()->time;
+            joint_state_adapter->send(frame);
+        }
     }
     hako_asset_usleep(delta_time_usec);
 }
 ```
+
+`joint_states` には、`position_hinge` と `velocity_hinge` の角度 `position[]` と角速度 `velocity[]` が入ります。
 
 ## 5. Python sender の実装
 
@@ -243,13 +297,17 @@ sender 側は loop の最後で `hakopy.usleep(args.delta_usec)` を呼び、さ
 ```python
 position_key = PduKey("JointActuatorAsset", "position_target")
 velocity_key = PduKey("JointActuatorAsset", "velocity_target")
+joint_state_key = PduKey("JointActuatorAsset", "joint_states")
 
 endpoint.send_by_name(position_key, py_to_pdu_Float64(position_msg))
 endpoint.send_by_name(velocity_key, py_to_pdu_Float64(velocity_msg))
+raw = endpoint.recv_by_name(joint_state_key, joint_state_size)
+joint_state = pdu_to_py_JointState(raw)
 ```
 
 ここで `"JointActuatorAsset"` は command の宛先になる PDU robot 名です。Python sender 自身の asset 名は既定では `"JointActuatorSender"` で、宛先 robot 名とは別です。
 既定の sender は position target を sine wave、velocity target を一定時間ごとのステップ入力として送ります。
+同じ process で `joint_states` も読み、terminal に各 joint の `position` と `velocity` を表示します。
 
 ## 6. ビルド
 
@@ -293,6 +351,7 @@ hako-cmd start
 ```
 
 start 後、Python sender が `position_target` / `velocity_target` に command を書き、C++ asset が受信して MuJoCo の actuator に反映します。
+C++ asset は `joint_states` に encoder 相当の joint angle / joint velocity を publish し、Python sender はそれを読んで表示します。
 
 C++ viewer では position hinge と velocity hinge の動きを確認できます。terminal には position joint angle と velocity joint velocity が定期的に出力されます。
 

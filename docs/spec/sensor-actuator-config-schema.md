@@ -430,10 +430,13 @@ config/sensors/joint_state/tb3-wheel-joint-states.json
 
 Key fields:
 
-- common output fields
-- `joints[]`
-- `joints[].name`: ROS joint name
-- `joints[].mjcf_joint`: MJCF joint name
+- `spec.type`: `joint_state`
+- `spec.name`: logical output name
+- `spec.joints[].name`: PDU joint name
+- `mjcf_binding.joints[].mjcf_joint`: MJCF joint name
+- `pdu_config.pdu_name`
+- `pdu_config.update_rate_hz`
+- `pdu_config.message_type`: `sensor_msgs/JointState`
 
 PDU mapping:
 

@@ -5,22 +5,22 @@
     "name": "joint_states",
     "joints": [
       {
-        "name": "wheel_left_joint"
+        "name": "position_hinge"
       },
       {
-        "name": "wheel_right_joint"
+        "name": "velocity_hinge"
       }
     ]
   },
   "mjcf_binding": {
     "joints": [
       {
-        "name": "wheel_left_joint",
-        "mjcf_joint": "wheel_left_joint"
+        "name": "position_hinge",
+        "mjcf_joint": "position_hinge"
       },
       {
-        "name": "wheel_right_joint",
-        "mjcf_joint": "wheel_right_joint"
+        "name": "velocity_hinge",
+        "mjcf_joint": "velocity_hinge"
       }
     ]
   },

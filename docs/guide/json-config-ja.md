@@ -239,21 +239,30 @@ sensor profile では `update_rate` や `UpdateRate` の名前を使うものも
 
 ```json
 {
-  "type": "joint_state",
-  "name": "tb3_wheel_joint_states",
-  "pdu_name": "joint_states",
-  "update_rate_hz": 20,
-  "joints": [
-    {
-      "name": "left_wheel_joint",
-      "mjcf_joint": "wheel_left_joint"
-    }
-  ]
+  "spec": {
+    "type": "joint_state",
+    "name": "tb3_wheel_joint_states",
+    "joints": [
+      { "name": "left_wheel_joint" }
+    ]
+  },
+  "mjcf_binding": {
+    "joints": [
+      {
+        "name": "left_wheel_joint",
+        "mjcf_joint": "wheel_left_joint"
+      }
+    ]
+  },
+  "pdu_config": {
+    "pdu_name": "joint_states",
+    "update_rate_hz": 20,
+    "message_type": "sensor_msgs/JointState"
+  }
 }
 ```
 
-LiDAR や ultrasonic のように、sensor profile の中に `spec` と `mjcf_binding` (`RuntimeBinding`) を持つものもあります。
-IMU、joint state、odometry、TF のように、PDU output config として定義されるものもあります。
+Joint state も `spec`、`mjcf_binding`、`pdu_config` に分けて定義します。
 
 ## Actuator Profile
 

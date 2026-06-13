@@ -9,7 +9,8 @@
         "name": "JointActuatorAsset",
         "pdu": [
           { "name": "position_target", "notify_on_recv": false },
-          { "name": "velocity_target", "notify_on_recv": false }
+          { "name": "velocity_target", "notify_on_recv": false },
+          { "name": "joint_states", "notify_on_recv": false }
         ]
       }
     ]

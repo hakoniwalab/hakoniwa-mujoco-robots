@@ -1,6 +1,7 @@
 #include "sensors/joint_state/joint_state_sensor.hpp"
 
 #include <stdexcept>
+#include <unordered_map>
 #include <utility>
 #include "sensors/common/json_utils.hpp"
 
@@ -19,16 +20,51 @@ bool JointStateSensor::LoadConfig(const std::string& config_path)
     }
 
     config_ = JointStateConfig {};
-    config_.output.name = common::get_json_string(root, "name", "joint_states");
-    config_.output.pdu_name = common::get_json_string(root, "pdu_name", "joint_states");
-    config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", 50.0);
+    if (root.contains("spec") && root.at("spec").is_object()) {
+        const auto& spec = root.at("spec");
+        const auto& pdu_config = root.at("pdu_config");
+        config_.output.name = common::get_json_string(spec, "name", "joint_states");
+        config_.output.pdu_name = common::get_json_string(pdu_config, "pdu_name", "joint_states");
+        config_.output.update_rate_hz =
+            common::get_json_number(pdu_config, "update_rate_hz", 50.0);
 
-    if (root.contains("joints") && root.at("joints").is_array()) {
-        for (const auto& entry : root.at("joints")) {
+        std::unordered_map<std::string, std::string> mjcf_joint_by_name;
+        if (root.contains("mjcf_binding") &&
+            root.at("mjcf_binding").is_object() &&
+            root.at("mjcf_binding").contains("joints") &&
+            root.at("mjcf_binding").at("joints").is_array())
+        {
+            for (const auto& entry : root.at("mjcf_binding").at("joints")) {
+                const std::string name = common::get_json_string(entry, "name", "");
+                if (!name.empty()) {
+                    mjcf_joint_by_name[name] =
+                        common::get_json_string(entry, "mjcf_joint", name);
+                }
+            }
+        }
+
+        if (spec.contains("joints") && spec.at("joints").is_array()) {
+            for (const auto& entry : spec.at("joints")) {
+                JointBinding binding {};
+                binding.name = common::get_json_string(entry, "name", "");
+                auto it = mjcf_joint_by_name.find(binding.name);
+                binding.mjcf_joint =
+                    (it != mjcf_joint_by_name.end()) ? it->second : binding.name;
+                config_.joints.push_back(std::move(binding));
+            }
+        }
+    } else {
+        config_.output.name = common::get_json_string(root, "name", "joint_states");
+        config_.output.pdu_name = common::get_json_string(root, "pdu_name", "joint_states");
+        config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", 50.0);
+
+        if (root.contains("joints") && root.at("joints").is_array()) {
+            for (const auto& entry : root.at("joints")) {
             JointBinding binding {};
             binding.name = common::get_json_string(entry, "name", "");
             binding.mjcf_joint = common::get_json_string(entry, "mjcf_joint", binding.name);
             config_.joints.push_back(std::move(binding));
+            }
         }
     }
 

@@ -104,16 +104,26 @@ PDU output config の例:
 ```json
 {
   "$schema": "../schema/joint-state-output.schema.json",
-  "type": "joint_state",
-  "name": "wheel_joint_states",
-  "pdu_name": "joint_states",
-  "update_rate_hz": 20,
-  "joints": [
-    {
-      "name": "left_wheel_joint",
-      "mjcf_joint": "left_wheel_joint"
-    }
-  ]
+  "spec": {
+    "type": "joint_state",
+    "name": "wheel_joint_states",
+    "joints": [
+      { "name": "left_wheel_joint" }
+    ]
+  },
+  "mjcf_binding": {
+    "joints": [
+      {
+        "name": "left_wheel_joint",
+        "mjcf_joint": "left_wheel_joint"
+      }
+    ]
+  },
+  "pdu_config": {
+    "pdu_name": "joint_states",
+    "update_rate_hz": 20,
+    "message_type": "sensor_msgs/JointState"
+  }
 }
 ```
 

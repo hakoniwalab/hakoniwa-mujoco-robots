@@ -28,13 +28,14 @@ config/
   joint-actuator-pdudef-compact.json
   joint-actuator-pdutypes.json
   endpoint/joint_actuator_endpoint.json
+  sensors/joint_state/joint-actuator-joint-states.json
 ```
 
 Read these first:
 
 - [`joint-actuator-example.cpp`](./joint-actuator-example.cpp): the Joint Actuator API usage
 - [`joint-actuator-hakoniwa-asset.cpp`](./joint-actuator-hakoniwa-asset.cpp): Hakoniwa PDU command receiver with a MuJoCo viewer
-- [`joint_actuator_sender.py`](./joint_actuator_sender.py): Python Hakoniwa asset that sends `std_msgs/Float64` commands
+- [`joint_actuator_sender.py`](./joint_actuator_sender.py): Python Hakoniwa asset that sends `std_msgs/Float64` commands and reads `sensor_msgs/JointState`
 - [`position-velocity-actuator-sample.xml`](../../../models/actuators/joint/position-velocity-actuator-sample.xml): the MJCF `<position>` and `<velocity>` actuators
 - [`sample_position_actuator.json`](../../../config/actuator/joint/sample_position_actuator.json): JSON binding for the position actuator
 - [`sample_velocity_actuator.json`](../../../config/actuator/joint/sample_velocity_actuator.json): JSON binding for the velocity actuator
@@ -141,6 +142,12 @@ JointActuatorAsset/position_target
 JointActuatorAsset/velocity_target
 ```
 
+It also publishes measured joint angle and angular velocity:
+
+```text
+JointActuatorAsset/joint_states
+```
+
 Run it with three terminals:
 
 ```bash
@@ -156,6 +163,7 @@ hako-cmd start
 ```
 
 The C++ process owns the MuJoCo viewer. The Python sender writes
-`std_msgs/Float64` command PDUs. See
+`std_msgs/Float64` command PDUs and prints the `sensor_msgs/JointState`
+feedback from the C++ asset. See
 [`docs/tutorial/joint-actuator-hakoniwa-ja.md`](../../../docs/tutorial/joint-actuator-hakoniwa-ja.md)
 for the full walkthrough.

@@ -50,6 +50,7 @@ target_include_directories(joint-actuator-hakoniwa-asset SYSTEM PRIVATE
 
 target_link_libraries(joint-actuator-hakoniwa-asset
     PRIVATE
+        msensors
         mujoco-common
         ${LIBMUJOCO}
         ${HAKO_ASSETS_LINK_TARGET}

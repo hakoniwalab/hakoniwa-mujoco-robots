@@ -10,10 +10,11 @@ from __future__ import annotations
 import argparse
 import math
 import threading
+import time
 from pathlib import Path
 
-import time
 import hakopy
+from hakoniwa_pdu.pdu_msgs.sensor_msgs.pdu_conv_JointState import pdu_to_py_JointState
 from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_conv_Float64 import py_to_pdu_Float64
 from hakoniwa_pdu.pdu_msgs.std_msgs.pdu_pytype_Float64 import Float64
 from hakoniwa_pdu_endpoint.c_endpoint import Endpoint, PduKey
@@ -59,6 +60,16 @@ def parse_args() -> argparse.Namespace:
         help="Velocity command PDU channel name.",
     )
     parser.add_argument(
+        "--joint-state-pdu-name",
+        default="joint_states",
+        help="JointState PDU channel name read from the C++ asset.",
+    )
+    parser.add_argument(
+        "--no-read-joint-state",
+        action="store_true",
+        help="Disable reading sensor_msgs/JointState from the C++ asset.",
+    )
+    parser.add_argument(
         "--endpoint-name",
         default="joint_actuator_sender",
         help="Endpoint instance name for this Python process.",
@@ -102,12 +113,22 @@ def make_float64_payload(value: float) -> bytes:
     return bytes(py_to_pdu_Float64(msg))
 
 
+def compact_joint_state(joint_state) -> str:
+    parts: list[str] = []
+    for index, name in enumerate(joint_state.name):
+        position = joint_state.position[index] if index < len(joint_state.position) else 0.0
+        velocity = joint_state.velocity[index] if index < len(joint_state.velocity) else 0.0
+        parts.append(f"{name}:pos={position:.3f},vel={velocity:.3f}")
+    return " | ".join(parts)
+
+
 def main() -> int:
     args = parse_args()
     endpoint_config = str(Path(args.endpoint_config).resolve())
     pdu_def = str(Path(args.pdu_def).resolve())
     position_key = PduKey(args.target_robot_name, args.position_pdu_name)
     velocity_key = PduKey(args.target_robot_name, args.velocity_pdu_name)
+    joint_state_key = PduKey(args.target_robot_name, args.joint_state_pdu_name)
     endpoint = Endpoint(args.endpoint_name, "inout")
     shutdown = threading.Event()
     callback_state = {"result": 0}
@@ -130,12 +151,33 @@ def main() -> int:
             elapsed_usec = 0
             next_send_usec = 0
             count = 0
+            joint_state_size = 0
+            latest_joint_state = None
+            skipped_invalid_joint_state = 0
+            if not args.no_read_joint_state:
+                joint_state_size = endpoint.get_pdu_size(joint_state_key)
             print(
                 "[INFO] Joint actuator sender callback started: "
                 f"robot={args.target_robot_name} "
-                f"position={args.position_pdu_name} velocity={args.velocity_pdu_name}"
+                f"position={args.position_pdu_name} velocity={args.velocity_pdu_name} "
+                f"joint_state={args.joint_state_pdu_name}"
             )
             while not shutdown.is_set():
+                if joint_state_size > 0:
+                    raw_joint_state = endpoint.recv_by_name(joint_state_key, joint_state_size)
+                    if raw_joint_state:
+                        if isinstance(raw_joint_state, tuple):
+                            raw_joint_state = raw_joint_state[0]
+                        try:
+                            latest_joint_state = pdu_to_py_JointState(raw_joint_state)
+                        except Exception as exc:
+                            skipped_invalid_joint_state += 1
+                            if skipped_invalid_joint_state == 1:
+                                print(
+                                    "[INFO] Skipping invalid initial joint_states PDU "
+                                    f"until publisher writes the first frame: {exc}"
+                                )
+
                 if elapsed_usec >= next_send_usec:
                     t = elapsed_usec / 1_000_000.0
                     position_target = args.position_amplitude * math.sin(
@@ -159,11 +201,14 @@ def main() -> int:
                     )
 
                     if (count % 20) == 0:
-                        print(
+                        message = (
                             "sent "
                             f"position_target={position_target:.3f} "
                             f"velocity_target={velocity_target:.3f}"
                         )
+                        if latest_joint_state is not None:
+                            message += " | joint_states " + compact_joint_state(latest_joint_state)
+                        print(message)
                     count += 1
                     next_send_usec += send_interval_usec
 
