@@ -33,6 +33,15 @@
         "python/tb3_gamepad.py"
       ],
       "cwd": "."
+    },
+    {
+      "name": "lidar",
+      "activation_timing": "before_start",
+      "command": "python",
+      "args": [
+        "python/tb3_lidar_visualizer.py"
+      ],
+      "cwd": "."
     }    
   ],
   "notify": {
