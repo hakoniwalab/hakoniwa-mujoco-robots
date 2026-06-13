@@ -268,7 +268,7 @@ q / Esc : quit publisher
 The MuJoCo viewer shows the model and movable camera body. The Python OpenCV
 window shows the image published from that camera over Hakoniwa PDU.
 
-The default PDU key is:
+The default PDU key is a PDU robot name plus a channel name:
 
 ```text
 robot/channel: CameraAsset/camera_image
@@ -277,11 +277,13 @@ size         : 98616 bytes
 ```
 
 `read_camera.py` registers itself as a Hakoniwa controller asset named
-`CameraReader`. It receives `CameraAsset/camera_image`, converts `rgb8` to BGR,
-and displays the image with OpenCV.
+`CameraReader`. It receives `CameraAsset/camera_image`, where `CameraAsset` is
+the PDU robot name from `camera-pdudef-compact.json` and `camera_image` is the
+channel name from `camera-pdutypes.json`. It converts `rgb8` to BGR and displays
+the image with OpenCV.
 
 If the Python window only shows a waiting screen, no image PDU has arrived yet.
-Check that `color-camera-hakoniwa-asset` is running, the producer asset name is
+Check that `color-camera-hakoniwa-asset` is running, the PDU robot name is
 `CameraAsset`, the PDU channel name is `camera_image`, and `hako-cmd start` has
 been executed.
 The reader skips invalid initial PDU bytes until the C++ publisher writes the

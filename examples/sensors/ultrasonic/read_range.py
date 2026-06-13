@@ -38,9 +38,11 @@ def parse_args() -> argparse.Namespace:
         help="Hakoniwa asset name for this Python reader.",
     )
     parser.add_argument(
+        "--producer-robot-name",
         "--producer-asset-name",
+        dest="producer_robot_name",
         default="UltrasonicAsset",
-        help="Hakoniwa asset name that publishes the range PDU.",
+        help="PDU robot name that owns the range channel.",
     )
     parser.add_argument(
         "--pdu-name",
@@ -71,7 +73,7 @@ def main() -> int:
     args = parse_args()
     endpoint_config = str(Path(args.endpoint_config).resolve())
     pdu_def = str(Path(args.pdu_def).resolve())
-    range_key = PduKey(args.producer_asset_name, args.pdu_name)
+    range_key = PduKey(args.producer_robot_name, args.pdu_name)
     shutdown = threading.Event()
     callback_state = {"result": 0}
     skipped_invalid = {"count": 0}
@@ -94,7 +96,7 @@ def main() -> int:
             pdu_size = endpoint.get_pdu_size(range_key)
             print(
                 "[INFO] Ultrasonic reader callback started: "
-                f"producer={args.producer_asset_name} pdu={args.pdu_name} size={pdu_size}"
+                f"robot={args.producer_robot_name} pdu={args.pdu_name} size={pdu_size}"
             )
             last_print_time = 0.0
             while not shutdown.is_set():

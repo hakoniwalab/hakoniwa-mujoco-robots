@@ -274,11 +274,15 @@ range_adapter->send(sensor.GetConfig(), frame);
 Measurement and publishing are gated by `UltrasonicSensor::ShouldUpdate()`,
 so the runtime cadence follows `spec.UpdateRate`.
 
-The default PDU key is:
+The default PDU key is a PDU robot name plus a channel name:
 
 ```text
 PduKey("UltrasonicAsset", "range")
 ```
+
+`UltrasonicAsset` is the PDU robot name from
+`ultrasonic-pdudef-compact.json`, and `range` is the channel name from
+`ultrasonic-pdutypes.json`.
 
 The Python reader prints lines like:
 

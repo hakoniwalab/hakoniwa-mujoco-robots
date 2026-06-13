@@ -46,9 +46,11 @@ def parse_args() -> argparse.Namespace:
         help="Hakoniwa asset name for this Python reader.",
     )
     parser.add_argument(
+        "--producer-robot-name",
         "--producer-asset-name",
+        dest="producer_robot_name",
         default="CameraAsset",
-        help="Hakoniwa asset name that publishes the image PDU.",
+        help="PDU robot name that owns the image channel.",
     )
     parser.add_argument(
         "--pdu-name",
@@ -153,7 +155,7 @@ def main() -> int:
     args = parse_args()
     endpoint_config = str(Path(args.endpoint_config).resolve())
     pdu_def = str(Path(args.pdu_def).resolve())
-    image_key = PduKey(args.producer_asset_name, args.pdu_name)
+    image_key = PduKey(args.producer_robot_name, args.pdu_name)
     frame_queue: "queue.Queue[np.ndarray]" = queue.Queue(maxsize=1)
     shutdown = threading.Event()
     callback_state = {"result": 0}
@@ -178,7 +180,7 @@ def main() -> int:
             pdu_size = endpoint.get_pdu_size(image_key)
             print(
                 "[INFO] Camera reader callback started: "
-                f"producer={args.producer_asset_name} pdu={args.pdu_name} size={pdu_size}"
+                f"robot={args.producer_robot_name} pdu={args.pdu_name} size={pdu_size}"
             )
             while not shutdown.is_set():
                 raw = endpoint.recv_by_name(image_key, pdu_size)
@@ -275,7 +277,7 @@ def main() -> int:
             if time.monotonic() - last_status_time >= 2.0:
                 print(
                     "[INFO] Waiting for image PDU: "
-                    f"producer={args.producer_asset_name} pdu={args.pdu_name}"
+                    f"robot={args.producer_robot_name} pdu={args.pdu_name}"
                 )
                 last_status_time = time.monotonic()
             key = cv2.waitKey(1) & 0xFF

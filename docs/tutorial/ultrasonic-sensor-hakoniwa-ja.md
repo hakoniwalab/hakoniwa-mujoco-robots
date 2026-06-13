@@ -127,13 +127,14 @@ sensor_msgs/Range PDU
 }
 ```
 
-`pdu_name` は、後述の `PduKey(asset_name, pdu_name)` と PDU type list の `name` に一致させます。
+`pdu_name` は、後述の `PduKey(robot_name, channel_name)` の `channel_name` と PDU type list の `name` に一致させます。
 
 ---
 
 ## 3. PDU 設定ファイル
 
-ここでは、C++ publisher の asset 名を `"UltrasonicAsset"`、PDU channel 名を `"range"` とします。
+ここでは、PDU 上の robot 名を `"UltrasonicAsset"`、PDU channel 名を `"range"` とします。
+この example では C++ publisher の asset 登録名も `"UltrasonicAsset"` にしていますが、`PduKey` の第1引数は asset 登録名ではなく PDU 定義上の robot 名です。
 
 ### `config/ultrasonic-pdutypes.json`
 
@@ -303,6 +304,8 @@ UltrasonicFrame.range                    -> Range.range
 ## 5. Python Reader の実装方針
 
 Python 側も camera reader と同じく、`hakopy` で箱庭 asset として登録し、`hakoniwa_pdu_endpoint` で endpoint を開きます。
+`PduKey` は `PduKey(robot_name, channel_name)` です。
+第1引数は Python reader 自身の asset 名ではなく、読みたい PDU を持つ robot 名です。
 
 概略は次の形です。
 
@@ -346,12 +349,13 @@ def on_manual_timing_control(_context):
     return 0
 ```
 
-Python reader 自身の asset 名と、読む対象の publisher asset 名を混同しないでください。
+Python reader 自身の asset 登録名と、読む対象の PDU robot 名を混同しないでください。
 
 ```text
-reader asset name       : UltrasonicReader
-publisher asset name    : UltrasonicAsset
-PDU key                 : PduKey("UltrasonicAsset", "range")
+reader asset registration name : UltrasonicReader
+PDU robot name                 : UltrasonicAsset
+PDU channel name               : range
+PDU key                        : PduKey("UltrasonicAsset", "range")
 ```
 
 ---
@@ -396,7 +400,11 @@ hako-cmd start
   `sensor_msgs/Range` は `160` bytes、endpoint buffer は PDU metadata `24` bytes を含めるため `184` bytes にします。
 
 - **`pdu_config.pdu_name` と PDU type list の `name` を合わせる**:
-  JSON 側が `"range"` なら、`PduKey("UltrasonicAsset", "range")` と `ultrasonic-pdutypes.json` の `name` も `"range"` にします。
+  JSON 側が `"range"` なら、`PduKey("UltrasonicAsset", "range")` の channel 名と `ultrasonic-pdutypes.json` の `name` も `"range"` にします。
+
+- **`PduKey` は asset 名ではなく robot 名 + channel 名**:
+  `PduKey("UltrasonicAsset", "range")` の `"UltrasonicAsset"` は `ultrasonic-pdudef-compact.json` の `robots[].name` です。
+  この example では asset 登録名も同じ文字列にしていますが、`PduKey` の概念としては PDU 定義上の robot 名を指定します。
 
 - **送信周期は `UltrasonicSensor::ShouldUpdate(step_dt)` に任せる**:
   `step_dt` は MuJoCo model の `model->opt.timestep` です。

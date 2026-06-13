@@ -27,7 +27,7 @@
 
 ### 必要な作業手順
 1. **`camera-pdutypes.json` の設定**: PDUチャネルのデータ型やバッファサイズを定義する。
-2. **`pdudef.json` (`*-compact.json`) の設定**: ロボット（アセット）名と PDU型定義を紐付ける。
+2. **`pdudef.json` (`*-compact.json`) の設定**: PDU 上の robot 名と PDU型定義を紐付ける。
 3. **Endpoint設定 (`endpoint_config.json`) の定義**: エンドポイント名に PDU定義・Cache・Comm の設定を紐付ける。
 4. **Cache設定 (`cache/buffer.json`) の定義**: バッファの動作モード（最新データのみを保持するなど）を指定する。
 5. **Comm設定 (`comm/shm_camera_comm.json`) の定義**: 共有メモリなどの通信プロトコルと、アセットごとの通信チャネルを指定する。
@@ -37,7 +37,8 @@
 
 ## 2. 各設定ファイルの書き方
 
-ここでは、アセット名 `"CameraAsset"`、カメラ画像のチャネル名 `"camera_image"` を新しく定義するケースを例にして説明します。
+ここでは、PDU 上の robot 名 `"CameraAsset"`、カメラ画像のチャネル名 `"camera_image"` を新しく定義するケースを例にして説明します。
+この example では箱庭 asset 登録名も `"CameraAsset"` にしていますが、`PduKey` の第1引数は asset 登録名ではなく PDU 定義上の robot 名です。
 
 ### ステップ 1: PDU 型定義の編集 (`camera-pdutypes.json`)
 箱庭アセットで送受信する PDU チャネルの一覧を配列形式で定義します。
@@ -79,7 +80,7 @@
 >   * サイズが不足していると、`[ConvertorError][Image] buffer too small` となり、データが全く書き込まれなくなります（送信されなくなります）。
 
 ### ステップ 2: PDU 定義インスタンスの編集 (`*-compact.json`)
-ロボット（アセット）名と上記で作成した型定義ファイルをマッピングします。
+PDU 上の robot 名と上記で作成した型定義ファイルをマッピングします。
 
 `config/camera-pdudef-compact.json`:
 ```json
@@ -98,7 +99,7 @@
   ]
 }
 ```
-- **`robots[].name`**: 箱庭内で識別するアセット名です。
+- **`robots[].name`**: PDU 定義上の robot 名です。`PduKey(robot_name, channel_name)` の第1引数と一致させます。
 
 ### ステップ 3: エンドポイント設定 (`endpoint_config.json`)
 アセット起動時に読み込むメインのエンドポイントファイルを作成します。
@@ -327,9 +328,11 @@ int main()
 4. `on_manual_timing_control` callback の中で PDU を受信する。
 5. `hakopy.start()` で箱庭アセットの実行を開始する。
 
-この例では、Python 側のアセット名を `"CameraReader"`、読む対象の PDU を
+この例では、Python 側の asset 登録名を `"CameraReader"`、読む対象の PDU を
 `PduKey("CameraAsset", "camera_image")` とします。
-`"CameraReader"` は Python reader 自身の箱庭アセット名で、`"CameraAsset"` は画像を publish する C++ 側アセット名です。
+`PduKey` は `PduKey(robot_name, channel_name)` です。
+`"CameraAsset"` は `camera-pdudef-compact.json` の `robots[].name` に書いた PDU 上の robot 名で、`"camera_image"` は `camera-pdutypes.json` の `name` に書いた channel 名です。
+この example では C++ publisher の asset 登録名も `"CameraAsset"` にそろえていますが、概念としては asset 登録名そのものではありません。
 
 ### 受信スクリプトの作成例 (`examples/sensors/color_camera/read_camera.py`)
 
@@ -354,12 +357,12 @@ ENDPOINT_CONFIG_PATH = "config/endpoint/camera_endpoint.json"
 PDU_DEF_PATH = "config/camera-pdudef-compact.json"
 
 READER_ASSET_NAME = "CameraReader"
-PRODUCER_ASSET_NAME = "CameraAsset"
+PRODUCER_ROBOT_NAME = "CameraAsset"
 IMAGE_PDU_NAME = "camera_image"
 STEP_USEC = 30_000
 
 endpoint = Endpoint("camera_reader", "inout")
-image_key = PduKey(PRODUCER_ASSET_NAME, IMAGE_PDU_NAME)
+image_key = PduKey(PRODUCER_ROBOT_NAME, IMAGE_PDU_NAME)
 frame_queue = queue.Queue(maxsize=1)
 shutdown = threading.Event()
 callback_state = {"result": 0}
@@ -472,9 +475,9 @@ if __name__ == "__main__":
 ```
 
 > [!NOTE]
-> `asset_register()` に渡す `READER_ASSET_NAME` は Python reader 自身のアセット名です。
-> 一方、`PduKey(PRODUCER_ASSET_NAME, IMAGE_PDU_NAME)` の `PRODUCER_ASSET_NAME` は、画像 PDU を publish している C++ 側アセット名です。
-> 受信対象を指定するときは、reader の名前ではなく publish 元の robot / asset 名を指定します。
+> `asset_register()` に渡す `READER_ASSET_NAME` は Python reader 自身の asset 登録名です。
+> 一方、`PduKey(PRODUCER_ROBOT_NAME, IMAGE_PDU_NAME)` の `PRODUCER_ROBOT_NAME` は、PDU 定義上の robot 名です。
+> `PduKey` は asset 名ではなく `robot 名 + channel 名` で受信対象を指定します。
 
 > [!IMPORTANT]
 > `recv_by_name()` が bytes を返しても、それが有効な `sensor_msgs/Image` とは限りません。
