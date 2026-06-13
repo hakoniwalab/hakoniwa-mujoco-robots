@@ -1,11 +1,20 @@
 {
   "$schema": "../schema/odometry-output.schema.json",
-  "type": "odometry",
-  "name": "odom",
-  "pdu_name": "odom",
-  "frame_id": "odom",
-  "child_frame_id": "base_footprint",
-  "source_body": "base_footprint",
-  "update_rate_hz": 50.0,
-  "mode": "ground_truth"
+  "spec": {
+    "type": "odometry",
+    "name": "odom",
+    "frame_id": "odom",
+    "child_frame_id": "base_footprint",
+    "mode": "ground_truth"
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "source_body": "base_footprint"
+  },
+  "pdu_config": {
+    "pdu_name": "odom",
+    "update_rate_hz": 50.0,
+    "message_type": "nav_msgs/Odometry"
+  }
 }

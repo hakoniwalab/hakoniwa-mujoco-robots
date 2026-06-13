@@ -4,6 +4,7 @@
 #include <limits>
 #include <utility>
 #include <vector>
+#include "config/json_config_utils.hpp"
 #include "sensors/common/json_utils.hpp"
 
 namespace hako::robots::sensor::lidar
@@ -47,16 +48,23 @@ bool LiDAR2DSensor::LoadConfig(const std::string& config_path)
     }
 
     config_ = LiDAR2DConfig {};
-    config_.frame_id = root.value("frame_id", std::string("laser"));
+    const auto* spec = hako::robots::config::FindObject(root, "spec");
+    const auto& spec_root = (spec != nullptr) ? *spec : root;
 
-    if (root.contains("DetectionDistance")) {
-        const auto& det = root.at("DetectionDistance");
+    config_.output.name = common::get_json_string(spec_root, "name", "laser_scan");
+    config_.output.pdu_name = "laser_scan";
+    config_.output.update_rate_hz = 5.0;
+
+    config_.frame_id = spec_root.value("frame_id", std::string("laser"));
+
+    if (spec_root.contains("DetectionDistance")) {
+        const auto& det = spec_root.at("DetectionDistance");
         config_.detection_distance.min = common::get_json_number(det, "Min", config_.detection_distance.min) / 1000.0;
         config_.detection_distance.max = common::get_json_number(det, "Max", config_.detection_distance.max) / 1000.0;
     }
 
-    if (root.contains("AngleRange")) {
-        const auto& angle = root.at("AngleRange");
+    if (spec_root.contains("AngleRange")) {
+        const auto& angle = spec_root.at("AngleRange");
         config_.angle_range.min_deg = common::get_json_number(angle, "Min", config_.angle_range.min_deg);
         config_.angle_range.max_deg = common::get_json_number(angle, "Max", config_.angle_range.max_deg);
         if (angle.contains("AscendingOrderOfData") && angle.at("AscendingOrderOfData").is_boolean()) {
@@ -72,9 +80,19 @@ bool LiDAR2DSensor::LoadConfig(const std::string& config_path)
         }
     }
 
+    config_.output.update_rate_hz = static_cast<double>(config_.angle_range.scan_frequency_hz);
+    if (spec == nullptr) {
+        config_.output.pdu_name = common::get_json_string(root, "pdu_name", config_.output.pdu_name);
+        config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", config_.output.update_rate_hz);
+    }
+    hako::robots::config::ReadPduConfig(root, config_.output.pdu_name, config_.output.update_rate_hz);
+    if (config_.output.update_rate_hz > 0.0) {
+        config_.angle_range.scan_frequency_hz = static_cast<int>(std::lround(config_.output.update_rate_hz));
+    }
+
     config_.distance_accuracy.clear();
-    if (root.contains("DistanceAccuracy") && root.at("DistanceAccuracy").is_array()) {
-        for (const auto& entry : root.at("DistanceAccuracy")) {
+    if (spec_root.contains("DistanceAccuracy") && spec_root.at("DistanceAccuracy").is_array()) {
+        for (const auto& entry : spec_root.at("DistanceAccuracy")) {
             DistanceAccuracy accuracy {};
             if (entry.contains("Range") && entry.at("Range").is_object()) {
                 const auto& range = entry.at("Range");
@@ -115,6 +133,14 @@ bool LiDAR2DSensor::LoadConfig(const std::string& config_path)
             }
             config_.distance_accuracy.push_back(std::move(accuracy));
         }
+    }
+
+    const auto* mjcf_binding = hako::robots::config::FindMjcfBinding(root);
+    if (mjcf_binding != nullptr) {
+        sensor_body_name_ = common::get_json_string(*mjcf_binding, "source_body", sensor_body_name_);
+        exclude_body_name_ = common::get_json_string(*mjcf_binding, "exclude_body", exclude_body_name_);
+        config_.frame_id = common::get_json_string(*mjcf_binding, "frame_id_override", config_.frame_id);
+        sensor_body_ = world_->getRigidBody(sensor_body_name_);
     }
 
     scheduler_.StartReady(GetUpdatePeriodSec());

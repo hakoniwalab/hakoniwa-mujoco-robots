@@ -3,40 +3,105 @@
   "$id": "https://hakoniwa.dev/schemas/lidar-2d.schema.json",
   "title": "Hakoniwa 2D LiDAR sensor profile",
   "description": "SDF-like but MJCF-resolved JSON config for 2D LiDAR profiles used by Hakoniwa MuJoCo sensors.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "frame_id",
-    "DetectionDistance",
-    "DistanceAccuracy",
-    "AngleRange"
-  ],
-  "properties": {
-    "$schema": {
-      "type": "string"
-    },
-    "frame_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "DetectionDistance": {
-      "$ref": "#/$defs/detectionDistance"
-    },
-    "DistanceAccuracy": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/distanceAccuracy"
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec",
+        "mjcf_binding",
+        "pdu_config"
+      ],
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "spec": {
+          "$ref": "#/$defs/spec"
+        },
+        "mjcf_binding": {
+          "$ref": "#/$defs/mjcfBinding"
+        },
+        "pdu_config": {
+          "$ref": "#/$defs/pduConfig"
+        }
       }
     },
-    "AngleRange": {
-      "$ref": "#/$defs/angleRange"
-    },
-    "RuntimeBinding": {
-      "$ref": "#/$defs/runtimeBinding"
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame_id",
+        "DetectionDistance",
+        "DistanceAccuracy",
+        "AngleRange"
+      ],
+      "properties": {
+        "$schema": {
+          "type": "string"
+        },
+        "frame_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pdu_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "DetectionDistance": {
+          "$ref": "#/$defs/detectionDistance"
+        },
+        "DistanceAccuracy": {
+          "$ref": "#/$defs/distanceAccuracyArray"
+        },
+        "AngleRange": {
+          "$ref": "#/$defs/angleRange"
+        },
+        "RuntimeBinding": {
+          "$ref": "#/$defs/mjcfBinding"
+        }
+      }
     }
-  },
+  ],
   "$defs": {
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name",
+        "frame_id",
+        "DetectionDistance",
+        "DistanceAccuracy",
+        "AngleRange"
+      ],
+      "properties": {
+        "type": {
+          "const": "lidar_2d"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frame_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "DetectionDistance": {
+          "$ref": "#/$defs/detectionDistance"
+        },
+        "DistanceAccuracy": {
+          "$ref": "#/$defs/distanceAccuracyArray"
+        },
+        "AngleRange": {
+          "$ref": "#/$defs/angleRange"
+        }
+      }
+    },
     "distanceRange": {
       "type": "object",
       "additionalProperties": false,
@@ -61,6 +126,13 @@
           "$ref": "#/$defs/distanceRange"
         }
       ]
+    },
+    "distanceAccuracyArray": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/distanceAccuracy"
+      }
     },
     "independentAccuracy": {
       "type": "object",
@@ -271,30 +343,58 @@
         }
       }
     },
-    "runtimeBinding": {
-      "type": "object",
-      "description": "Optional Hakoniwa runtime binding fields for MJCF-based resolution.",
-      "additionalProperties": false,
-      "properties": {
-        "config_style": {
-          "const": "hakoniwa-sdf-like"
+    "mjcfBinding": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/mjcfBindingBase"
         },
-        "runtime_source": {
-          "const": "mjcf"
-        },
-        "parent_body": {
-          "type": "string",
-          "minLength": 1
-        },
-        "source_body": {
-          "type": "string",
-          "minLength": 1
-        },
-        "frame_id_override": {
-          "type": "string",
-          "minLength": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "source_body"
+          ],
+          "properties": {
+            "config_style": {
+              "const": "hakoniwa-sdf-like"
+            },
+            "runtime_source": {
+              "const": "mjcf"
+            },
+            "parent_body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "exclude_body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "frame_id_override": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
         }
-      }
+      ]
+    },
+    "pduConfig": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/requiredPduConfig"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {
+              "const": "sensor_msgs/LaserScan"
+            }
+          }
+        }
+      ]
     }
   }
 }

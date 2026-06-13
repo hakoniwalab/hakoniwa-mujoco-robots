@@ -65,6 +65,11 @@ namespace hako::robots::tb3
         hako::robots::types::Euler GetBaseEuler() const;
         hako::robots::types::Position GetBaseScanPosition() const;
         hako::robots::types::Euler GetBaseScanEuler() const;
+        std::string GetLaserScanPduName() const;
+        std::string GetImuPduName() const;
+        std::string GetJointStatePduName() const;
+        std::string GetOdometryPduName() const;
+        std::string GetTfPduName() const;
 
         bool MaybeBuildImu(
             double sim_timestep,

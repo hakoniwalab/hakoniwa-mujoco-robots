@@ -1,6 +1,7 @@
 #include "sensors/tf/tf_publisher.hpp"
 
 #include <utility>
+#include "config/json_config_utils.hpp"
 #include "sensors/common/json_utils.hpp"
 
 namespace hako::robots::sensor
@@ -82,19 +83,47 @@ bool TfPublisher::LoadConfig(const std::string& config_path)
     }
 
     config_ = TfConfig {};
-    config_.output.name = common::get_json_string(root, "name", "tf");
-    config_.output.pdu_name = common::get_json_string(root, "pdu_name", "tf");
-    config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", 50.0);
+    const auto* spec = hako::robots::config::FindObject(root, "spec");
+    const auto& spec_root = (spec != nullptr) ? *spec : root;
+
+    config_.output.name = common::get_json_string(spec_root, "name", "tf");
+    config_.output.pdu_name = "tf";
+    config_.output.update_rate_hz = 50.0;
+    if (spec == nullptr) {
+        config_.output.pdu_name = common::get_json_string(root, "pdu_name", config_.output.pdu_name);
+        config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", config_.output.update_rate_hz);
+    }
+    hako::robots::config::ReadPduConfig(root, config_.output.pdu_name, config_.output.update_rate_hz);
 
     body_cache_.clear();
     child_to_body_.clear();
     config_.transforms.clear();
-    if (root.contains("transforms") && root.at("transforms").is_array()) {
-        for (const auto& entry : root.at("transforms")) {
+    const auto* binding_root = hako::robots::config::FindMjcfBinding(root);
+    const common::json* binding_transforms = nullptr;
+    if (binding_root != nullptr &&
+        binding_root->contains("transforms") &&
+        binding_root->at("transforms").is_array())
+    {
+        binding_transforms = &binding_root->at("transforms");
+    }
+    if (spec_root.contains("transforms") && spec_root.at("transforms").is_array()) {
+        for (const auto& entry : spec_root.at("transforms")) {
             binding::TransformBinding binding {};
             binding.parent_frame_id = common::get_json_string(entry, "parent_frame_id", "");
             binding.child_frame_id = common::get_json_string(entry, "child_frame_id", "");
             binding.source_body = common::get_json_string(entry, "source_body", "");
+            if (binding_transforms != nullptr && binding_transforms->is_array()) {
+                for (const auto& binding_entry : *binding_transforms) {
+                    const auto child_frame_id = common::get_json_string(binding_entry, "child_frame_id", "");
+                    if (child_frame_id == binding.child_frame_id) {
+                        binding.source_body = common::get_json_string(
+                            binding_entry,
+                            "source_body",
+                            binding.source_body);
+                        break;
+                    }
+                }
+            }
             config_.transforms.push_back(binding);
             child_to_body_[binding.child_frame_id] = binding.source_body;
             if (!binding.source_body.empty()) {

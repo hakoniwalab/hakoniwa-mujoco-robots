@@ -46,6 +46,7 @@ namespace hako::robots::sensor::lidar
 
     struct LiDAR2DConfig
     {
+        OutputBinding output {};
         std::string frame_id {"laser"};
         DetectionDistance detection_distance {};
         AngleRange angle_range {};

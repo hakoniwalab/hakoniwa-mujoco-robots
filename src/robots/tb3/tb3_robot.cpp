@@ -197,6 +197,31 @@ hako::robots::types::Euler Tb3Robot::GetBaseScanEuler() const
     return drive_->base_scan_euler();
 }
 
+std::string Tb3Robot::GetLaserScanPduName() const
+{
+    return lidar_sensor_.GetConfig().output.pdu_name;
+}
+
+std::string Tb3Robot::GetImuPduName() const
+{
+    return imu_sensor_.GetConfig().output.pdu_name;
+}
+
+std::string Tb3Robot::GetJointStatePduName() const
+{
+    return joint_state_sensor_.GetConfig().output.pdu_name;
+}
+
+std::string Tb3Robot::GetOdometryPduName() const
+{
+    return odom_sensor_.GetConfig().output.pdu_name;
+}
+
+std::string Tb3Robot::GetTfPduName() const
+{
+    return tf_sensor_.GetConfig().output.pdu_name;
+}
+
 bool Tb3Robot::MaybeBuildImu(
     double sim_timestep,
     double sim_time_sec,

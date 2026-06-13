@@ -1,23 +1,32 @@
 {
   "$schema": "../schema/imu-output.schema.json",
-  "type": "imu",
-  "name": "imu",
-  "pdu_name": "imu",
-  "frame_id": "imu_link",
-  "parent_body": "base_link",
-  "source_body": "base_link",
-  "update_rate_hz": 100.0,
-  "mode": "ground_truth",
-  "noise": {
-    "angular_velocity": {
-      "x": { "type": "none" },
-      "y": { "type": "none" },
-      "z": { "type": "none" }
-    },
-    "linear_acceleration": {
-      "x": { "type": "none" },
-      "y": { "type": "none" },
-      "z": { "type": "none" }
+  "spec": {
+    "type": "imu",
+    "name": "imu",
+    "frame_id": "imu_link",
+    "mode": "ground_truth",
+    "noise": {
+      "angular_velocity": {
+        "x": { "type": "none" },
+        "y": { "type": "none" },
+        "z": { "type": "none" }
+      },
+      "linear_acceleration": {
+        "x": { "type": "none" },
+        "y": { "type": "none" },
+        "z": { "type": "none" }
+      }
     }
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "parent_body": "base_link",
+    "source_body": "base_link"
+  },
+  "pdu_config": {
+    "pdu_name": "imu",
+    "update_rate_hz": 100.0,
+    "message_type": "sensor_msgs/Imu"
   }
 }

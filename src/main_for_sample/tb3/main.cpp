@@ -186,14 +186,21 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     hakoniwa::pdu::Endpoint endpoint(runtime.endpoint_name, HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
     endpoint.open(runtime.endpoint_path);
 
+    std::string tb3_error;
+    if (!tb3.Initialize(&tb3_error)) {
+        std::cerr << "ERROR: " << tb3_error << std::endl;
+        endpoint.close();
+        return -1;
+    }
+
     const hakoniwa::pdu::PduKey gamepad_key      {"TB3", "hako_cmd_game"};
     const hakoniwa::pdu::PduKey base_pos_key     {"TB3", "base_link_pos"};
     const hakoniwa::pdu::PduKey base_scan_pos_key{"TB3", "base_scan_pos"};
-    const hakoniwa::pdu::PduKey laser_scan_key   {"TB3", "laser_scan"};
-    const hakoniwa::pdu::PduKey imu_key          {"TB3", "imu"};
-    const hakoniwa::pdu::PduKey joint_state_key  {"TB3", "joint_states"};
-    const hakoniwa::pdu::PduKey odom_key         {"TB3", "odom"};
-    const hakoniwa::pdu::PduKey tf_key           {"TB3", "tf"};
+    const hakoniwa::pdu::PduKey laser_scan_key   {"TB3", tb3.GetLaserScanPduName()};
+    const hakoniwa::pdu::PduKey imu_key          {"TB3", tb3.GetImuPduName()};
+    const hakoniwa::pdu::PduKey joint_state_key  {"TB3", tb3.GetJointStatePduName()};
+    const hakoniwa::pdu::PduKey odom_key         {"TB3", tb3.GetOdometryPduName()};
+    const hakoniwa::pdu::PduKey tf_key           {"TB3", tb3.GetTfPduName()};
 
     endpoint.start();
     endpoint.post_start();
@@ -214,14 +221,6 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         endpoint,
         gamepad_key,
         command_config);
-
-    std::string tb3_error;
-    if (!tb3.Initialize(&tb3_error)) {
-        std::cerr << "ERROR: " << tb3_error << std::endl;
-        endpoint.stop();
-        endpoint.close();
-        return -1;
-    }
 
     hako::robots::sensor::ImuFrame imu_frame {};
     hako::robots::sensor::lidar::LaserScanFrame laser_scan_frame {};

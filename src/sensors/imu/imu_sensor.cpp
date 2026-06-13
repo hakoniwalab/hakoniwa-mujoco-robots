@@ -1,6 +1,7 @@
 #include "sensors/imu/imu_sensor.hpp"
 
 #include <utility>
+#include "config/json_config_utils.hpp"
 #include "sensors/common/json_utils.hpp"
 
 namespace hako::robots::sensor
@@ -96,16 +97,28 @@ bool ImuSensor::LoadConfig(const std::string& config_path)
     }
 
     config_ = ImuConfig {};
-    config_.output.name = common::get_json_string(root, "name", "imu");
-    config_.output.pdu_name = common::get_json_string(root, "pdu_name", "imu");
-    config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", 100.0);
-    config_.frame_id = common::get_json_string(root, "frame_id", "imu_link");
-    config_.parent_body = common::get_json_string(root, "parent_body", "");
-    config_.source_body = common::get_json_string(root, "source_body", config_.parent_body);
-    config_.mode = common::get_json_string(root, "mode", "ground_truth");
+    const auto* spec = hako::robots::config::FindObject(root, "spec");
+    const auto& spec_root = (spec != nullptr) ? *spec : root;
 
-    if (root.contains("noise") && root.at("noise").is_object()) {
-        const auto& noise_root = root.at("noise");
+    config_.output.name = common::get_json_string(spec_root, "name", "imu");
+    config_.output.pdu_name = "imu";
+    config_.output.update_rate_hz = 100.0;
+    if (spec == nullptr) {
+        config_.output.pdu_name = common::get_json_string(root, "pdu_name", config_.output.pdu_name);
+        config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", config_.output.update_rate_hz);
+    }
+    hako::robots::config::ReadPduConfig(root, config_.output.pdu_name, config_.output.update_rate_hz);
+
+    config_.frame_id = common::get_json_string(spec_root, "frame_id", "imu_link");
+    config_.mode = common::get_json_string(spec_root, "mode", "ground_truth");
+
+    const auto* mjcf_binding = hako::robots::config::FindMjcfBinding(root);
+    const auto& binding_root = (mjcf_binding != nullptr) ? *mjcf_binding : root;
+    config_.parent_body = common::get_json_string(binding_root, "parent_body", "");
+    config_.source_body = common::get_json_string(binding_root, "source_body", config_.parent_body);
+
+    if (spec_root.contains("noise") && spec_root.at("noise").is_object()) {
+        const auto& noise_root = spec_root.at("noise");
         if (noise_root.contains("angular_velocity") && noise_root.at("angular_velocity").is_object()) {
             config_.noise.angular_velocity = parse_axis_noise_config(noise_root.at("angular_velocity"));
         }

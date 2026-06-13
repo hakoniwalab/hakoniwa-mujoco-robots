@@ -1,6 +1,7 @@
 #include "sensors/odometry/odometry_sensor.hpp"
 
 #include <utility>
+#include "config/json_config_utils.hpp"
 #include "sensors/common/json_utils.hpp"
 
 namespace hako::robots::sensor
@@ -31,13 +32,25 @@ bool OdometryPublisher::LoadConfig(const std::string& config_path)
     }
 
     config_ = OdometryConfig {};
-    config_.output.name = common::get_json_string(root, "name", "odom");
-    config_.output.pdu_name = common::get_json_string(root, "pdu_name", "odom");
-    config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", 50.0);
-    config_.frame_id = common::get_json_string(root, "frame_id", "odom");
-    config_.child_frame_id = common::get_json_string(root, "child_frame_id", "base_footprint");
-    config_.source_body = common::get_json_string(root, "source_body", "base_footprint");
-    config_.mode = common::get_json_string(root, "mode", "ground_truth");
+    const auto* spec = hako::robots::config::FindObject(root, "spec");
+    const auto& spec_root = (spec != nullptr) ? *spec : root;
+
+    config_.output.name = common::get_json_string(spec_root, "name", "odom");
+    config_.output.pdu_name = "odom";
+    config_.output.update_rate_hz = 50.0;
+    if (spec == nullptr) {
+        config_.output.pdu_name = common::get_json_string(root, "pdu_name", config_.output.pdu_name);
+        config_.output.update_rate_hz = common::get_json_number(root, "update_rate_hz", config_.output.update_rate_hz);
+    }
+    hako::robots::config::ReadPduConfig(root, config_.output.pdu_name, config_.output.update_rate_hz);
+
+    config_.frame_id = common::get_json_string(spec_root, "frame_id", "odom");
+    config_.child_frame_id = common::get_json_string(spec_root, "child_frame_id", "base_footprint");
+    config_.mode = common::get_json_string(spec_root, "mode", "ground_truth");
+
+    const auto* mjcf_binding = hako::robots::config::FindMjcfBinding(root);
+    const auto& binding_root = (mjcf_binding != nullptr) ? *mjcf_binding : root;
+    config_.source_body = common::get_json_string(binding_root, "source_body", "base_footprint");
 
     source_body_ = world_->getRigidBody(config_.source_body);
     scheduler_.StartReady(GetUpdatePeriodSec());
