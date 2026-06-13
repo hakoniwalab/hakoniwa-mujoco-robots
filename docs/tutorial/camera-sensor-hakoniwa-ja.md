@@ -159,7 +159,7 @@
 
 ### ライフサイクルと呼び出し順
 この example は MuJoCo viewer を表示しながら、viewer 用の OpenGL context でカメラ画像を capture します。
-そのため、`CameraSensor::Capture()` と PDU 送信は viewer の overlay callback 側で行い、
+そのため、`CameraSensor::Capture()` と PDU 送信は viewer の pre-render callback 側で行い、
 Hakoniwa の manual timing callback はアセットのライフサイクル維持に使います。
 
 前述の通り、`hako_asset_start_no_wait()` は箱庭の start trigger を待つため、viewer を main thread で動かす場合は
@@ -171,7 +171,7 @@ endpoint の呼び出し順は次を守ります。
 3. `main()` で `endpoint.start()` を呼ぶ。
 4. worker thread で `hako_asset_start_no_wait()` を呼び、simulation start trigger を待つ。
 5. `on_initialize` callback で `endpoint.post_start()` を呼ぶ。
-6. `post_start()` 完了後、viewer overlay callback で `world->advanceTimeStep()`、`CameraSensor::Capture()`、`ImagePduAdapter::send()` を行う。
+6. `post_start()` 完了後、viewer pre-render callback で `world->advanceTimeStep()`、`CameraSensor::Capture()`、`ImagePduAdapter::send()` を行う。
 7. viewer 終了後に `endpoint.stop()` / `endpoint.close()` を呼ぶ。
 
 `endpoint.open()` / `endpoint.start()` を `on_manual_timing_control` の中で呼ばないでください。
@@ -182,7 +182,8 @@ manual timing callback は start trigger 後に呼ばれるため、endpoint の
 
 この example では、`color-camera-example.cpp` と同じく `MujocoRenderRuntime::CreateCameraRenderer(world)` を使います。
 `CameraSensor` はこの renderer を受け取り、MuJoCo XML の `camera` 名と JSON の `spec` から画像を取得します。
-OpenGL context を持つ viewer thread で capture するため、capture 処理は overlay callback 側に置きます。
+OpenGL context を持つ viewer thread で capture するため、capture 処理は pre-render callback 側に置きます。
+pre-render callback は `mjv_updateScene()` の前に呼ばれるため、MuJoCo viewer に描かれる姿勢と capture に使う姿勢が一致します。
 
 ```cpp
 #include "hakoniwa/pdu/endpoint.hpp"
@@ -221,7 +222,7 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     const hako_time_t delta_time_usec = static_cast<hako_time_t>(sim_timestep * 1e6);
 
     while (running_flag) {
-        // viewer 側の overlay callback が capture/send を行う。
+        // viewer 側の pre-render callback が capture/send を行う。
         // manual timing callback は箱庭アセットの実行状態を維持する。
         hako_asset_usleep(delta_time_usec);
     }
@@ -271,8 +272,7 @@ int main()
     camera_sensor->LoadConfig(profile.spec);
 
     ImageFrame image_frame {};
-    render_runtime.SetOverlayCallback([&](mjvScene& scene) {
-        (void)scene;
+    render_runtime.SetPreRenderCallback([&]() {
         if (!endpoint_ready.load()) {
             return;
         }
@@ -489,7 +489,7 @@ cmake --build src/cmake-build --target color-camera-hakoniwa-asset -j4
 ```
 
 Terminal 1 で C++ publisher を起動します。
-このプロセスは MuJoCo viewer を開き、viewer の overlay callback でカメラ画像を capture して PDU に送信します。
+このプロセスは MuJoCo viewer を開き、viewer の pre-render callback でカメラ画像を capture して PDU に送信します。
 
 ```bash
 ./src/cmake-build/examples/sensors/color_camera/color-camera-hakoniwa-asset
@@ -524,7 +524,8 @@ Python reader 側の OpenCV window にカメラ画像が表示されれば成功
 
 - **capture/send は viewer 側で行う**:
   カメラ画像の capture は OpenGL context に依存します。
-  この example では `hako_asset_start_no_wait()` を worker thread で動かし、main thread の MuJoCo viewer overlay callback で capture/send します。
+  この example では `hako_asset_start_no_wait()` を worker thread で動かし、main thread の MuJoCo viewer pre-render callback で capture/send します。
+  `mjv_updateScene()` 後の overlay callback で camera pose を更新すると、viewer 表示と capture 画像の位置がずれるため、pose 更新と capture は pre-render 側で行います。
 
 - **Python の OpenCV は main thread に置く**:
   `cv2.imshow()` / `cv2.waitKey()` は環境によって main thread でないと表示されません。

@@ -32,6 +32,14 @@ class MujocoCameraRenderer;
 using ViewerOverlayCallback = std::function<void(mjvScene& scene)>;
 using ViewerKeyCallback = std::function<void(int key, int action, int mods)>;
 
+/**
+ * @brief Callback invoked before mjv_updateScene().
+ *
+ * Use this for operations that mutate mjData or capture from the current
+ * OpenGL context before the viewer scene is built.
+ */
+using ViewerPreRenderCallback = std::function<void()>;
+
 enum class MujocoRenderWindowMode
 {
     Visible,
@@ -69,6 +77,7 @@ public:
     MujocoRenderRuntime& operator=(const MujocoRenderRuntime&) = delete;
 
     void SetOverlayCallback(ViewerOverlayCallback overlay);
+    void SetPreRenderCallback(ViewerPreRenderCallback pre_render);
     void SetKeyCallback(ViewerKeyCallback key_callback);
     void Run();
     void MakeContextCurrent();
@@ -97,6 +106,7 @@ private:
     std::mutex& mutex_;
     MujocoRenderWindowMode window_mode_ {MujocoRenderWindowMode::Visible};
     ViewerOverlayCallback overlay_;
+    ViewerPreRenderCallback pre_render_;
     ViewerKeyCallback key_callback_;
 
     mjvCamera camera_ {};

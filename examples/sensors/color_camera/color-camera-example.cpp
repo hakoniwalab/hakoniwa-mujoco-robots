@@ -131,8 +131,7 @@ int main(int argc, char* argv[])
         std::ref(state),
         std::ref(*camera_motion));
 
-    render_runtime.SetOverlayCallback([&](mjvScene& scene) {
-        (void)scene;
+    render_runtime.SetPreRenderCallback([&]() {
         if (!state.running.load()) {
             viewer_running.store(false);
             return;

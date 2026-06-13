@@ -282,8 +282,7 @@ int main(int argc, char* argv[])
                 viewer_running.store(false);
             }
         });
-    render_runtime.SetOverlayCallback([&](mjvScene& scene) {
-        (void)scene;
+    render_runtime.SetPreRenderCallback([&]() {
         if (!app_state.running.load()) {
             running.store(false);
             viewer_running.store(false);

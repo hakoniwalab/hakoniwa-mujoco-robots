@@ -132,6 +132,11 @@ void MujocoRenderRuntime::SetOverlayCallback(ViewerOverlayCallback overlay)
     overlay_ = std::move(overlay);
 }
 
+void MujocoRenderRuntime::SetPreRenderCallback(ViewerPreRenderCallback pre_render)
+{
+    pre_render_ = std::move(pre_render);
+}
+
 void MujocoRenderRuntime::SetKeyCallback(ViewerKeyCallback key_callback)
 {
     key_callback_ = std::move(key_callback);
@@ -151,6 +156,10 @@ void MujocoRenderRuntime::Run()
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
+
+            if (pre_render_) {
+                pre_render_();
+            }
 
             mjv_updateScene(
                 model_,
