@@ -100,13 +100,13 @@ examples/actuators/joint/
 `JointActuatorImpl` は JSON から MuJoCo actuator を解決し、目標値を `mjData::ctrl[]` に書き込みます。
 実際の制御特性は MJCF 側の actuator 種別で決まります。
 
-| JSON `type` | 対応する MJCF actuator | `ctrl[]` の意味 |
+| JSON `spec.type` | 対応する MJCF actuator | `ctrl[]` の意味 |
 | --- | --- | --- |
 | `position` | `<position>` | 目標 joint 位置 |
 | `velocity` | `<velocity>` | 目標 joint 速度 |
 | `torque` | `<motor>` | effort / torque command |
 
-JSON の `type` と MJCF actuator 種別は一致している必要があります。
+JSON の `spec.type` と MJCF actuator 種別は一致している必要があります。
 たとえば `velocity` の設定を MuJoCo の `<position>` actuator に向けることはできません。
 
 ## ロボットサンプルにセンサを追加する
@@ -149,8 +149,9 @@ actuator->SetTarget(target_velocity);
 - build や runtime の問題を調べる前に `./doctor.bash` を実行します。
 - Python 側で decode に失敗する場合は、Python と C++ が同じ PDU definition JSON を使っているか確認します。
 - センサが publish しない場合は、update rate と MJCF の source body/site/camera 名を確認します。
-- joint actuator が動かない場合は、`RuntimeBinding.actuator_name` が joint 名ではなく MuJoCo actuator 名に一致しているか確認します。
-- actuator type mismatch が出る場合は、JSON `type` と MJCF の `<position>` / `<velocity>` / `<motor>` を一致させます。
+- joint actuator が動かない場合は、`mjcf_binding.actuator_name` が joint 名ではなく MuJoCo actuator 名に一致しているか確認します。
+  旧 JSON の `RuntimeBinding.actuator_name` も互換性のため読めます。
+- actuator type mismatch が出る場合は、JSON `spec.type` と MJCF の `<position>` / `<velocity>` / `<motor>` を一致させます。
 - viewer サンプルには GUI/OpenGL context が必要です。headless 確認には CMake configure、unit test、viewer なし target を使います。
 
 ## 次に読むもの

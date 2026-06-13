@@ -103,13 +103,13 @@ examples/actuators/joint/
 `JointActuatorImpl` resolves a MuJoCo actuator from JSON and writes targets to
 `mjData::ctrl[]`. The actual control behavior comes from the MJCF actuator type:
 
-| JSON `type` | Expected MJCF actuator | Meaning of `ctrl[]` |
+| JSON `spec.type` | Expected MJCF actuator | Meaning of `ctrl[]` |
 | --- | --- | --- |
 | `position` | `<position>` | target joint position |
 | `velocity` | `<velocity>` | target joint velocity |
 | `torque` | `<motor>` | applied effort / torque command |
 
-The JSON type and MJCF actuator type must match. A config for `velocity` should
+The JSON `spec.type` and MJCF actuator type must match. A config for `velocity` should
 not point at a MuJoCo `<position>` actuator.
 
 ## Add A Sensor To A Robot Sample
@@ -157,9 +157,10 @@ actuator->SetTarget(target_velocity);
   process are using the same PDU definition JSON.
 - If a sensor publishes no data, check the update rate and whether the source
   body/site/camera name exists in the MJCF model.
-- If a joint actuator does nothing, check that `RuntimeBinding.actuator_name`
+- If a joint actuator does nothing, check that `mjcf_binding.actuator_name`
   matches a MuJoCo actuator name, not just a joint name.
-- If a joint actuator reports a type mismatch, make the JSON `type` match the
+  The old `RuntimeBinding.actuator_name` key is still accepted for compatibility.
+- If a joint actuator reports a type mismatch, make the JSON `spec.type` match the
   MJCF actuator element: `<position>`, `<velocity>`, or `<motor>`.
 - Viewer examples need a GUI/OpenGL context. For headless checks, use CMake
   configure, focused unit tests, or non-viewer targets.

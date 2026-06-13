@@ -1,13 +1,20 @@
 {
   "$schema": "../schema/joint-actuator.schema.json",
-  "joint_name": "velocity_hinge",
-  "type": "velocity",
-  "limit": {
-    "velocity": 4.0
+  "spec": {
+    "joint_name": "velocity_hinge",
+    "type": "velocity",
+    "limit": {
+      "velocity": 4.0
+    }
   },
-  "RuntimeBinding": {
+  "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "actuator_name": "velocity_servo"
+  },
+  "pdu_config": {
+    "pdu_name": "velocity_target",
+    "update_rate_hz": 50.0,
+    "message_type": "std_msgs/Float64"
   }
 }

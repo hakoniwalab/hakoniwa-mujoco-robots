@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "joint-actuator-command",
+      "path": "joint-actuator-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "JointActuatorAsset",
+      "pdutypes_id": "joint-actuator-command"
+    }
+  ]
+}

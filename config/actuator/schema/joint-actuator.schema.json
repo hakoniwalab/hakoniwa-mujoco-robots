@@ -5,20 +5,79 @@
   "description": "SDF-like but MJCF-resolved JSON config for joint actuators used by Hakoniwa MuJoCo controllers.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "joint_name",
-    "type"
+  "oneOf": [
+    {
+      "required": ["spec"],
+      "not": {
+        "anyOf": [
+          { "required": ["joint_name"] },
+          { "required": ["type"] }
+        ]
+      }
+    },
+    {
+      "required": ["joint_name", "type"],
+      "not": {
+        "required": ["spec"]
+      }
+    }
   ],
   "properties": {
     "$schema": {
       "type": "string"
     },
+    "spec": {
+      "$ref": "#/$defs/spec"
+    },
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
+    },
+    "RuntimeBinding": {
+      "$ref": "#/$defs/mjcfBinding",
+      "description": "Backward-compatible key for mjcf_binding."
+    },
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
+    },
     "joint_name": {
       "type": "string",
       "minLength": 1,
-      "description": "The name of the target hinge/revolute joint to actuate."
+      "description": "Backward-compatible top-level target MJCF joint name. Prefer spec.joint_name."
     },
     "type": {
+      "$ref": "#/$defs/actuatorType",
+      "description": "Backward-compatible top-level control mode. Prefer spec.type."
+    },
+    "limit": {
+      "$ref": "#/$defs/limit"
+    },
+    "dynamics": {
+      "$ref": "#/$defs/dynamics"
+    }
+  },
+  "$defs": {
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["joint_name", "type"],
+      "properties": {
+        "joint_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The name of the target hinge/revolute joint to actuate."
+        },
+        "type": {
+          "$ref": "#/$defs/actuatorType"
+        },
+        "limit": {
+          "$ref": "#/$defs/limit"
+        },
+        "dynamics": {
+          "$ref": "#/$defs/dynamics"
+        }
+      }
+    },
+    "actuatorType": {
       "type": "string",
       "enum": ["position", "velocity", "torque"],
       "description": "The control mode: position (angle), velocity (speed), or torque (force)."
@@ -29,21 +88,21 @@
       "properties": {
         "lower": {
           "type": "number",
-          "description": "Lower limit of the joint (radians for hinge)."
+          "description": "Lower limit of the joint target (radians for hinge position)."
         },
         "upper": {
           "type": "number",
-          "description": "Upper limit of the joint (radians for hinge)."
+          "description": "Upper limit of the joint target (radians for hinge position)."
         },
         "effort": {
           "type": "number",
           "minimum": 0,
-          "description": "Maximum torque/force allowed."
+          "description": "Maximum torque/force target allowed."
         },
         "velocity": {
           "type": "number",
           "minimum": 0,
-          "description": "Maximum velocity allowed."
+          "description": "Maximum velocity target allowed."
         }
       }
     },
@@ -54,16 +113,16 @@
         "damping": {
           "type": "number",
           "minimum": 0,
-          "description": "Damping coefficient."
+          "description": "Damping coefficient metadata."
         },
         "friction": {
           "type": "number",
           "minimum": 0,
-          "description": "Friction coefficient."
+          "description": "Friction coefficient metadata."
         }
       }
     },
-    "RuntimeBinding": {
+    "mjcfBinding": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -77,6 +136,27 @@
           "type": "string",
           "minLength": 1,
           "description": "Optional name of the matching MJCF actuator element. If omitted, resolved by joint name."
+        }
+      }
+    },
+    "pduConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pdu_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command PDU channel name when this actuator is driven from Hakoniwa PDU."
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Expected command processing rate."
+        },
+        "message_type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command PDU message type."
         }
       }
     }

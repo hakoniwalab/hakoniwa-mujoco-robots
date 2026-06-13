@@ -26,7 +26,7 @@ conceptual containers:
 
 - `spec`: the physical or behavioral specification
 - `mjcf_binding`: names of MJCF objects used by the runtime
-- `pdu_config`: PDU channel and publish-rate settings
+- `pdu_config`: PDU channel and communication-rate settings
 
 Current JSON files do not always use those exact container keys. Many `spec`
 fields are top-level fields, and `mjcf_binding` is currently represented by
@@ -532,15 +532,19 @@ config/actuator/joint/tb3_right_wheel.json
 
 Key fields:
 
-- `joint_name`: target MJCF joint name
-- `type`: `position`, `velocity`, or `torque`
-- `limit.lower`
-- `limit.upper`
-- `limit.effort`
-- `limit.velocity`
-- `dynamics.damping`
-- `dynamics.friction`
-- `RuntimeBinding.actuator_name`
+- `spec.joint_name`: target MJCF joint name
+- `spec.type`: `position`, `velocity`, or `torque`
+- `spec.limit.lower`
+- `spec.limit.upper`
+- `spec.limit.effort`
+- `spec.limit.velocity`
+- `spec.dynamics.damping`
+- `spec.dynamics.friction`
+- `mjcf_binding.actuator_name`
+
+Backward-compatible top-level `joint_name` / `type` / `limit` / `dynamics` and
+`RuntimeBinding.actuator_name` are still accepted by the schema and loader, but
+new configs should use `spec` and `mjcf_binding`.
 
 PDU mapping:
 

@@ -33,7 +33,7 @@ three conceptual containers.
 | --- | --- | --- |
 | `spec` | Sensor or actuator specification | `DetectionDistance`, `AngleRange`, `DistanceAccuracy`, `type`, `limit` |
 | `mjcf_binding` | Binding to MJCF object names | `source_body`, `source_site`, `actuator_name`, `mjcf_joint` |
-| `pdu_config` | Hakoniwa PDU publishing config | `pdu_name`, `update_rate_hz`, PDU message type |
+| `pdu_config` | Hakoniwa PDU input/output config | `pdu_name`, `update_rate_hz`, PDU message type |
 
 Conceptually:
 
@@ -56,9 +56,9 @@ Conceptually:
 }
 ```
 
-The current JSON files are not fully nested this way. For compatibility, many
-`spec` fields are top-level fields, and `mjcf_binding` is currently represented
-by the `RuntimeBinding` key.
+Some older JSON files are not fully nested this way. For compatibility, some
+`spec` fields may still appear as top-level fields, and `mjcf_binding` may be
+represented by the `RuntimeBinding` key.
 
 ```json
 {
@@ -74,7 +74,7 @@ by the `RuntimeBinding` key.
 ```
 
 This guide uses `spec` / `mjcf_binding` / `pdu_config` for explanation and also
-mentions the current JSON key names.
+mentions backward-compatible JSON key names where they still matter.
 
 ## Current Common Shape
 
@@ -201,7 +201,9 @@ That is checked when the model and config are loaded by runtime code.
 }
 ```
 
-`pdu_config` describes how MuJoCo state is published:
+`pdu_config` describes how the component connects to Hakoniwa PDU. For sensors
+it usually describes published MuJoCo state. For actuators it describes the
+command PDU channel to receive:
 
 ```json
 {
@@ -229,12 +231,14 @@ An actuator profile defines how a target is written to a MuJoCo actuator.
 ```json
 {
   "$schema": "../schema/joint-actuator.schema.json",
-  "joint_name": "left_wheel_joint",
-  "type": "velocity",
-  "limit": {
-    "velocity": 12.0
+  "spec": {
+    "joint_name": "left_wheel_joint",
+    "type": "velocity",
+    "limit": {
+      "velocity": 12.0
+    }
   },
-  "RuntimeBinding": {
+  "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "actuator_name": "left_wheel_velocity"
@@ -242,10 +246,12 @@ An actuator profile defines how a target is written to a MuJoCo actuator.
 }
 ```
 
-`joint_name` is the MJCF joint name. `RuntimeBinding.actuator_name` is the MJCF
-actuator name.
+`spec.joint_name` is the MJCF joint name. `mjcf_binding.actuator_name` is the
+MJCF actuator name. `spec.type` must match the MJCF actuator kind.
+Backward-compatible top-level `joint_name` / `type` and `RuntimeBinding` are
+still accepted, but new configs should use `spec` and `mjcf_binding`.
 
-| JSON `type` | MJCF |
+| JSON `spec.type` | MJCF |
 | --- | --- |
 | `position` | `<position>` |
 | `velocity` | `<velocity>` |
@@ -321,7 +327,7 @@ running endpoint or that a binding points to the intended physical object.
 2. Keep `$schema`.
 3. Keep track of whether you are editing `spec`, `mjcf_binding`, or `pdu_config`.
 4. Decide `name`, `frame_id`, and `pdu_name` separately.
-5. Match `RuntimeBinding` and `mjcf_joint` to MJCF names.
+5. Match `mjcf_binding` and `mjcf_joint` to MJCF names.
 6. Run `tools/validate_assets.py`.
 7. Run the closest example until `LoadConfig()` succeeds.
 8. Change PDU definition and endpoint config only when communication is needed.

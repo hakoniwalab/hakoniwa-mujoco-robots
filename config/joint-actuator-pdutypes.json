@@ -1,0 +1,14 @@
+[
+  {
+    "channel_id": 0,
+    "pdu_size": 32,
+    "name": "position_target",
+    "type": "std_msgs/Float64"
+  },
+  {
+    "channel_id": 1,
+    "pdu_size": 32,
+    "name": "velocity_target",
+    "type": "std_msgs/Float64"
+  }
+]

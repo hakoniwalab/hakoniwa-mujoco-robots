@@ -27,10 +27,10 @@ and actuators.
 | --- | --- | --- |
 | Read robot pose | `<body name="...">` | body name |
 | Read LiDAR pose | `<body name="base_scan">` or similar | sensor body name |
-| Ultrasonic origin and direction | `<site name="front_ultrasonic_site">` | `RuntimeBinding.source_site` |
+| Ultrasonic origin and direction | `<site name="front_ultrasonic_site">` | `mjcf_binding.source_site` |
 | RGB / depth camera | `<camera name="color_camera">` | camera name |
 | Joint state | `<joint name="...">` | `joints[].mjcf_joint` |
-| Joint actuator | `<position>`, `<velocity>`, `<motor>` | `RuntimeBinding.actuator_name` |
+| Joint actuator | `<position>`, `<velocity>`, `<motor>` | `mjcf_binding.actuator_name` |
 
 Choose names that describe their role, such as `base_link`, `base_scan`,
 `front_ultrasonic_site`, `left_wheel_joint`, or `left_wheel_velocity`.
@@ -51,7 +51,7 @@ For cameras, use MuJoCo `<camera name="...">`. The camera name passed to
 ## Actuator MJCF Rules Of Thumb
 
 For a joint actuator, define both the joint and the matching MJCF actuator.
-The JSON `type` must match the MJCF actuator element.
+The JSON `spec.type` must match the MJCF actuator element.
 
 ```xml
 <joint name="wheel_joint" type="hinge" axis="0 1 0"/>
@@ -63,16 +63,18 @@ Matching JSON:
 ```json
 {
   "$schema": "../../schema/joint-actuator.schema.json",
-  "joint_name": "wheel_joint",
-  "type": "velocity",
-  "RuntimeBinding": {
+  "spec": {
+    "joint_name": "wheel_joint",
+    "type": "velocity"
+  },
+  "mjcf_binding": {
     "actuator_name": "wheel_velocity"
   }
 }
 ```
 
-`joint_name` is the joint name. `RuntimeBinding.actuator_name` is the actuator
-name. Treating them as the same thing is a common source of confusion.
+`spec.joint_name` is the joint name. `mjcf_binding.actuator_name` is the
+actuator name. Treating them as the same thing is a common source of confusion.
 
 ## What Goes In JSON
 
@@ -153,9 +155,9 @@ Check these names carefully:
 - `source_site` matches an MJCF `<site name="...">`.
 - camera name matches an MJCF `<camera name="...">`.
 - `mjcf_joint` matches an MJCF `<joint name="...">`.
-- `RuntimeBinding.actuator_name` matches a `<position>`, `<velocity>`, or
+- `mjcf_binding.actuator_name` matches a `<position>`, `<velocity>`, or
   `<motor>` actuator name.
-- actuator JSON `type` matches the MJCF actuator type.
+- actuator JSON `spec.type` matches the MJCF actuator type.
 
 ## Before C++ Integration
 
@@ -204,7 +206,7 @@ valid together.
 - The XML is well-formed but not loadable as a MuJoCo model.
 - JSON names do not match MJCF body/site/camera/joint/actuator names.
 - `frame_id` is confused with an MJCF object name.
-- Actuator JSON `type` does not match the MJCF actuator type.
+- Actuator JSON `spec.type` does not match the MJCF actuator type.
 - Sensor direction is different from the assumed local axis. Ultrasonic uses
   site local `+X`; LiDAR depends on the integration's reference body yaw.
 - JSON Schema validation passes, but MJCF binding fails. Schema validation

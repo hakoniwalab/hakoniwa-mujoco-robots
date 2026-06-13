@@ -1,0 +1,6 @@
+{
+  "name": "joint_actuator_endpoint",
+  "pdu_def_path": "../joint-actuator-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_joint_actuator_comm.json"
+}

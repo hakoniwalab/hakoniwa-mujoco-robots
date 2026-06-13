@@ -51,13 +51,26 @@ The config resolves the MuJoCo actuator by name:
 
 ```json
 {
-  "joint_name": "position_hinge",
-  "type": "position",
-  "RuntimeBinding": {
+  "spec": {
+    "joint_name": "position_hinge",
+    "type": "position",
+    "limit": {
+      "lower": -0.8,
+      "upper": 0.8
+    }
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
     "actuator_name": "position_servo"
   }
 }
 ```
+
+`spec.joint_name` is the MJCF joint name. `mjcf_binding.actuator_name` is the
+MJCF actuator name. The older top-level `joint_name` / `type` and
+`RuntimeBinding` format is still accepted for compatibility, but new configs
+should use `spec` and `mjcf_binding`.
 
 The model defines the actual actuator behavior:
 

@@ -32,6 +32,11 @@ namespace hako::robots::actuator
             double friction {0.0};
         } dynamics;
         std::string actuator_name;
+        struct {
+            std::string pdu_name;
+            double update_rate_hz {0.0};
+            std::string message_type;
+        } pdu_config;
     };
 
     struct JointActuatorTarget {

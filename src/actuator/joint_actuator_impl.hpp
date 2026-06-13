@@ -78,17 +78,22 @@ namespace hako::robots::actuator::impl
             }
 
             config_ = JointActuatorConfig {};
-            if (!j.contains("joint_name") || !j.at("joint_name").is_string()) {
+            const nlohmann::json* spec = &j;
+            if (j.contains("spec") && j.at("spec").is_object()) {
+                spec = &j.at("spec");
+            }
+
+            if (!spec->contains("joint_name") || !spec->at("joint_name").is_string()) {
                 std::cerr << "[ERROR] config missing required joint_name" << std::endl;
                 return false;
             }
-            config_.joint_name = j.at("joint_name").get<std::string>();
+            config_.joint_name = spec->at("joint_name").get<std::string>();
 
-            if (!j.contains("type") || !j.at("type").is_string()) {
+            if (!spec->contains("type") || !spec->at("type").is_string()) {
                 std::cerr << "[ERROR] config missing required type" << std::endl;
                 return false;
             }
-            std::string type_str = j.at("type").get<std::string>();
+            std::string type_str = spec->at("type").get<std::string>();
             if (type_str == "position") {
                 config_.type = ActuatorType::Position;
             } else if (type_str == "velocity") {
@@ -100,8 +105,8 @@ namespace hako::robots::actuator::impl
                 return false;
             }
 
-            if (j.contains("limit") && j.at("limit").is_object()) {
-                const auto& limit_obj = j.at("limit");
+            if (spec->contains("limit") && spec->at("limit").is_object()) {
+                const auto& limit_obj = spec->at("limit");
                 config_.limit.has_limits = true;
                 if (limit_obj.contains("lower") && limit_obj.at("lower").is_number()) {
                     config_.limit.lower = limit_obj.at("lower").get<double>();
@@ -117,8 +122,8 @@ namespace hako::robots::actuator::impl
                 }
             }
 
-            if (j.contains("dynamics") && j.at("dynamics").is_object()) {
-                const auto& dyn_obj = j.at("dynamics");
+            if (spec->contains("dynamics") && spec->at("dynamics").is_object()) {
+                const auto& dyn_obj = spec->at("dynamics");
                 if (dyn_obj.contains("damping") && dyn_obj.at("damping").is_number()) {
                     config_.dynamics.damping = dyn_obj.at("damping").get<double>();
                 }
@@ -127,10 +132,28 @@ namespace hako::robots::actuator::impl
                 }
             }
 
-            if (j.contains("RuntimeBinding") && j.at("RuntimeBinding").is_object()) {
-                const auto& binding_obj = j.at("RuntimeBinding");
+            const nlohmann::json* binding = nullptr;
+            if (j.contains("mjcf_binding") && j.at("mjcf_binding").is_object()) {
+                binding = &j.at("mjcf_binding");
+            } else if (j.contains("RuntimeBinding") && j.at("RuntimeBinding").is_object()) {
+                binding = &j.at("RuntimeBinding");
+            }
+            if (binding != nullptr) {
+                const auto& binding_obj = *binding;
                 if (binding_obj.contains("actuator_name") && binding_obj.at("actuator_name").is_string()) {
                     config_.actuator_name = binding_obj.at("actuator_name").get<std::string>();
+                }
+            }
+            if (j.contains("pdu_config") && j.at("pdu_config").is_object()) {
+                const auto& pdu_obj = j.at("pdu_config");
+                if (pdu_obj.contains("pdu_name") && pdu_obj.at("pdu_name").is_string()) {
+                    config_.pdu_config.pdu_name = pdu_obj.at("pdu_name").get<std::string>();
+                }
+                if (pdu_obj.contains("update_rate_hz") && pdu_obj.at("update_rate_hz").is_number()) {
+                    config_.pdu_config.update_rate_hz = pdu_obj.at("update_rate_hz").get<double>();
+                }
+                if (pdu_obj.contains("message_type") && pdu_obj.at("message_type").is_string()) {
+                    config_.pdu_config.message_type = pdu_obj.at("message_type").get<std::string>();
                 }
             }
 

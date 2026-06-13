@@ -8,6 +8,10 @@ Step-by-step tasks that attach, configure, and run a concrete component.
 
 - [Camera sensor tutorial](tutorial/camera-sensor-ja.md)
 - [Hakoniwa camera sensor asset tutorial](tutorial/camera-sensor-hakoniwa-ja.md)
+- [Ultrasonic sensor tutorial](tutorial/ultrasonic-sensor-ja.md)
+- [Hakoniwa ultrasonic sensor asset tutorial](tutorial/ultrasonic-sensor-hakoniwa-ja.md)
+- [Joint actuator tutorial](tutorial/joint-actuator-ja.md)
+- [Hakoniwa joint actuator asset tutorial](tutorial/joint-actuator-hakoniwa-ja.md)
 
 ## Guide
 

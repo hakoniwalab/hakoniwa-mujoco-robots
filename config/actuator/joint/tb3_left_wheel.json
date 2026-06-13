@@ -1,17 +1,24 @@
 {
   "$schema": "../schema/joint-actuator.schema.json",
-  "joint_name": "wheel_left_joint",
-  "type": "velocity",
-  "limit": {
-    "velocity": 12.0
+  "spec": {
+    "joint_name": "wheel_left_joint",
+    "type": "velocity",
+    "limit": {
+      "velocity": 12.0
+    },
+    "dynamics": {
+      "damping": 0.1,
+      "friction": 0.0
+    }
   },
-  "dynamics": {
-    "damping": 0.1,
-    "friction": 0.0
-  },
-  "RuntimeBinding": {
+  "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "actuator_name": "left_motor"
+  },
+  "pdu_config": {
+    "pdu_name": "left_wheel_target",
+    "update_rate_hz": 50.0,
+    "message_type": "std_msgs/Float64"
   }
 }
