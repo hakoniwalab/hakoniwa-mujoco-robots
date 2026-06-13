@@ -82,26 +82,18 @@
           }
         },
         "pdu_config": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "pdu_name",
-            "update_rate_hz",
-            "message_type"
-          ],
-          "properties": {
-            "pdu_name": {
-              "type": "string",
-              "minLength": 1
+          "allOf": [
+            {
+              "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/requiredPduConfig"
             },
-            "update_rate_hz": {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            "message_type": {
-              "const": "sensor_msgs/JointState"
+            {
+              "properties": {
+                "message_type": {
+                  "const": "sensor_msgs/JointState"
+                }
+              }
             }
-          }
+          ]
         }
       }
     },

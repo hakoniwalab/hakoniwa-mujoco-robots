@@ -1,5 +1,7 @@
 #include "sensors/joint_state/joint_state_sensor.hpp"
 
+#include "config/json_config_utils.hpp"
+
 #include <stdexcept>
 #include <unordered_map>
 #include <utility>
@@ -22,19 +24,21 @@ bool JointStateSensor::LoadConfig(const std::string& config_path)
     config_ = JointStateConfig {};
     if (root.contains("spec") && root.at("spec").is_object()) {
         const auto& spec = root.at("spec");
-        const auto& pdu_config = root.at("pdu_config");
         config_.output.name = common::get_json_string(spec, "name", "joint_states");
-        config_.output.pdu_name = common::get_json_string(pdu_config, "pdu_name", "joint_states");
-        config_.output.update_rate_hz =
-            common::get_json_number(pdu_config, "update_rate_hz", 50.0);
+        config_.output.pdu_name = "joint_states";
+        config_.output.update_rate_hz = 50.0;
+        hako::robots::config::ReadPduConfig(
+            root,
+            config_.output.pdu_name,
+            config_.output.update_rate_hz);
 
         std::unordered_map<std::string, std::string> mjcf_joint_by_name;
-        if (root.contains("mjcf_binding") &&
-            root.at("mjcf_binding").is_object() &&
-            root.at("mjcf_binding").contains("joints") &&
-            root.at("mjcf_binding").at("joints").is_array())
+        const auto* mjcf_binding = hako::robots::config::FindMjcfBinding(root);
+        if (mjcf_binding != nullptr &&
+            mjcf_binding->contains("joints") &&
+            mjcf_binding->at("joints").is_array())
         {
-            for (const auto& entry : root.at("mjcf_binding").at("joints")) {
+            for (const auto& entry : mjcf_binding->at("joints")) {
                 const std::string name = common::get_json_string(entry, "name", "");
                 if (!name.empty()) {
                     mjcf_joint_by_name[name] =

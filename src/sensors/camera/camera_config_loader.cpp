@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 
+#include "config/json_config_utils.hpp"
 #include "sensors/common/json_utils.hpp"
 
 namespace hako::robots::sensor::camera
@@ -185,12 +186,7 @@ bool ParseCameraConfigJson(const json& root, const std::string& path, CameraConf
 
 void LoadCameraMjcfBindingIfPresent(const json& root, CameraMjcfBinding& out)
 {
-    const json* binding = nullptr;
-    if (root.contains("mjcf_binding") && root.at("mjcf_binding").is_object()) {
-        binding = &root.at("mjcf_binding");
-    } else if (root.contains("RuntimeBinding") && root.at("RuntimeBinding").is_object()) {
-        binding = &root.at("RuntimeBinding");
-    }
+    const json* binding = hako::robots::config::FindMjcfBinding(root);
     if (binding == nullptr) {
         return;
     }
@@ -208,17 +204,10 @@ void LoadCameraMjcfBindingIfPresent(const json& root, CameraMjcfBinding& out)
 
 void LoadCameraPduConfigIfPresent(const json& root, CameraPduConfig& out)
 {
-    if (!root.contains("pdu_config") || !root.at("pdu_config").is_object()) {
-        return;
-    }
-
-    const auto& pdu = root.at("pdu_config");
-    if (pdu.contains("pdu_name") && pdu.at("pdu_name").is_string()) {
-        out.pdu_name = pdu.at("pdu_name").get<std::string>();
-    }
-    if (pdu.contains("update_rate_hz") && pdu.at("update_rate_hz").is_number()) {
-        out.update_rate_hz = pdu.at("update_rate_hz").get<double>();
-    }
+    hako::robots::config::ReadPduConfig(
+        root,
+        out.pdu_name,
+        out.update_rate_hz);
 }
 
 bool ParseDepthCameraConfigJson(const json& root, const std::string& path, DepthCameraConfig& out)

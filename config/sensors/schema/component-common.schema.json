@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/component-common.schema.json",
+  "title": "Hakoniwa component common schema fragments",
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pduConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pdu_name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "message_type": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "requiredPduConfig": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/pduConfig"
+        },
+        {
+          "required": [
+            "pdu_name",
+            "update_rate_hz",
+            "message_type"
+          ]
+        }
+      ]
+    },
+    "mjcfBindingBase": {
+      "type": "object",
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        }
+      }
+    },
+    "mjcfNamedBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "mjcf_joint": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    }
+  }
+}

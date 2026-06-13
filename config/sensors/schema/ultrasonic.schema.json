@@ -205,22 +205,19 @@
       }
     },
     "pduConfig": {
-      "type": "object",
       "description": "Optional Hakoniwa PDU output settings.",
-      "additionalProperties": false,
-      "properties": {
-        "pdu_name": {
-          "type": "string",
-          "minLength": 1
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/pduConfig"
         },
-        "update_rate_hz": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "message_type": {
-          "const": "sensor_msgs/Range"
+        {
+          "properties": {
+            "message_type": {
+              "const": "sensor_msgs/Range"
+            }
+          }
         }
-      }
+      ]
     }
   }
 }

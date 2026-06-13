@@ -1,4 +1,5 @@
 #include "sensors/ultrasonic/ultrasonic_sensor.hpp"
+#include "config/json_config_utils.hpp"
 #include "sensors/common/json_utils.hpp"
 
 #include <mujoco/mujoco.h>
@@ -61,13 +62,7 @@ const common::json& spec_root(const common::json& root)
 
 const common::json* binding_root(const common::json& root)
 {
-    if (root.contains("mjcf_binding") && root.at("mjcf_binding").is_object()) {
-        return &root.at("mjcf_binding");
-    }
-    if (root.contains("RuntimeBinding") && root.at("RuntimeBinding").is_object()) {
-        return &root.at("RuntimeBinding");
-    }
-    return nullptr;
+    return hako::robots::config::FindMjcfBinding(root);
 }
 
 double find_stddev_for_range(const UltrasonicConfig& config, double range)
@@ -191,15 +186,11 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
                 rb->value("source_site", config_.runtime_binding.source_site);
         }
 
-        if (root.contains("pdu_config") && root.at("pdu_config").is_object()) {
-            const auto& pdu = root.at("pdu_config");
-            config_.pdu_config.pdu_name =
-                pdu.value("pdu_name", config_.pdu_config.pdu_name);
-            config_.pdu_config.update_rate_hz =
-                pdu.value("update_rate_hz", config_.pdu_config.update_rate_hz);
-            config_.pdu_config.message_type =
-                pdu.value("message_type", config_.pdu_config.message_type);
-        }
+        hako::robots::config::ReadPduConfig(
+            root,
+            config_.pdu_config.pdu_name,
+            config_.pdu_config.update_rate_hz,
+            &config_.pdu_config.message_type);
 
         if (config_.detection_distance.max <= config_.detection_distance.min) {
             std::cerr

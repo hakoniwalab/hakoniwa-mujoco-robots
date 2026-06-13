@@ -140,25 +140,7 @@
       }
     },
     "pduConfig": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "pdu_name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Command PDU channel name when this actuator is driven from Hakoniwa PDU."
-        },
-        "update_rate_hz": {
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "description": "Expected command processing rate."
-        },
-        "message_type": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Command PDU message type."
-        }
-      }
+      "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/pduConfig"
     }
   }
 }

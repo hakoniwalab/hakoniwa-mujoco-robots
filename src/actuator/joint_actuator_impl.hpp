@@ -1,6 +1,7 @@
 #pragma once
 
 #include "actuator.hpp"
+#include "config/json_config_utils.hpp"
 #include "sensors/common/update_scheduler.hpp"
 #include <mujoco/mujoco.h>
 #include <nlohmann/json.hpp>
@@ -134,30 +135,18 @@ namespace hako::robots::actuator::impl
                 }
             }
 
-            const nlohmann::json* binding = nullptr;
-            if (j.contains("mjcf_binding") && j.at("mjcf_binding").is_object()) {
-                binding = &j.at("mjcf_binding");
-            } else if (j.contains("RuntimeBinding") && j.at("RuntimeBinding").is_object()) {
-                binding = &j.at("RuntimeBinding");
-            }
+            const nlohmann::json* binding = hako::robots::config::FindMjcfBinding(j);
             if (binding != nullptr) {
                 const auto& binding_obj = *binding;
                 if (binding_obj.contains("actuator_name") && binding_obj.at("actuator_name").is_string()) {
                     config_.actuator_name = binding_obj.at("actuator_name").get<std::string>();
                 }
             }
-            if (j.contains("pdu_config") && j.at("pdu_config").is_object()) {
-                const auto& pdu_obj = j.at("pdu_config");
-                if (pdu_obj.contains("pdu_name") && pdu_obj.at("pdu_name").is_string()) {
-                    config_.pdu_config.pdu_name = pdu_obj.at("pdu_name").get<std::string>();
-                }
-                if (pdu_obj.contains("update_rate_hz") && pdu_obj.at("update_rate_hz").is_number()) {
-                    config_.pdu_config.update_rate_hz = pdu_obj.at("update_rate_hz").get<double>();
-                }
-                if (pdu_obj.contains("message_type") && pdu_obj.at("message_type").is_string()) {
-                    config_.pdu_config.message_type = pdu_obj.at("message_type").get<std::string>();
-                }
-            }
+            hako::robots::config::ReadPduConfig(
+                j,
+                config_.pdu_config.pdu_name,
+                config_.pdu_config.update_rate_hz,
+                &config_.pdu_config.message_type);
 
             // Resolve MuJoCo Actuator ID
             std::string resolved_name = config_.actuator_name.empty() ? config_.joint_name : config_.actuator_name;
