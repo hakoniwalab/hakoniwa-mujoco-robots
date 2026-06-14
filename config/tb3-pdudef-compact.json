@@ -3,12 +3,20 @@
     {
       "id": "tb3-endpoint",
       "path": "tb3-pdutypes.json"
+    },
+    {
+      "id": "tb3-camera-image",
+      "path": "tb3-camera-pdutypes.json"
     }
   ],
   "robots": [
     {
       "name": "TB3",
       "pdutypes_id": "tb3-endpoint"
+    },
+    {
+      "name": "CameraAsset",
+      "pdutypes_id": "tb3-camera-image"
     }
   ]
 }

@@ -8,6 +8,7 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 #include <thread>
@@ -15,9 +16,7 @@
 #include <mujoco/mujoco.h>
 
 #include "mujoco_debug.hpp"
-#if USE_VIEWER
 #include "viewer/mujoco_viewer.hpp"
-#endif
 
 #include "hako_asset.h"
 #include "hako_conductor.h"
@@ -31,6 +30,11 @@
 #include "hakoniwa/pdu/adapter/tf2_msgs/tf_message.hpp"
 #include "physics/physics_impl.hpp"
 #include "robots/tb3/tb3_robot.hpp"
+
+#include "hakoniwa/pdu/adapter/sensor_msgs/image.hpp"
+#include "sensors/camera/camera_config_loader.hpp"
+#include "sensors/camera/camera_sensor.hpp"
+#include "sensors/camera/mujoco_camera_renderer.hpp"
 
 namespace {
 std::shared_ptr<hako::robots::physics::IWorld> world;
@@ -79,6 +83,15 @@ const std::string left_actuator_config_path =
     (repo_root_path() / "config/actuator/joint/tb3_left_wheel.json").string();
 const std::string right_actuator_config_path =
     (repo_root_path() / "config/actuator/joint/tb3_right_wheel.json").string();
+const std::string camera_config_path =
+    (repo_root_path() / "config/sensors/color_camera/tb3-color-camera-320x240.json").string();
+
+hakoniwa::pdu::Endpoint* callback_endpoint {nullptr};
+std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::ImagePduAdapter> image_adapter;
+std::unique_ptr<hako::robots::sensor::camera::CameraSensor> camera_sensor;
+std::optional<hako::robots::sensor::camera::ImageFrame> latest_camera_frame;
+std::atomic_bool render_running {true};
+std::atomic_bool endpoint_ready {false};
 
 std::string resolve_repo_path(const std::string& path)
 {
@@ -136,6 +149,8 @@ Tb3RuntimeConfig load_runtime_config()
         resolve_repo_path(get_env_string("HAKO_TB3_JOINT_STATE_CONFIG_PATH", joint_state_config_path));
     config.odom_config = resolve_repo_path(get_env_string("HAKO_TB3_ODOM_CONFIG_PATH", odom_config_path));
     config.tf_config = resolve_repo_path(get_env_string("HAKO_TB3_TF_CONFIG_PATH", tf_config_path));
+    config.camera_config =
+        resolve_repo_path(get_env_string("HAKO_TB3_CAMERA_CONFIG_PATH", camera_config_path));
     config.left_wheel_actuator_config =
         resolve_repo_path(get_env_string("HAKO_TB3_LEFT_ACTUATOR_CONFIG_PATH", left_actuator_config_path));
     config.right_wheel_actuator_config =
@@ -173,19 +188,81 @@ Tb3RuntimeConfig load_runtime_config()
     return config;
 }
 
-static int my_on_initialize(hako_asset_context_t* context) { (void)context; return 0; }
+static bool initialize_camera(
+    std::shared_ptr<hako::robots::physics::IWorld> world,
+    hakoniwa::pdu::Endpoint& endpoint,
+    MujocoRenderRuntime& render_runtime,
+    const std::string& config_path)
+{
+    hako::robots::sensor::camera::CameraProfileConfig profile {};
+    if (!hako::robots::sensor::camera::LoadCameraProfileConfigFromJson(config_path, profile)) {
+        std::cerr << "[ERROR] Failed to load camera config: "
+                  << config_path << std::endl;
+        return false;
+    }
+    const std::string camera_name =
+        profile.mjcf_binding.camera_name.empty()
+            ? "color_camera"
+            : profile.mjcf_binding.camera_name;
+
+    const std::string image_pdu_name =
+        profile.pdu_config.pdu_name.empty()
+            ? "camera_image"
+            : profile.pdu_config.pdu_name;
+
+    const hakoniwa::pdu::PduKey image_key {"CameraAsset", image_pdu_name};
+    image_adapter = std::make_unique<hako::robots::pdu::adapter::sensor_msgs::ImagePduAdapter>(
+        endpoint,
+        image_key);
+
+    auto sensor_renderer = render_runtime.CreateCameraRenderer(world);
+    camera_sensor = std::make_unique<hako::robots::sensor::camera::CameraSensor>(
+        sensor_renderer,
+        camera_name);
+    if (!camera_sensor->LoadConfig(profile.spec)) {
+        std::cerr << "[ERROR] Failed to validate camera config: "
+                  << config_path << std::endl;
+        return false;
+    }
+    std::cout << "[INFO] TB3 camera initialized:"
+              << " config=" << config_path
+              << " camera=" << camera_name
+              << " pdu=CameraAsset/" << image_pdu_name
+              << " sensor_rate_hz=" << profile.spec.update_rate
+              << " pdu_config_rate_hz=" << profile.pdu_config.update_rate_hz
+              << std::endl;
+
+    render_runtime.SetPreRenderCallback([]() {
+        if (camera_sensor == nullptr) {
+            return;
+        }
+        hako::robots::sensor::camera::ImageFrame frame {};
+        camera_sensor->Capture(frame);
+        if (!frame.data.empty()) {
+            latest_camera_frame = std::move(frame);
+        }
+    });
+    return true;
+}
+
+static int my_on_initialize(hako_asset_context_t* context) {
+    (void)context;
+    if (callback_endpoint == nullptr) {
+        std::cerr << "[ERROR] Endpoint is not initialized." << std::endl;
+        return -1;
+    }
+    callback_endpoint->post_start();
+    endpoint_ready.store(true);
+    return 0;
+}
 static int my_on_reset(hako_asset_context_t* context)      { (void)context; return 0; }
 
-static int my_manual_timing_control(hako_asset_context_t* context)
+static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
 {
-    (void)context;
-
     const double sim_timestep  = world->getModel()->opt.timestep;
     const hako_time_t delta_time_usec = static_cast<hako_time_t>(sim_timestep * 1e6);
     const Tb3RuntimeConfig runtime = load_runtime_config();
     hako::robots::tb3::Tb3Robot tb3(world, runtime);
-    hakoniwa::pdu::Endpoint endpoint(runtime.endpoint_name, HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
-    endpoint.open(runtime.endpoint_path);
 
     std::string tb3_error;
     if (!tb3.Initialize(&tb3_error)) {
@@ -202,10 +279,6 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     const hakoniwa::pdu::PduKey joint_state_key  {"TB3", tb3.GetJointStatePduName()};
     const hakoniwa::pdu::PduKey odom_key         {"TB3", tb3.GetOdometryPduName()};
     const hakoniwa::pdu::PduKey tf_key           {"TB3", tb3.GetTfPduName()};
-
-    endpoint.start();
-    endpoint.post_start();
-    std::cout << "[INFO] TB3 endpoint started successfully." << std::endl;
 
     hako::robots::pdu::adapter::sensor_msgs::LaserScanPduAdapter laser_scan_adapter(endpoint, laser_scan_key);
     hako::robots::pdu::adapter::sensor_msgs::ImuPduAdapter imu_adapter(endpoint, imu_key);
@@ -267,6 +340,15 @@ static int my_manual_timing_control(hako_asset_context_t* context)
                 // base_scan_pos も同じタイミングでだけ送る
                 (void)base_scan_pos_adapter.send(tb3.GetBaseScanPosition(), tb3.GetBaseScanEuler());
             }
+            if (endpoint_ready.load() &&
+                camera_sensor != nullptr &&
+                image_adapter != nullptr &&
+                latest_camera_frame.has_value() &&
+                camera_sensor->ShouldUpdate(sim_timestep) &&
+                !image_adapter->send(*latest_camera_frame))
+            {
+                std::cerr << "[WARN] Failed to send camera image PDU." << std::endl;
+            }
 
             // --- デバッグログ（500ステップごと） ---
             if ((step % 500) == 0) {
@@ -292,12 +374,24 @@ static int my_manual_timing_control(hako_asset_context_t* context)
         }
     }
 
+    endpoint_ready.store(false);
     (void)endpoint.stop();
     endpoint.close();
     return 0;
 }
 
+static int my_manual_timing_control(hako_asset_context_t* context)
+{
+    (void)context;
+    if (callback_endpoint == nullptr) {
+        std::cerr << "[ERROR] Endpoint is not initialized." << std::endl;
+        return -1;
+    }
+    return run_manual_timing_control(*callback_endpoint);
+}
+
 static hako_asset_callbacks_t my_callback;
+static Tb3RuntimeConfig runtime;
 
 void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> w)
 {
@@ -306,7 +400,6 @@ void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> w)
     my_callback.on_manual_timing_control = my_manual_timing_control;
     my_callback.on_reset               = my_on_reset;
 
-    const Tb3RuntimeConfig runtime = load_runtime_config();
     const hako_time_t delta_time_usec = static_cast<hako_time_t>(w->getModel()->opt.timestep * 1e6);
 
     hako_conductor_start(delta_time_usec, 100000);
@@ -330,6 +423,12 @@ int main(int argc, const char* argv[])
     if (argc >= 2) {
         lidar_config_override_path = argv[1];
     }
+    runtime = load_runtime_config();
+    hakoniwa::pdu::Endpoint endpoint(runtime.endpoint_name, HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
+    callback_endpoint = &endpoint;
+    endpoint.open(runtime.endpoint_path);
+    endpoint.start();
+    std::cout << "[INFO] TB3 endpoint started successfully." << std::endl;
 
     std::cout << "[INFO] Creating TB3 world and loading model..." << std::endl;
     world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
@@ -342,10 +441,31 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
+    render_running.store(true);
+    MujocoRenderRuntime render_runtime(
+        world->getModel(),
+        world->getData(),
+        render_running,
+        data_mutex,
+#if USE_VIEWER
+        MujocoRenderWindowMode::Visible
+#else
+        MujocoRenderWindowMode::Hidden
+#endif
+    );
+    if (!initialize_camera(world, endpoint, render_runtime, runtime.camera_config)) {
+        std::cerr << "[ERROR] Failed to initialize camera." << std::endl;
+        running_flag = false;
+        render_running.store(false);
+        callback_endpoint = nullptr;
+        endpoint.close();
+        return 1;
+    }
+
     std::thread sim_thread(simulation_thread, world);
 
 #if USE_VIEWER
-    viewer_thread(world->getModel(), world->getData(), std::ref(running_flag), std::ref(data_mutex));
+    render_runtime.Run();
 #else
     while (running_flag) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -353,7 +473,11 @@ int main(int argc, const char* argv[])
 #endif
 
     running_flag = false;
+    render_running.store(false);
     sim_thread.join();
+    camera_sensor.reset();
+    image_adapter.reset();
+    callback_endpoint = nullptr;
     std::cout << "[INFO] TB3 simulation completed successfully." << std::endl;
     return 0;
 }

@@ -23,8 +23,19 @@
       "args": [
         "config/sensors/lidar/lds-01.json"
       ],
-      "stdout": "stdout",
-      "stderr": "stderr",
+      "cwd": "."
+    },
+    {
+      "name": "camera_reader",
+      "activation_timing": "before_start",
+      "command": "/Users/tmori/.pyenv/versions/3.12.3/bin/python",
+      "args": [
+        "examples/sensors/color_camera/read_camera.py",
+        "--endpoint-config",
+        "config/endpoint/tb3_sim_endpoint.json",
+        "--pdu-def",
+        "config/tb3-pdudef-compact.json"
+      ],
       "cwd": "."
     },
     {

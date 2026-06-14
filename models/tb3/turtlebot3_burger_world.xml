@@ -3,9 +3,25 @@
 
   <option timestep="0.001" gravity="0 0 -9.81" integrator="implicit"/>
 
+  <visual>
+    <global offwidth="320" offheight="240"/>
+    <map znear="0.05" zfar="10"/>
+  </visual>
+
   <asset>
     <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1="1 1 1" rgb2="0 0 0"/>
     <material name="grid" texture="grid" texrepeat="4 4" texuniform="true" reflectance="0.2"/>
+    <texture name="ground_checker" type="2d" builtin="checker" width="128" height="128"
+             rgb1="0.85 0.85 0.85" rgb2="0.65 0.65 0.65"/>
+    <material name="ground_mat" texture="ground_checker" texrepeat="4 4" reflectance="0"/>
+    <material name="red_mat" rgba="1 0 0 1"/>
+    <material name="green_mat" rgba="0 1 0 1"/>
+    <material name="blue_mat" rgba="0 0.2 1 1"/>
+    <material name="sensor_mat" rgba="0.1 0.1 0.1 1"/>
+    <material name="lens_mat" rgba="0.02 0.02 0.02 1"/>
+    <material name="camera_forward_mat" rgba="1 1 0 1"/>
+
+
   </asset>
 
   <worldbody>
@@ -65,6 +81,12 @@
       <body name="base_link" pos="0 0 0.01">
         <inertial pos="0 0 0" quat="0.994532 -0.0072214 -0.0815456 -0.0648458" mass="0.825735" diaginertia="0.00221987 0.00211778 0.00200059"/>
         <geom size="0.07 0.07 0.0715" pos="-0.032 0 0.07" type="box" rgba="0.4 0.4 0.4 1"/>
+
+        <body name="color_sensor_body" pos="0.001 0 0.1">
+          <geom name="color_sensor_lens" type="cylinder" size="0.0125 0.006" pos="0.045 0 0"
+                euler="0 1.57079632679 0" material="lens_mat"/>
+          <camera name="color_camera" mode="fixed" pos="0 0 0" xyaxes="0 -1 0 0 0 1"/>
+        </body>
 
         <body name="wheel_left_link" pos="0 0.08 0.023" quat="0.707388 -0.706825 0 0">
           <inertial pos="0 0 0" quat="-0.000890159 0.706886 0.000889646 0.707326" mass="0.0284989" diaginertia="2.07126e-05 1.11924e-05 1.11756e-05"/>

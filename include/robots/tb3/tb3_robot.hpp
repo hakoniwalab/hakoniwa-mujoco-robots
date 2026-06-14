@@ -21,6 +21,7 @@ namespace hako::robots::tb3
         std::string joint_state_config {};
         std::string odom_config {};
         std::string tf_config {};
+        std::string camera_config {};
         std::string asset_name {};
         std::string asset_config_path {};
         std::string left_wheel_actuator_config {};

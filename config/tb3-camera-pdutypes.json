@@ -1,0 +1,8 @@
+[
+  {
+    "channel_id": 0,
+    "pdu_size": 230712,
+    "name": "camera_image",
+    "type": "sensor_msgs/Image"
+  }
+]

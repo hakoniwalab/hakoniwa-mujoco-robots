@@ -17,6 +17,12 @@
           { "name": "odom", "notify_on_recv": false },
           { "name": "tf", "notify_on_recv": false }
         ]
+      },
+      {
+        "name": "CameraAsset",
+        "pdu": [
+          { "name": "camera_image", "notify_on_recv": false }
+        ]
       }
     ]
   }
