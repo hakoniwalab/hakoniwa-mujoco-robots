@@ -504,7 +504,7 @@ LiDAR の見え方は sensor config JSON で切り替えられます。
 camera / depth / RGBD sensor の実装は `include/sensors/camera/` と `src/sensors/camera/` にあります。
 
 - depth 変換は、MuJoCo offscreen path において `mjr_readPixels` が OpenGL-style depth buffer を返す前提で実装しています。
-- clip plane は `vis.map.znear/zfar * stat.extent` から実効距離を計算して使います。
+- camera rendering は、各 sensor JSON の `clip.near/far` を MuJoCo の実効 clip plane に一時反映してから RGB/depth pixel を読み出します。
 - `config/sensors/camera/*.json` の camera / depth / RGBD / multicamera profile は C++ config として読み込めます。
 - profile の構造は `config/sensors/schema/` にあり、JSON loader は既存の `LoadConfig(config)` validation を再利用します。
 - camera の unit test は `tests/sensors/camera/unit/` にあり、config loader、PDU converter、local depth encoding をカバーします。

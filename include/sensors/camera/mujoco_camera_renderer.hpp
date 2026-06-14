@@ -36,6 +36,8 @@ namespace hako::robots::sensor::camera
             int width,
             int height,
             double hfov_rad,
+            double clip_near_m,
+            double clip_far_m,
             bool need_rgb,
             bool need_depth,
             RawCameraFrame& out

@@ -162,6 +162,8 @@ bool CaptureDepthFrame(
             config.image.width,
             config.image.height,
             config.horizontal_fov,
+            config.clip.near,
+            config.clip.far,
             false,
             true,
             capture.raw))

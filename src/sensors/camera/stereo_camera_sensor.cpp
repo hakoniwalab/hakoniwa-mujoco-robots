@@ -126,6 +126,8 @@ void StereoCameraSensor::Capture(ImageFrame& left_out, ImageFrame& right_out)
         config_.left.image.width,
         config_.left.image.height,
         config_.left.horizontal_fov,
+        config_.left.clip.near,
+        config_.left.clip.far,
         true,
         false,
         left_raw);
@@ -134,6 +136,8 @@ void StereoCameraSensor::Capture(ImageFrame& left_out, ImageFrame& right_out)
         config_.right.image.width,
         config_.right.image.height,
         config_.right.horizontal_fov,
+        config_.right.clip.near,
+        config_.right.clip.far,
         true,
         false,
         right_raw);

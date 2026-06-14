@@ -125,6 +125,8 @@ void RgbdCameraSensor::Capture(ImageFrame& rgb_out, DepthFrame& depth_out)
         config_.rgb.image.width,
         config_.rgb.image.height,
         config_.rgb.horizontal_fov,
+        config_.depth.clip.near,
+        config_.depth.clip.far,
         true,
         true,
         raw);

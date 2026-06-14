@@ -80,6 +80,8 @@ void DepthCameraSensor::Capture(DepthFrame& out)
         config_.image.width,
         config_.image.height,
         config_.horizontal_fov,
+        config_.clip.near,
+        config_.clip.far,
         false,
         true,
         raw);

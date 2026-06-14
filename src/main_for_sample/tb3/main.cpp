@@ -16,14 +16,13 @@
 #include "mujoco_debug.hpp"
 #include "viewer/mujoco_viewer.hpp"
 
-#include "hako_asset.h"
-#include "hako_conductor.h"
 #include "config/asset_manifest.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "physics/physics_impl.hpp"
 #include "robots/tb3/tb3_hakoniwa_adapter.hpp"
 #include "robots/tb3/tb3_robot.hpp"
 #include "robots/tb3/tb3_runtime_config_loader.hpp"
+#include "runtime/hakoniwa_asset_lifecycle.hpp"
 
 #include "hakoniwa/pdu/adapter/sensor_msgs/image.hpp"
 #include "sensors/camera/camera_config_loader.hpp"
@@ -37,14 +36,13 @@ bool running_flag = true;
 std::string lidar_config_override_path;
 using hako::robots::tb3::Tb3RuntimeConfig;
 
-hakoniwa::pdu::Endpoint* callback_endpoint {nullptr};
 std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::ImagePduAdapter> image_adapter;
 std::unique_ptr<hako::robots::sensor::camera::CameraSensor> camera_sensor;
 std::optional<hako::robots::sensor::camera::ImageFrame> latest_camera_frame;
 std::atomic_bool render_running {true};
-std::atomic_bool endpoint_ready {false};
 hako::robots::config::AssetManifest asset_manifest;
 Tb3RuntimeConfig runtime;
+hako::robots::runtime::HakoniwaAssetLifecycle* lifecycle {nullptr};
 
 std::optional<hakoniwa::pdu::PduKey> make_manifest_pdu_key(
     const hako::robots::config::AssetManifest& manifest,
@@ -130,18 +128,6 @@ static bool initialize_camera(
     return true;
 }
 
-static int my_on_initialize(hako_asset_context_t* context) {
-    (void)context;
-    if (callback_endpoint == nullptr) {
-        std::cerr << "[ERROR] Endpoint is not initialized." << std::endl;
-        return -1;
-    }
-    callback_endpoint->post_start();
-    endpoint_ready.store(true);
-    return 0;
-}
-static int my_on_reset(hako_asset_context_t* context)      { (void)context; return 0; }
-
 static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
 {
     const double sim_timestep  = world->getModel()->opt.timestep;
@@ -151,7 +137,6 @@ static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
     std::string tb3_error;
     if (!tb3.Initialize(&tb3_error)) {
         std::cerr << "ERROR: " << tb3_error << std::endl;
-        endpoint.close();
         return -1;
     }
 
@@ -159,7 +144,6 @@ static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
     std::string io_error;
     if (!tb3_io.Initialize(&io_error)) {
         std::cerr << "ERROR: " << io_error << std::endl;
-        endpoint.close();
         return -1;
     }
 
@@ -207,7 +191,8 @@ static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
                 // base_scan_pos も同じタイミングでだけ送る
                 (void)tb3_io.PublishBaseScanPose(tb3.GetBaseScanPosition(), tb3.GetBaseScanEuler());
             }
-            if (endpoint_ready.load() &&
+            if (lifecycle != nullptr &&
+                lifecycle->IsReady() &&
                 camera_sensor != nullptr &&
                 image_adapter != nullptr &&
                 latest_camera_frame.has_value() &&
@@ -241,44 +226,20 @@ static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
         }
     }
 
-    endpoint_ready.store(false);
-    (void)endpoint.stop();
-    endpoint.close();
     return 0;
 }
 
-static int my_manual_timing_control(hako_asset_context_t* context)
+void simulation_thread(hako::robots::runtime::HakoniwaAssetLifecycle& asset_lifecycle)
 {
-    (void)context;
-    if (callback_endpoint == nullptr) {
-        std::cerr << "[ERROR] Endpoint is not initialized." << std::endl;
-        return -1;
-    }
-    return run_manual_timing_control(*callback_endpoint);
-}
-
-static hako_asset_callbacks_t my_callback;
-
-void simulation_thread(std::shared_ptr<hako::robots::physics::IWorld> w)
-{
-    my_callback.on_initialize          = my_on_initialize;
-    my_callback.on_simulation_step     = nullptr;
-    my_callback.on_manual_timing_control = my_manual_timing_control;
-    my_callback.on_reset               = my_on_reset;
-
-    const hako_time_t delta_time_usec = static_cast<hako_time_t>(w->getModel()->opt.timestep * 1e6);
-
-    hako_conductor_start(delta_time_usec, 100000);
-    int ret = hako_asset_register(runtime.asset_name.c_str(), runtime.asset_config_path.c_str(),
-                                  &my_callback, delta_time_usec, HAKO_ASSET_MODEL_PLANT);
-    if (ret != 0) {
-        std::cerr << "ERROR: hako_asset_register() returns " << ret << std::endl;
-        return;
-    }
-    ret = hako_asset_start();
-    if (ret != 0) {
-        std::cerr << "ERROR: hako_asset_start() returns " << ret << std::endl;
-        return;
+    std::string lifecycle_error;
+    if (!asset_lifecycle.RegisterAndRunAsset(
+        [](hakoniwa::pdu::Endpoint& endpoint) {
+            return run_manual_timing_control(endpoint);
+        },
+        {},
+        &lifecycle_error))
+    {
+        std::cerr << "ERROR: " << lifecycle_error << std::endl;
     }
 }
 
@@ -302,11 +263,6 @@ int main(int argc, const char* argv[])
     overrides.lidar_config = lidar_config_override_path;
     runtime = hako::robots::tb3::LoadTb3RuntimeConfig(asset_manifest, overrides);
     std::cout << "[INFO] Using LiDAR config: " << runtime.lidar_config << std::endl;
-    hakoniwa::pdu::Endpoint endpoint(runtime.endpoint_name, HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
-    callback_endpoint = &endpoint;
-    endpoint.open(runtime.endpoint_path);
-    endpoint.start();
-    std::cout << "[INFO] TB3 endpoint started successfully." << std::endl;
 
     std::cout << "[INFO] Creating TB3 world and loading model..." << std::endl;
     world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
@@ -318,6 +274,24 @@ int main(int argc, const char* argv[])
         std::cerr << "Please check if the model file exists at: " << asset_manifest.model << std::endl;
         return 1;
     }
+
+    hako::robots::runtime::HakoniwaAssetLifecycle asset_lifecycle({
+        runtime.endpoint_name,
+        runtime.endpoint_path,
+        runtime.asset_name,
+        runtime.asset_config_path,
+        static_cast<hako_time_t>(world->getModel()->opt.timestep * 1e6),
+        HAKO_ASSET_MODEL_PLANT
+    });
+    lifecycle = &asset_lifecycle;
+
+    std::string lifecycle_error;
+    if (!asset_lifecycle.OpenEndpoint(&lifecycle_error)) {
+        std::cerr << "[ERROR] " << lifecycle_error << std::endl;
+        lifecycle = nullptr;
+        return 1;
+    }
+    std::cout << "[INFO] TB3 endpoint started successfully." << std::endl;
 
     render_running.store(true);
     MujocoRenderRuntime render_runtime(
@@ -331,16 +305,17 @@ int main(int argc, const char* argv[])
         MujocoRenderWindowMode::Hidden
 #endif
     );
-    if (!initialize_camera(world, endpoint, render_runtime, runtime.camera_config)) {
+
+    if (!initialize_camera(world, asset_lifecycle.Endpoint(), render_runtime, runtime.camera_config)) {
         std::cerr << "[ERROR] Failed to initialize camera." << std::endl;
         running_flag = false;
         render_running.store(false);
-        callback_endpoint = nullptr;
-        endpoint.close();
+        lifecycle = nullptr;
+        asset_lifecycle.StopAndClose();
         return 1;
     }
 
-    std::thread sim_thread(simulation_thread, world);
+    std::thread sim_thread(simulation_thread, std::ref(asset_lifecycle));
 
 #if USE_VIEWER
     render_runtime.Run();
@@ -355,7 +330,8 @@ int main(int argc, const char* argv[])
     sim_thread.join();
     camera_sensor.reset();
     image_adapter.reset();
-    callback_endpoint = nullptr;
+    asset_lifecycle.StopAndClose();
+    lifecycle = nullptr;
     std::cout << "[INFO] TB3 simulation completed successfully." << std::endl;
     return 0;
 }

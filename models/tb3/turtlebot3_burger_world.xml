@@ -82,8 +82,8 @@
         <inertial pos="0 0 0" quat="0.994532 -0.0072214 -0.0815456 -0.0648458" mass="0.825735" diaginertia="0.00221987 0.00211778 0.00200059"/>
         <geom size="0.07 0.07 0.0715" pos="-0.032 0 0.07" type="box" rgba="0.4 0.4 0.4 1"/>
 
-        <body name="color_sensor_body" pos="0.001 0 0.1">
-          <geom name="color_sensor_lens" type="cylinder" size="0.0125 0.006" pos="0.045 0 0"
+        <body name="color_sensor_body" pos="0.056 0 0.1">
+          <geom name="color_sensor_lens" type="cylinder" size="0.0125 0.006" pos="0 0 0"
                 euler="0 1.57079632679 0" material="lens_mat"/>
           <camera name="color_camera" mode="fixed" pos="0 0 0" xyaxes="0 -1 0 0 0 1"/>
         </body>

@@ -44,6 +44,40 @@ private:
     mjtNum original_fovy_;
     bool active_;
 };
+
+class CameraClipOverrideGuard
+{
+public:
+    CameraClipOverrideGuard(mjModel* model, double znear_m, double zfar_m)
+        : model_(model), original_znear_(0), original_zfar_(0), active_(false)
+    {
+        if (model_ == nullptr || znear_m <= 0.0 || zfar_m <= znear_m || model_->stat.extent <= 0.0) {
+            return;
+        }
+        original_znear_ = model_->vis.map.znear;
+        original_zfar_ = model_->vis.map.zfar;
+        model_->vis.map.znear = static_cast<float>(znear_m / static_cast<double>(model_->stat.extent));
+        model_->vis.map.zfar = static_cast<float>(zfar_m / static_cast<double>(model_->stat.extent));
+        active_ = true;
+    }
+
+    ~CameraClipOverrideGuard()
+    {
+        if (active_) {
+            model_->vis.map.znear = original_znear_;
+            model_->vis.map.zfar = original_zfar_;
+        }
+    }
+
+    CameraClipOverrideGuard(const CameraClipOverrideGuard&) = delete;
+    CameraClipOverrideGuard& operator=(const CameraClipOverrideGuard&) = delete;
+
+private:
+    mjModel* model_;
+    float original_znear_;
+    float original_zfar_;
+    bool active_;
+};
 }
 
 MujocoCameraRenderer::MujocoCameraRenderer(std::shared_ptr<hako::robots::physics::IWorld> world)
@@ -97,6 +131,7 @@ MujocoCameraRenderer::~MujocoCameraRenderer()
 
 bool MujocoCameraRenderer::Render(
     const std::string& camera_name, int width, int height, double hfov_rad,
+    double clip_near_m, double clip_far_m,
     bool need_rgb, bool need_depth, RawCameraFrame& out)
 {
     if (!need_rgb && !need_depth) return false;
@@ -125,6 +160,7 @@ bool MujocoCameraRenderer::Render(
         return false;
     }
 
+    CameraClipOverrideGuard clip_override_guard(model, clip_near_m, clip_far_m);
     cam_.type = mjCAMERA_FIXED;
     cam_.fixedcamid = cam_id;
     // MuJoCo 3.8 no longer exposes mjvCamera::fovy, so fixed-camera rendering

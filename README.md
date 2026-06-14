@@ -508,7 +508,7 @@ This is intended to capture a practical Sim2Real point: changing sensors changes
 Camera / depth / RGBD sensor components are available under `include/sensors/camera/` and `src/sensors/camera/`.
 
 - Depth conversion currently assumes the MuJoCo offscreen path where `mjr_readPixels` returns an OpenGL-style depth buffer.
-- The implementation converts depth with effective clip planes computed from `vis.map.znear/zfar * stat.extent`.
+- Camera rendering temporarily applies each sensor JSON `clip.near/far` to MuJoCo's effective clip planes before reading RGB/depth pixels.
 - Camera / depth / RGBD / multicamera profiles under `config/sensors/camera/*.json` can be loaded into C++ configs.
 - The profile structure is documented in `config/sensors/schema/`, and the JSON loader reuses the existing `LoadConfig(config)` validation path.
 - Camera unit tests live under `tests/sensors/camera/unit/` and cover config loader, PDU converter, and local depth encoding.

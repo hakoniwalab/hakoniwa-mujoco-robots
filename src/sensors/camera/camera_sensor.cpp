@@ -84,6 +84,8 @@ void CameraSensor::Capture(ImageFrame& out)
         config_.image.width,
         config_.image.height,
         config_.horizontal_fov,
+        config_.clip.near,
+        config_.clip.far,
         true,   // need_rgb
         false,  // need_depth
         raw

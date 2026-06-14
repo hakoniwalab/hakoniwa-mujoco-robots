@@ -4,6 +4,7 @@ add_executable(
     tb3_sim
     main.cpp
     ${PROJECT_ROOT_DIR}/src/config/asset_manifest.cpp
+    ${PROJECT_ROOT_DIR}/src/runtime/hakoniwa_asset_lifecycle.cpp
     ${PROJECT_ROOT_DIR}/src/robots/tb3/tb3_drive.cpp
     ${PROJECT_ROOT_DIR}/src/robots/tb3/tb3_hakoniwa_adapter.cpp
     ${PROJECT_ROOT_DIR}/src/robots/tb3/tb3_robot.cpp
