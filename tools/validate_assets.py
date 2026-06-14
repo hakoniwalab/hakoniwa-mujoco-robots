@@ -45,6 +45,7 @@ def _resolve_schema_path(json_path: Path, value: str) -> Path | None:
         if parsed.netloc == "hakoniwa.dev" and parsed.path.startswith("/schemas/") and schema_name:
             root = _repo_root_for(json_path)
             for schema_dir in (
+                root / "config" / "assets" / "schema",
                 root / "config" / "sensors" / "schema",
                 root / "config" / "actuator" / "schema",
             ):
@@ -61,6 +62,7 @@ def _resolve_schema_path(json_path: Path, value: str) -> Path | None:
 def _load_local_schema_store(root: Path) -> dict[str, Any]:
     store: dict[str, Any] = {}
     for schema_dir in (
+        root / "config" / "assets" / "schema",
         root / "config" / "sensors" / "schema",
         root / "config" / "actuator" / "schema",
     ):
@@ -138,6 +140,66 @@ def validate_json(path: Path) -> bool:
     return True
 
 
+def _resolve_manifest_path(manifest_path: Path, value: str) -> Path:
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        candidate = manifest_path.parent / candidate
+    return candidate.resolve()
+
+
+def validate_manifest(path: Path) -> bool:
+    ok = validate_json(path)
+    try:
+        manifest = _load_json(path)
+    except Exception as exc:
+        print(f"FAIL manifest parse: {path}: {exc}")
+        return False
+
+    if not isinstance(manifest, dict):
+        print(f"FAIL manifest: {path}: root must be an object")
+        return False
+
+    model = manifest.get("model")
+    if isinstance(model, str) and model:
+        model_path = _resolve_manifest_path(path, model)
+        if model_path.exists():
+            ok = validate_mjcf(model_path) and ok
+        else:
+            print(f"FAIL manifest MJCF path: {model_path}: not found")
+            ok = False
+
+    for key in ("pdu_def", "endpoint"):
+        value = manifest.get(key)
+        if isinstance(value, str) and value:
+            json_path = _resolve_manifest_path(path, value)
+            if json_path.exists():
+                ok = validate_json(json_path) and ok
+            else:
+                print(f"FAIL manifest {key} path: {json_path}: not found")
+                ok = False
+
+    components = manifest.get("components", [])
+    if isinstance(components, list):
+        for index, component in enumerate(components):
+            if not isinstance(component, dict):
+                print(f"FAIL manifest components[{index}]: must be an object")
+                ok = False
+                continue
+            config = component.get("config")
+            if not isinstance(config, str) or not config:
+                print(f"FAIL manifest components[{index}]: missing config")
+                ok = False
+                continue
+            config_path = _resolve_manifest_path(path, config)
+            if config_path.exists():
+                ok = validate_json(config_path) and ok
+            else:
+                component_id = component.get("id", index)
+                print(f"FAIL manifest component config: {component_id}: {config_path}: not found")
+                ok = False
+    return ok
+
+
 def validate_mjcf(path: Path) -> bool:
     try:
         import mujoco
@@ -163,15 +225,24 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Validate Hakoniwa MuJoCo MJCF and JSON assets before C++ integration.",
     )
+    parser.add_argument("--manifest", action="append", default=[], help="Hakoniwa asset manifest JSON file")
     parser.add_argument("--mjcf", action="append", default=[], help="MJCF XML file to load")
     parser.add_argument("--json", action="append", default=[], help="JSON config file to parse and validate")
     args = parser.parse_args()
 
-    paths = [Path(p) for p in args.mjcf + args.json]
+    paths = [Path(p) for p in args.manifest + args.mjcf + args.json]
     if not paths:
-        parser.error("pass at least one --mjcf or --json path")
+        parser.error("pass at least one --manifest, --mjcf, or --json path")
 
     ok = True
+    for raw in args.manifest:
+        path = Path(raw)
+        if not path.exists():
+            print(f"FAIL manifest path: {path}: not found")
+            ok = False
+            continue
+        ok = validate_manifest(path) and ok
+
     for raw in args.mjcf:
         path = Path(raw)
         if not path.exists():

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/hakoniwa-asset-manifest.schema.json",
+  "title": "Hakoniwa MuJoCo asset manifest",
+  "description": "Index file that lists the existing MJCF, PDU, endpoint, and component JSON files that make up one Hakoniwa MuJoCo asset.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "model",
+    "pdu_def",
+    "endpoint",
+    "components"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "model": {
+      "$ref": "#/$defs/path"
+    },
+    "pdu_def": {
+      "$ref": "#/$defs/path"
+    },
+    "endpoint": {
+      "$ref": "#/$defs/path"
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    }
+  },
+  "$defs": {
+    "path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "type",
+        "config"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "sensor",
+            "actuator",
+            "state_output",
+            "command_input"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "config": {
+          "$ref": "#/$defs/path"
+        },
+        "pdu_robot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

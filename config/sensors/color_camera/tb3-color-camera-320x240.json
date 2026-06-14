@@ -23,8 +23,7 @@
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "camera_name": "color_camera",
-    "body_name": "color_sensor_body",
-    "freejoint_name": "color_sensor_freejoint"
+    "body_name": "color_sensor_body"
   },
   "pdu_config": {
     "pdu_name": "camera_image",

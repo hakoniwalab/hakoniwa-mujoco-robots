@@ -1,0 +1,64 @@
+{
+  "$schema": "schema/hakoniwa-asset-manifest.schema.json",
+  "name": "tb3_mujoco_asset",
+  "description": "TurtleBot3 Burger MuJoCo asset with Hakoniwa PDU-connected sensors and actuators.",
+  "model": "../../models/tb3/turtlebot3_burger_world.xml",
+  "pdu_def": "../tb3-pdudef-compact.json",
+  "endpoint": "../endpoint/tb3_sim_endpoint.json",
+  "components": [
+    {
+      "id": "left_wheel_actuator",
+      "kind": "actuator",
+      "type": "joint_actuator",
+      "config": "../actuator/joint/tb3_left_wheel.json"
+    },
+    {
+      "id": "right_wheel_actuator",
+      "kind": "actuator",
+      "type": "joint_actuator",
+      "config": "../actuator/joint/tb3_right_wheel.json"
+    },
+    {
+      "id": "wheel_joint_states",
+      "kind": "state_output",
+      "type": "joint_state",
+      "config": "../sensors/joint_state/tb3-wheel-joint-states.json",
+      "pdu_robot": "TB3"
+    },
+    {
+      "id": "lidar",
+      "kind": "sensor",
+      "type": "lidar_2d",
+      "config": "../sensors/lidar/lds-02.json",
+      "pdu_robot": "TB3"
+    },
+    {
+      "id": "imu",
+      "kind": "sensor",
+      "type": "imu",
+      "config": "../sensors/imu/tb3-imu.json",
+      "pdu_robot": "TB3"
+    },
+    {
+      "id": "odometry",
+      "kind": "state_output",
+      "type": "odometry",
+      "config": "../sensors/odometry/tb3-ground-truth-odom.json",
+      "pdu_robot": "TB3"
+    },
+    {
+      "id": "tf",
+      "kind": "state_output",
+      "type": "tf",
+      "config": "../sensors/tf/tb3-basic-tf.json",
+      "pdu_robot": "TB3"
+    },
+    {
+      "id": "color_camera",
+      "kind": "sensor",
+      "type": "color_camera",
+      "config": "../sensors/color_camera/tb3-color-camera-320x240.json",
+      "pdu_robot": "CameraAsset"
+    }
+  ]
+}
