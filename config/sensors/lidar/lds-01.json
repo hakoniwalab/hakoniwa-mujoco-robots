@@ -1,39 +1,55 @@
 {
-    "$schema": "../schema/lidar-2d.schema.json",
+  "$schema": "../schema/lidar-2d.schema.json",
+  "spec": {
+    "type": "lidar_2d",
+    "name": "lds_01",
     "frame_id": "laser",
     "DetectionDistance": {
-        "Min": 120,
-        "Max": 3500
+      "Min": 120,
+      "Max": 3500
     },
     "DistanceAccuracy": [
-        {
-            "Range": {
-                "Min": 120,
-                "Max": 500
-            },
-            "type": "independent",
-            "DistanceIndependentAccuracy": {
-                "StdDev": 0.015,
-                "NoiseDistribution": "Gaussian"
-            }
+      {
+        "Range": {
+          "Min": 120,
+          "Max": 500
         },
-        {
-            "Range": {
-                "Min": 500,
-                "Max": 3500
-            },
-            "type": "dependent",
-            "DistanceDependentAccuracy": {
-                "Percentage": 5.0,
-                "NoiseDistribution": "Gaussian"
-            }
+        "Type": "independent",
+        "DistanceIndependentAccuracy": {
+          "StdDev": 0.015,
+          "NoiseDistribution": "Gaussian"
         }
+      },
+      {
+        "Range": {
+          "Min": 500,
+          "Max": 3500
+        },
+        "Type": "dependent",
+        "DistanceDependentAccuracy": {
+          "Percentage": 5.0,
+          "NoiseDistribution": "Gaussian"
+        }
+      }
     ],
     "AngleRange": {
-        "Min": -180.0,
-        "Max": 180.0,
-        "AscendingOrderOfData": false,
-        "Resolution": 1.0,
-        "ScanFrequency": 5
+      "Min": -180.0,
+      "Max": 180.0,
+      "AscendingOrderOfData": false,
+      "Resolution": 1.0,
+      "ScanFrequency": 5
     }
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "parent_body": "base_link",
+    "source_body": "base_scan",
+    "exclude_body": "base_footprint"
+  },
+  "pdu_config": {
+    "pdu_name": "laser_scan",
+    "update_rate_hz": 5.0,
+    "message_type": "sensor_msgs/LaserScan"
+  }
 }

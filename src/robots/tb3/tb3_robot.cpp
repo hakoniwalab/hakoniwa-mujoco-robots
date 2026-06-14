@@ -9,8 +9,6 @@
 
 #include <mujoco/mujoco.h>
 
-#include "actuator/actuator_impl.hpp"
-
 namespace hako::robots::tb3
 {
 namespace
@@ -22,66 +20,10 @@ namespace
 
 }
 
-class Tb3Robot::Drive
-{
-public:
-    explicit Drive(std::shared_ptr<hako::robots::physics::IWorld> world)
-        : base_(world->getRigidBody("base_link"))
-        , base_scan_(world->getRigidBody("base_scan"))
-        , left_actuator_(world->createJointActuator())
-        , right_actuator_(world->createJointActuator())
-    {
-    }
-
-    bool LoadConfig(const std::string& left, const std::string& right)
-    {
-        if (left_actuator_ == nullptr || right_actuator_ == nullptr) {
-            std::cerr << "[ERROR] Joint actuator is not supported by this physics world." << std::endl;
-            return false;
-        }
-        if (left.empty() || right.empty()) {
-            std::cerr << "[ERROR] TB3 actuator config path is empty."
-                      << " left='" << left << "'"
-                      << " right='" << right << "'"
-                      << std::endl;
-            return false;
-        }
-        if (!left_actuator_->LoadConfig(left)) {
-            std::cerr << "[ERROR] Failed to load left wheel actuator config: "
-                      << left << std::endl;
-            return false;
-        }
-        if (!right_actuator_->LoadConfig(right)) {
-            std::cerr << "[ERROR] Failed to load right wheel actuator config: "
-                      << right << std::endl;
-            return false;
-        }
-        return true;
-    }
-
-    void set_wheel_velocity_target(double left, double right)
-    {
-        left_actuator_->SetTarget(left);
-        right_actuator_->SetTarget(right);
-    }
-
-    hako::robots::types::Position position() const { return base_->GetPosition(); }
-    hako::robots::types::Euler euler() const { return base_->GetEuler(); }
-    hako::robots::types::BodyVelocity body_velocity() const { return base_->GetBodyVelocity(); }
-    hako::robots::types::Position base_scan_position() const { return base_scan_->GetPosition(); }
-    hako::robots::types::Euler base_scan_euler() const { return base_scan_->GetEuler(); }
-
-private:
-    std::shared_ptr<hako::robots::physics::IRigidBody> base_;
-    std::shared_ptr<hako::robots::physics::IRigidBody> base_scan_;
-    std::shared_ptr<hako::robots::actuator::IJointActuator> left_actuator_;
-    std::shared_ptr<hako::robots::actuator::IJointActuator> right_actuator_;
-};
-
 Tb3Robot::Tb3Robot(std::shared_ptr<hako::robots::physics::IWorld> world, Tb3RuntimeConfig config)
     : world_(std::move(world))
     , config_(std::move(config))
-    , drive_(std::make_unique<Drive>(world_))
+    , drive_(std::make_unique<Tb3Drive>(world_))
     , lidar_sensor_(world_, "base_scan", "base_footprint")
     , imu_sensor_(world_)
     , joint_state_sensor_(world_)
@@ -169,7 +111,7 @@ void Tb3Robot::ApplyCommand(const Tb3Command& command)
     last_left_wheel_target_ = target_left_wheel;
     last_right_wheel_target_ = target_right_wheel;
 
-    drive_->set_wheel_velocity_target(applied_left_wheel_target_, applied_right_wheel_target_);
+    drive_->SetWheelVelocityTarget(applied_left_wheel_target_, applied_right_wheel_target_);
 }
 
 void Tb3Robot::Step()
@@ -179,47 +121,22 @@ void Tb3Robot::Step()
 
 hako::robots::types::Position Tb3Robot::GetBasePosition() const
 {
-    return drive_->position();
+    return drive_->BasePosition();
 }
 
 hako::robots::types::Euler Tb3Robot::GetBaseEuler() const
 {
-    return drive_->euler();
+    return drive_->BaseEuler();
 }
 
 hako::robots::types::Position Tb3Robot::GetBaseScanPosition() const
 {
-    return drive_->base_scan_position();
+    return drive_->BaseScanPosition();
 }
 
 hako::robots::types::Euler Tb3Robot::GetBaseScanEuler() const
 {
-    return drive_->base_scan_euler();
-}
-
-std::string Tb3Robot::GetLaserScanPduName() const
-{
-    return lidar_sensor_.GetConfig().output.pdu_name;
-}
-
-std::string Tb3Robot::GetImuPduName() const
-{
-    return imu_sensor_.GetConfig().output.pdu_name;
-}
-
-std::string Tb3Robot::GetJointStatePduName() const
-{
-    return joint_state_sensor_.GetConfig().output.pdu_name;
-}
-
-std::string Tb3Robot::GetOdometryPduName() const
-{
-    return odom_sensor_.GetConfig().output.pdu_name;
-}
-
-std::string Tb3Robot::GetTfPduName() const
-{
-    return tf_sensor_.GetConfig().output.pdu_name;
+    return drive_->BaseScanEuler();
 }
 
 bool Tb3Robot::MaybeBuildImu(
@@ -306,8 +223,8 @@ void Tb3Robot::EmitDebugLog(int step) const
             ++lidar_hits;
         }
     }
-    const auto pos = drive_->position();
-    const auto body_vel = drive_->body_velocity();
+    const auto pos = drive_->BasePosition();
+    const auto body_vel = drive_->BaseBodyVelocity();
     const double left_joint_pos =
         (last_joint_state_frame_.position.size() > 0) ? last_joint_state_frame_.position[0] : 0.0;
     const double right_joint_pos =

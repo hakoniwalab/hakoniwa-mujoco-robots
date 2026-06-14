@@ -4,6 +4,7 @@
 #include <string>
 
 #include "physics.hpp"
+#include "robots/tb3/tb3_drive.hpp"
 #include "sensors/imu/imu_sensor.hpp"
 #include "sensors/joint_state/joint_state_sensor.hpp"
 #include "sensors/lidar/lidar_2d_sensor.hpp"
@@ -66,11 +67,6 @@ namespace hako::robots::tb3
         hako::robots::types::Euler GetBaseEuler() const;
         hako::robots::types::Position GetBaseScanPosition() const;
         hako::robots::types::Euler GetBaseScanEuler() const;
-        std::string GetLaserScanPduName() const;
-        std::string GetImuPduName() const;
-        std::string GetJointStatePduName() const;
-        std::string GetOdometryPduName() const;
-        std::string GetTfPduName() const;
 
         bool MaybeBuildImu(
             double sim_timestep,
@@ -95,11 +91,9 @@ namespace hako::robots::tb3
         void EmitDebugLog(int step) const;
 
     private:
-        class Drive;
-
         std::shared_ptr<hako::robots::physics::IWorld> world_;
         Tb3RuntimeConfig config_;
-        std::unique_ptr<Drive> drive_;
+        std::unique_ptr<Tb3Drive> drive_;
         hako::robots::sensor::lidar::LiDAR2DSensor lidar_sensor_;
         hako::robots::sensor::ImuSensor imu_sensor_;
         hako::robots::sensor::JointStateSensor joint_state_sensor_;

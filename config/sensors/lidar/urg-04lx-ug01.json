@@ -1,43 +1,59 @@
 {
-    "$schema": "../schema/lidar-2d.schema.json",
+  "$schema": "../schema/lidar-2d.schema.json",
+  "spec": {
+    "type": "lidar_2d",
+    "name": "urg_04lx_ug01",
     "frame_id": "laser",
     "DetectionDistance": {
-        "Min": 20,
-        "Max": 5560
+      "Min": 20,
+      "Max": 5560
     },
     "DistanceAccuracy": [
-        {
-            "Range": {
-                "Min": 20,
-                "Max": 1000
-            },
-            "type": "independent",
-            "DistanceIndependentAccuracy": {
-                "StdDev": 0.003,
-                "NoiseDistribution": "Gaussian"
-            }
+      {
+        "Range": {
+          "Min": 20,
+          "Max": 1000
         },
-        {
-            "Range": {
-                "Min": 1000,
-                "Max": 5560
-            },
-            "type": "independent",
-            "DistanceIndependentAccuracy": {
-                "StdDev": 0.00505,
-                "NoiseDistribution": "Gaussian"
-            }
+        "Type": "independent",
+        "DistanceIndependentAccuracy": {
+          "StdDev": 0.003,
+          "NoiseDistribution": "Gaussian"
         }
+      },
+      {
+        "Range": {
+          "Min": 1000,
+          "Max": 5560
+        },
+        "Type": "independent",
+        "DistanceIndependentAccuracy": {
+          "StdDev": 0.00505,
+          "NoiseDistribution": "Gaussian"
+        }
+      }
     ],
     "AngleRange": {
-        "Min": -135.0,
-        "Max": 120.0,
-        "AscendingOrderOfData": false,
-        "BlindPaddingRange": {
-            "Size": 44,
-            "Value": 0.0189999993890523
-        },
-        "Resolution": 0.3515625,
-        "ScanFrequency": 10
+      "Min": -135.0,
+      "Max": 120.0,
+      "AscendingOrderOfData": false,
+      "BlindPaddingRange": {
+        "Size": 44,
+        "Value": 0.0189999993890523
+      },
+      "Resolution": 0.3515625,
+      "ScanFrequency": 10
     }
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "parent_body": "base_link",
+    "source_body": "base_scan",
+    "exclude_body": "base_footprint"
+  },
+  "pdu_config": {
+    "pdu_name": "laser_scan",
+    "update_rate_hz": 10.0,
+    "message_type": "sensor_msgs/LaserScan"
+  }
 }

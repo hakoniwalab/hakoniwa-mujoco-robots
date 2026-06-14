@@ -58,6 +58,15 @@ Asset manifest は、それらの正本JSON、MJCF、PDU definition、endpoint c
 `pdu_config.pdu_name` とは別の namespace なので、manifest 側に置きます。
 PDU 接続しない local-only component は `pdu_robot` を省略できます。
 
+TB3 runtime は、この manifest を入口にして MJCF、PDU definition、endpoint config、各 component JSON をロードします。
+デフォルトは `config/assets/tb3-hakoniwa-asset.json` です。
+別の manifest を使う場合は次のように指定します。
+
+```bash
+HAKO_TB3_MANIFEST_PATH=config/assets/tb3-hakoniwa-asset.json \
+  ./src/cmake-build/main_for_sample/tb3/tb3_sim
+```
+
 manifest から一括チェックするには次を使います。
 
 ```bash
