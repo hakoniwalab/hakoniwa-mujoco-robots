@@ -7,6 +7,7 @@ add_executable(ultrasonic-example
 add_executable(ultrasonic-hakoniwa-asset
     ultrasonic-hakoniwa-asset.cpp
     support/ultrasonic_example_support.cpp
+    ${PROJECT_ROOT_DIR}/src/runtime/hakoniwa_asset_lifecycle.cpp
 )
 
 target_compile_features(ultrasonic-example PRIVATE cxx_std_20)

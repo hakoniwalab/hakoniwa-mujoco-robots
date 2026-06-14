@@ -1,10 +1,8 @@
 #include "examples/sensors/common/freejoint_motion.hpp"
 #include "examples/sensors/ultrasonic/support/ultrasonic_example_support.hpp"
 #include "hakoniwa/pdu/adapter/sensor_msgs/range.hpp"
-#include "hakoniwa/pdu/endpoint.hpp"
-#include "hako_asset.h"
-#include "hako_conductor.h"
 #include "physics/physics_impl.hpp"
+#include "runtime/hakoniwa_asset_lifecycle.hpp"
 #include "sensors/debug/raycast_debug.hpp"
 #include "sensors/ultrasonic/ultrasonic_sensor.hpp"
 #include "viewer/mujoco_viewer.hpp"
@@ -46,9 +44,7 @@ std::string asset_name;
 std::string endpoint_name;
 std::atomic_bool running {true};
 std::atomic_bool viewer_running {true};
-std::atomic_bool endpoint_ready {false};
 std::mutex mujoco_mutex;
-std::unique_ptr<hakoniwa::pdu::Endpoint> endpoint;
 std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::RangePduAdapter> range_adapter;
 std::unique_ptr<hako::robots::sensor::ultrasonic::UltrasonicSensor> ultrasonic_sensor;
 hako::examples::sensors::ultrasonic::AppState app_state {};
@@ -99,32 +95,6 @@ Viewer:
 )" << std::endl;
 }
 
-static int OnInitialize(hako_asset_context_t* context)
-{
-    (void)context;
-    if (endpoint == nullptr) {
-        std::cerr << "[ERROR] Endpoint is not initialized." << std::endl;
-        return -1;
-    }
-    if (endpoint->post_start() != HAKO_PDU_ERR_OK) {
-        std::cerr << "[ERROR] Failed to complete endpoint post_start." << std::endl;
-        return -1;
-    }
-    endpoint_ready.store(true);
-    return 0;
-}
-
-static int OnReset(hako_asset_context_t* context)
-{
-    (void)context;
-    return 0;
-}
-
-int IsForceStop()
-{
-    return running.load() && app_state.running.load() ? 0 : 1;
-}
-
 void ApplyPendingMotion(mjModel* model, mjData* data)
 {
     const int forward_steps = app_state.move_forward.exchange(0);
@@ -148,9 +118,9 @@ void ApplyPendingMotion(mjModel* model, mjData* data)
     hako::examples::sensors::PrintFreejointPosition(data, qpos_addr, "base_pos");
 }
 
-static int OnManualTimingControl(hako_asset_context_t* context)
+int RunManualTimingControl(hakoniwa::pdu::Endpoint& endpoint)
 {
-    (void)context;
+    (void)endpoint;
     auto* model = world->getModel();
     auto* data = world->getData();
     const double sim_timestep = model->opt.timestep;
@@ -162,7 +132,7 @@ static int OnManualTimingControl(hako_asset_context_t* context)
     PrintPublisherHelp();
 
     while (running.load() && app_state.running.load()) {
-        if (endpoint_ready.load()) {
+        {
             std::lock_guard<std::mutex> lock(mujoco_mutex);
             ApplyPendingMotion(model, data);
             world->advanceTimeStep();
@@ -245,51 +215,28 @@ int main(int argc, char** argv)
         ? kDefaultRangePduName
         : config.pdu_config.pdu_name;
 
-    hako_asset_callbacks_t callbacks {};
-    callbacks.on_initialize = OnInitialize;
-    callbacks.on_simulation_step = nullptr;
-    callbacks.on_manual_timing_control = OnManualTimingControl;
-    callbacks.on_reset = OnReset;
-
     const hako_time_t delta_time_usec =
         static_cast<hako_time_t>(model->opt.timestep * 1.0e6);
 
-    hako_conductor_start(delta_time_usec, 100000);
-
-    const int register_result = hako_asset_register(
-        asset_name.c_str(),
-        pdu_def_path.c_str(),
-        &callbacks,
-        delta_time_usec,
-        HAKO_ASSET_MODEL_PLANT);
-    if (register_result != 0) {
-        std::cerr << "[ERROR] hako_asset_register() returns "
-                  << register_result << std::endl;
-        hako_conductor_stop();
-        return 1;
-    }
-
-    endpoint = std::make_unique<hakoniwa::pdu::Endpoint>(
+    hako::robots::runtime::HakoniwaAssetLifecycle asset_lifecycle({
         endpoint_name,
-        HAKO_PDU_ENDPOINT_DIRECTION_INOUT);
-    if (endpoint->open(endpoint_config_path) != HAKO_PDU_ERR_OK) {
-        std::cerr << "[ERROR] Failed to open endpoint config: "
-                  << endpoint_config_path << std::endl;
-        hako_conductor_stop();
-        return 1;
-    }
-    if (endpoint->start() != HAKO_PDU_ERR_OK) {
-        std::cerr << "[ERROR] Failed to start endpoint." << std::endl;
-        endpoint->close();
-        endpoint.reset();
-        hako_conductor_stop();
+        endpoint_config_path,
+        asset_name,
+        pdu_def_path,
+        delta_time_usec,
+        HAKO_ASSET_MODEL_PLANT
+    });
+
+    std::string lifecycle_error;
+    if (!asset_lifecycle.OpenEndpoint(&lifecycle_error)) {
+        std::cerr << "[ERROR] " << lifecycle_error << std::endl;
         return 1;
     }
 
     const hakoniwa::pdu::PduKey range_key {asset_name, range_pdu_name};
     range_adapter =
         std::make_unique<hako::robots::pdu::adapter::sensor_msgs::RangePduAdapter>(
-            *endpoint,
+            asset_lifecycle.Endpoint(),
             range_key);
 
     std::cout << "[INFO] Starting ultrasonic asset with:" << std::endl;
@@ -307,10 +254,21 @@ int main(int argc, char** argv)
     std::thread terminal_thread(
         hako::examples::sensors::ultrasonic::TerminalCommandLoop,
         std::ref(app_state));
-    int start_result = 0;
+    bool start_result = true;
     std::atomic_bool asset_thread_finished {false};
     std::thread asset_thread([&]() {
-        start_result = hako_asset_start_no_wait(IsForceStop);
+        start_result = asset_lifecycle.RegisterAndRunAssetNoWait(
+            [](hakoniwa::pdu::Endpoint& endpoint) {
+                return RunManualTimingControl(endpoint);
+            },
+            []() {
+                return running.load() && app_state.running.load() ? 0 : 1;
+            },
+            {},
+            &lifecycle_error);
+        if (!start_result) {
+            std::cerr << "[ERROR] " << lifecycle_error << std::endl;
+        }
         asset_thread_finished.store(true);
         running.store(false);
         viewer_running.store(false);
@@ -353,17 +311,10 @@ int main(int argc, char** argv)
     if (asset_thread.joinable()) {
         asset_thread.join();
     }
-    if (endpoint != nullptr) {
-        (void)endpoint->stop();
-        endpoint->close();
-        endpoint.reset();
-    }
     range_adapter.reset();
     ultrasonic_sensor.reset();
-    hako_conductor_stop();
-    if (start_result != 0 && asset_finished_before_viewer_return) {
-        std::cerr << "[ERROR] hako_asset_start() returns "
-                  << start_result << std::endl;
+    asset_lifecycle.StopAndClose();
+    if (!start_result && asset_finished_before_viewer_return) {
         return 1;
     }
     return 0;

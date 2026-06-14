@@ -50,6 +50,35 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAsset(
     ResetCallback reset,
     std::string* error_message)
 {
+    return RegisterAndRunAssetInternal(
+        std::move(manual_timing),
+        std::move(reset),
+        {},
+        false,
+        error_message);
+}
+
+bool HakoniwaAssetLifecycle::RegisterAndRunAssetNoWait(
+    ManualTimingCallback manual_timing,
+    ForceStopCallback force_stop,
+    ResetCallback reset,
+    std::string* error_message)
+{
+    return RegisterAndRunAssetInternal(
+        std::move(manual_timing),
+        std::move(reset),
+        std::move(force_stop),
+        true,
+        error_message);
+}
+
+bool HakoniwaAssetLifecycle::RegisterAndRunAssetInternal(
+    ManualTimingCallback manual_timing,
+    ResetCallback reset,
+    ForceStopCallback force_stop,
+    bool no_wait,
+    std::string* error_message)
+{
     if (active_instance_ != nullptr && active_instance_ != this) {
         if (error_message != nullptr) {
             *error_message = "another HakoniwaAssetLifecycle instance is already active";
@@ -64,6 +93,7 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAsset(
 
     manual_timing_ = std::move(manual_timing);
     reset_ = std::move(reset);
+    force_stop_ = std::move(force_stop);
     callbacks_ = {};
     callbacks_.on_initialize = StaticOnInitialize;
     callbacks_.on_simulation_step = nullptr;
@@ -72,6 +102,7 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAsset(
     active_instance_ = this;
 
     hako_conductor_start(config_.delta_time_usec, config_.conductor_cycle_usec);
+    conductor_started_.store(true);
     const int register_result = hako_asset_register(
         config_.asset_name.c_str(),
         config_.pdu_def_path.c_str(),
@@ -85,10 +116,13 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAsset(
         return false;
     }
 
-    const int start_result = hako_asset_start();
+    const int start_result = no_wait
+        ? hako_asset_start_no_wait(StaticShouldStop)
+        : hako_asset_start();
     if (start_result != 0) {
         if (error_message != nullptr) {
-            *error_message = "hako_asset_start() returns " + std::to_string(start_result);
+            *error_message = std::string(no_wait ? "hako_asset_start_no_wait() returns " : "hako_asset_start() returns ")
+                + std::to_string(start_result);
         }
         return false;
     }
@@ -111,6 +145,9 @@ void HakoniwaAssetLifecycle::StopAndClose()
     if (endpoint_opened_.exchange(false)) {
         (void)endpoint_.stop();
         endpoint_.close();
+    }
+    if (conductor_started_.exchange(false)) {
+        hako_conductor_stop();
     }
 }
 
@@ -145,6 +182,14 @@ int HakoniwaAssetLifecycle::OnReset()
     return 0;
 }
 
+int HakoniwaAssetLifecycle::ShouldStop() const
+{
+    if (force_stop_) {
+        return force_stop_();
+    }
+    return 0;
+}
+
 int HakoniwaAssetLifecycle::StaticOnInitialize(hako_asset_context_t* context)
 {
     (void)context;
@@ -161,5 +206,10 @@ int HakoniwaAssetLifecycle::StaticOnReset(hako_asset_context_t* context)
 {
     (void)context;
     return active_instance_ != nullptr ? active_instance_->OnReset() : -1;
+}
+
+int HakoniwaAssetLifecycle::StaticShouldStop()
+{
+    return active_instance_ != nullptr ? active_instance_->ShouldStop() : 1;
 }
 }

@@ -11,19 +11,37 @@
 
 ## 1. 全体ワークフロー
 
+このチュートリアルでは、設定ファイル群を直接ばらばらに追うのではなく、asset manifest を入口にします。
+
 ```text
-  [ C++ Ultrasonic Asset ]
-             |
-             v (Endpoint名指定でロード)
-    [ ultrasonic_endpoint.json ]
-             |
-    +--------+--------+----------------------+
-    | (参照)           | (参照)                | (参照)
-    v                 v                      v
-[ ultrasonic-pdudef-compact.json ] [ cache/buffer.json ] [ comm/shm_ultrasonic_comm.json ]
-    |
-    v (参照)
-[ ultrasonic-pdutypes.json ]
+config/assets/ultrasonic-hakoniwa-asset.json
+  |
+  +-- model    -> models/sensors/ultrasonic/ultrasonic-sensor-test.xml
+  +-- component-> config/sensors/ultrasonic/lego-spike-distance-sensor.json
+  +-- pdu_def  -> config/ultrasonic-pdudef-compact.json
+  +-- endpoint -> config/endpoint/ultrasonic_endpoint.json
+```
+
+それぞれの責務は次の通りです。
+
+- component JSON: `spec` / `mjcf_binding` / `pdu_config` の正本
+- MJCF: MuJoCo 上の site/body/geom/camera などの正本
+- PDU definition: PDU robot 名、channel 名、message type、PDU size の正本
+- endpoint/comm: 通信方式と channel の正本
+- manifest: それらを束ねる薄い目次
+
+まず manifest から一括検証します。
+
+```bash
+python3 tools/validate_assets.py \
+  --manifest config/assets/ultrasonic-hakoniwa-asset.json
+```
+
+人間向けに接続関係を見るには inspector を使います。
+
+```bash
+python3 tools/inspect_asset_manifest.py \
+  config/assets/ultrasonic-hakoniwa-asset.json
 ```
 
 C++ 側の送信には、既存の `RangePduAdapter` を使います。
@@ -212,40 +230,73 @@ sensor_msgs/Range PDU
 
 ## 4. C++ Publisher の実装方針
 
-`ultrasonic-example.cpp` で行っている測定処理に、Hakoniwa endpoint と `RangePduAdapter` を追加します。
+`examples/sensors/ultrasonic/ultrasonic-hakoniwa-asset.cpp` で行っている測定処理を、
+manifest と Hakoniwa lifecycle wrapper を入口にした形で整理します。
 
 重要な点は、PDU 変換を自前で書かないことです。
 既存の adapter を使います。
 
 ```cpp
 #include "hakoniwa/pdu/adapter/sensor_msgs/range.hpp"
-#include "hakoniwa/pdu/endpoint.hpp"
+#include "runtime/hakoniwa_asset_lifecycle.hpp"
 
-std::unique_ptr<hakoniwa::pdu::Endpoint> endpoint;
 std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::RangePduAdapter> range_adapter;
-std::atomic_bool endpoint_ready {false};
 ```
 
-### Endpoint lifecycle
+### Hakoniwa lifecycle
 
-camera publisher と同じ順序にします。
-`hako_asset_start_no_wait()` は名前に `no_wait` とありますが、箱庭の start trigger は待ちます。
-ここでは `hako_asset_start()` ではなく、停止判定 callback を渡せる `hako_asset_start_no_wait(IsForceStop)` を worker thread で呼びます。
-これにより、MuJoCo viewer を main thread で動かしたまま、viewer close や `q` 入力で asset 側も停止できます。
+箱庭アセットとしての定型処理は `HakoniwaAssetLifecycle` に寄せるのが、現在の推奨形です。
+`endpoint.open()` / `endpoint.start()` / `endpoint.post_start()` / `endpoint.stop()` / `endpoint.close()` の順序をアプリケーション側で手書きしないためです。
 
-1. `main()` で `hako_asset_register()` を呼ぶ。
-2. `main()` で `endpoint.open()` を呼ぶ。
-3. `main()` で `endpoint.start()` を呼ぶ。
-4. worker thread で `hako_asset_start_no_wait()` を呼ぶ。
-5. `on_initialize` callback で `endpoint.post_start()` を呼ぶ。
-6. `post_start()` 完了後、simulation step ごとに `UltrasonicSensor::ShouldUpdate(step_dt)` を確認する。
+1. `main()` で manifest と sensor JSON を読み込む。
+2. `main()` で MuJoCo model を読み込む。
+3. `main()` で `HakoniwaAssetLifecycle::OpenEndpoint()` を呼ぶ。
+4. worker thread で `HakoniwaAssetLifecycle::RegisterAndRunAssetNoWait()` を呼ぶ。
+5. wrapper 内の `on_initialize` callback で `endpoint.post_start()` が呼ばれる。
+6. `post_start()` 完了後、manual timing callback で `UltrasonicSensor::ShouldUpdate(step_dt)` を確認する。
 7. `ShouldUpdate(step_dt)` が `true` の周期で測定し、測定値を `RangePduAdapter::send()` で送る。
-8. 終了時に `endpoint.stop()` / `endpoint.close()` を呼ぶ。
+8. 終了時に `HakoniwaAssetLifecycle::StopAndClose()` が `endpoint.stop()` / `endpoint.close()` を行う。
 
 `endpoint.open()` / `endpoint.start()` を `on_manual_timing_control` の中で呼ばないでください。
 `endpoint.post_start()` は `main()` ではなく `on_initialize` callback で呼びます。
 
+この順序は重要ですが、アプリケーションコードでは次のように wrapper に任せます。
+
+```cpp
+hako::robots::runtime::HakoniwaAssetLifecycle lifecycle({
+    "ultrasonic_endpoint",
+    "config/endpoint/ultrasonic_endpoint.json",
+    "UltrasonicAsset",
+    "config/ultrasonic-pdudef-compact.json",
+    static_cast<hako_time_t>(world->getModel()->opt.timestep * 1.0e6),
+    HAKO_ASSET_MODEL_PLANT
+});
+
+if (!lifecycle.OpenEndpoint(&error_message)) {
+    return 1;
+}
+
+std::thread asset_thread([&]() {
+    lifecycle.RegisterAndRunAssetNoWait(
+        [&](hakoniwa::pdu::Endpoint& endpoint) {
+            return run_manual_timing_control(endpoint);
+        },
+        [&]() {
+            return running.load() && app_state.running.load() ? 0 : 1;
+        },
+        {},
+        &error_message);
+});
+```
+
+`RegisterAndRunAssetNoWait()` の内部で `hako_conductor_start()`、`hako_asset_register()`、`hako_asset_start_no_wait()` が呼ばれます。
+viewer を閉じた場合や `q` が押された場合は、force stop callback によって start 待ち状態からも抜けられます。
+`endpoint.post_start()` は wrapper の `on_initialize` でだけ呼ばれます。
+
 ### 送信コードの要点
+
+PDU robot 名は manifest の `components[].pdu_robot`、channel 名は component JSON の `pdu_config.pdu_name` から決めます。
+この example では、それぞれ `"UltrasonicAsset"` と `"range"` です。
 
 ```cpp
 const hakoniwa::pdu::PduKey range_key {
@@ -255,7 +306,7 @@ const hakoniwa::pdu::PduKey range_key {
 
 range_adapter =
     std::make_unique<hako::robots::pdu::adapter::sensor_msgs::RangePduAdapter>(
-        *endpoint,
+        endpoint,
         range_key);
 ```
 
@@ -269,7 +320,7 @@ const double step_dt = world->getModel()->opt.timestep;
 const auto& config = ultrasonic_sensor->GetConfig();
 
 while (running_flag) {
-    if (endpoint_ready.load()) {
+    if (lifecycle.IsReady()) {
         std::lock_guard<std::mutex> lock(mujoco_mutex);
         world->advanceTimeStep();
 
@@ -386,12 +437,28 @@ hako-cmd start
 `hako-cmd start` 後、C++ publisher の `on_initialize` で `endpoint.post_start()` が呼ばれます。
 その後、C++ publisher は MuJoCo simulation を進め、`UltrasonicSensor::ShouldUpdate(step_dt)` が `true` になった周期で測定値を `RangePduAdapter` 経由の `sensor_msgs/Range` として送信します。
 
+このチュートリアルでは、実行時の意味を保ったまま framework 化した構成として説明しています。
+違いは、`on_initialize` / `post_start` / endpoint stop/close などの lifecycle 定型処理を `HakoniwaAssetLifecycle` に隠す点です。
+
 ---
 
 ## 7. つまづきポイント
 
 - **`RangePduAdapter` を使う**:
   `UltrasonicFrame` を直接 PDU buffer に詰めないでください。`RangePduAdapter::send(config, frame)` を使います。
+
+- **manifest は値を再定義しない**:
+  `DetectionDistance`、`source_site`、`pdu_name` は manifest ではなく component JSON に書きます。
+  manifest は `model`、`pdu_def`、`endpoint`、component JSON の参照だけを持ちます。
+
+- **`pdu_robot` と `pdu_config.pdu_name` を分けて考える**:
+  `pdu_robot` は manifest の `components[].pdu_robot` です。
+  `pdu_config.pdu_name` は component JSON の channel 名です。
+  この2つから `PduKey("UltrasonicAsset", "range")` を作ります。
+
+- **lifecycle の順序を手で崩さない**:
+  `endpoint.open()` / `endpoint.start()` は manual timing callback の外で行い、`endpoint.post_start()` は `on_initialize` に紐づけます。
+  `HakoniwaAssetLifecycle` を使うと、この順序をアプリケーション側に露出させずに済みます。
 
 - **PDU type を手書き定義しない**:
   `sensor_msgs/Range` は PDU registry に存在します。チュートリアル内で ROS message 構造を独自に `def` する必要はありません。

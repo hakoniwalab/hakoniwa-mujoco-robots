@@ -25,6 +25,7 @@ namespace hako::robots::runtime
     public:
         using ManualTimingCallback = std::function<int(hakoniwa::pdu::Endpoint&)>;
         using ResetCallback = std::function<int()>;
+        using ForceStopCallback = std::function<int()>;
 
         explicit HakoniwaAssetLifecycle(HakoniwaAssetLifecycleConfig config);
         ~HakoniwaAssetLifecycle();
@@ -37,6 +38,11 @@ namespace hako::robots::runtime
             ManualTimingCallback manual_timing,
             ResetCallback reset = {},
             std::string* error_message = nullptr);
+        bool RegisterAndRunAssetNoWait(
+            ManualTimingCallback manual_timing,
+            ForceStopCallback force_stop,
+            ResetCallback reset = {},
+            std::string* error_message = nullptr);
 
         bool IsReady() const;
         hakoniwa::pdu::Endpoint& Endpoint();
@@ -47,10 +53,19 @@ namespace hako::robots::runtime
         int OnInitialize();
         int OnManualTiming();
         int OnReset();
+        int ShouldStop() const;
 
         static int StaticOnInitialize(hako_asset_context_t* context);
         static int StaticOnManualTiming(hako_asset_context_t* context);
         static int StaticOnReset(hako_asset_context_t* context);
+        static int StaticShouldStop();
+
+        bool RegisterAndRunAssetInternal(
+            ManualTimingCallback manual_timing,
+            ResetCallback reset,
+            ForceStopCallback force_stop,
+            bool no_wait,
+            std::string* error_message);
 
         static HakoniwaAssetLifecycle* active_instance_;
 
@@ -59,7 +74,9 @@ namespace hako::robots::runtime
         hako_asset_callbacks_t callbacks_ {};
         ManualTimingCallback manual_timing_ {};
         ResetCallback reset_ {};
+        ForceStopCallback force_stop_ {};
         std::atomic_bool ready_ {false};
         std::atomic_bool endpoint_opened_ {false};
+        std::atomic_bool conductor_started_ {false};
     };
 }

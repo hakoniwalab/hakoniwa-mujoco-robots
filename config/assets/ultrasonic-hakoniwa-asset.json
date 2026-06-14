@@ -1,0 +1,17 @@
+{
+  "$schema": "schema/hakoniwa-asset-manifest.schema.json",
+  "name": "ultrasonic_mujoco_asset",
+  "description": "Standalone ultrasonic sensor MuJoCo asset with Hakoniwa Range PDU output.",
+  "model": "../../models/sensors/ultrasonic/ultrasonic-sensor-test.xml",
+  "pdu_def": "../ultrasonic-pdudef-compact.json",
+  "endpoint": "../endpoint/ultrasonic_endpoint.json",
+  "components": [
+    {
+      "id": "front_ultrasonic",
+      "kind": "sensor",
+      "type": "ultrasonic",
+      "config": "../sensors/ultrasonic/lego-spike-distance-sensor.json",
+      "pdu_robot": "UltrasonicAsset"
+    }
+  ]
+}
