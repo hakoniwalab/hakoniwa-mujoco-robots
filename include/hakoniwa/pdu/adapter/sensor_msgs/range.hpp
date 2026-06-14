@@ -23,8 +23,15 @@ namespace hako::robots::pdu::adapter::sensor_msgs
             const hako::robots::sensor::ultrasonic::UltrasonicConfig& config,
             const hako::robots::sensor::ultrasonic::UltrasonicFrame& frame)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(config, frame);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool recv(HakoCpp_Range& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
         }
 
     private:

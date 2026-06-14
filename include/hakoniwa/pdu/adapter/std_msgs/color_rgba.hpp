@@ -20,8 +20,15 @@ namespace hako::robots::pdu::adapter::std_msgs
 
         bool send(const hako::robots::sensor::camera::RGBAColor& color)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::std_msgs::ToHakoPdu(color);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool recv(HakoCpp_ColorRGBA& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
         }
 
         bool capture_and_send(

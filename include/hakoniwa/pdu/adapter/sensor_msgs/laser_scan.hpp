@@ -21,8 +21,15 @@ namespace hako::robots::pdu::adapter::sensor_msgs
 
         bool send(const hako::robots::sensor::lidar::LaserScanFrame& frame)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool recv(HakoCpp_LaserScan& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
         }
 
     private:

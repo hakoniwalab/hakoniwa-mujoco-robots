@@ -30,8 +30,22 @@ namespace hako::robots::pdu::adapter::geometry_msgs
             const hako::robots::types::Position& position,
             const hako::robots::types::Euler& euler)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::ToHakoTwistPose(position, euler);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool send(const HakoCpp_Twist& twist)
+        {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
+            return endpoint_.send(twist) == HAKO_PDU_ERR_OK;
+        }
+
+        bool recv(HakoCpp_Twist& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
         }
 
     private:
@@ -88,14 +102,25 @@ namespace hako::robots::pdu::adapter::geometry_msgs
 
         bool send_pose(const hakoniwa::PduRigidBodyPose& pose)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::geometry_msgs::ToHakoPdu(pose);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
         }
 
         bool send_velocity(const hakoniwa::PduRigidBodyVelocity& velocity)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::geometry_msgs::ToHakoPdu(velocity);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool send(const HakoCpp_Twist& twist)
+        {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
+            return endpoint_.send(twist) == HAKO_PDU_ERR_OK;
         }
 
     private:

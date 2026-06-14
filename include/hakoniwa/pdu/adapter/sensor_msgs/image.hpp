@@ -21,6 +21,8 @@ namespace hako::robots::pdu::adapter::sensor_msgs
 
         bool send(const hako::robots::sensor::camera::ImageFrame& frame)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             HakoCpp_Image pdu {};
             if (!hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame, pdu)) {
                 return false;
@@ -30,11 +32,18 @@ namespace hako::robots::pdu::adapter::sensor_msgs
 
         bool send(const hako::robots::sensor::camera::DepthFrame& frame)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             HakoCpp_Image pdu {};
             if (!hako::robots::pdu::converter::sensor_msgs::ToHakoPdu(frame, pdu)) {
                 return false;
             }
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool recv(HakoCpp_Image& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
         }
 
     private:

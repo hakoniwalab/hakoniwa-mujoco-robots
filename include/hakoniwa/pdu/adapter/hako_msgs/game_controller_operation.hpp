@@ -34,6 +34,18 @@ namespace hako::robots::pdu::adapter::hako_msgs
             return true;
         }
 
+        bool recv(HakoCpp_GameControllerOperation& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
+        }
+
+        bool send(const HakoCpp_GameControllerOperation& gamepad)
+        {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
+            return endpoint_.send(gamepad) == HAKO_PDU_ERR_OK;
+        }
+
     private:
         hakoniwa::pdu::TypedEndpoint<
             HakoCpp_GameControllerOperation,

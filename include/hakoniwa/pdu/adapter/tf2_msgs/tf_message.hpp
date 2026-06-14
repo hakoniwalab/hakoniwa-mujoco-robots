@@ -21,8 +21,15 @@ namespace hako::robots::pdu::adapter::tf2_msgs
 
         bool send(const hako::robots::sensor::TfFrame& frame)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::tf2_msgs::ToHakoPdu(frame);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool recv(HakoCpp_TFMessage& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
         }
 
     private:

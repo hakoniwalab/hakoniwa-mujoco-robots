@@ -21,8 +21,15 @@ namespace hako::robots::pdu::adapter::nav_msgs
 
         bool send(const hako::robots::sensor::OdometryFrame& frame)
         {
+            // A Hakoniwa PDU channel is single-writer by convention.
+            // Multiple readers may call recv(), but only one component should call send() for this PduKey.
             auto pdu = hako::robots::pdu::converter::nav_msgs::ToHakoPdu(frame);
             return endpoint_.send(pdu) == HAKO_PDU_ERR_OK;
+        }
+
+        bool recv(HakoCpp_Odometry& out)
+        {
+            return endpoint_.recv(out) == HAKO_PDU_ERR_OK;
         }
 
     private:
