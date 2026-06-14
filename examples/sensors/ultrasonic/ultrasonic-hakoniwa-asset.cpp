@@ -1,5 +1,6 @@
 #include "examples/sensors/common/freejoint_motion.hpp"
 #include "examples/sensors/ultrasonic/support/ultrasonic_example_support.hpp"
+#include "config/asset_manifest.hpp"
 #include "hakoniwa/pdu/adapter/sensor_msgs/range.hpp"
 #include "physics/physics_impl.hpp"
 #include "runtime/hakoniwa_asset_lifecycle.hpp"
@@ -9,38 +10,35 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 
+#include <nlohmann/json.hpp>
+
 namespace {
 
-constexpr const char* kDefaultModelPath =
-    "models/sensors/ultrasonic/ultrasonic-sensor-test.xml";
-constexpr const char* kDefaultSensorConfigPath =
-    "config/sensors/ultrasonic/lego-spike-distance-sensor.json";
-constexpr const char* kDefaultPduDefPath =
-    "config/ultrasonic-pdudef-compact.json";
-constexpr const char* kDefaultEndpointConfigPath =
-    "config/endpoint/ultrasonic_endpoint.json";
-constexpr const char* kDefaultEndpointName = "ultrasonic_endpoint";
-constexpr const char* kDefaultAssetName = "UltrasonicAsset";
+constexpr const char* kDefaultManifestPath =
+    "config/assets/ultrasonic-hakoniwa-asset.json";
+constexpr const char* kUltrasonicComponentId = "front_ultrasonic";
 constexpr const char* kDefaultSensorSiteName = "front_ultrasonic_site";
 constexpr const char* kDefaultExcludeBodyName = "base_footprint";
 constexpr const char* kDefaultBaseJointName = "base_freejoint";
-constexpr const char* kDefaultRangePduName = "range";
 
 constexpr double kMoveStep = 0.05;
 constexpr double kDebugRayWidth = 0.006;
 
 std::shared_ptr<hako::robots::physics::impl::WorldImpl> world;
 std::string model_path;
+std::string manifest_path;
 std::string sensor_config_path;
 std::string pdu_def_path;
 std::string endpoint_config_path;
 std::string asset_name;
+std::string pdu_robot_name;
 std::string endpoint_name;
 std::atomic_bool running {true};
 std::atomic_bool viewer_running {true};
@@ -62,19 +60,53 @@ std::string EnvOrDefault(const char* name, const char* fallback)
     return fallback;
 }
 
+bool ReadEndpointNameFromConfig(
+    const std::string& endpoint_config_path,
+    std::string& out,
+    std::string* error_message)
+{
+    std::ifstream ifs(endpoint_config_path);
+    if (!ifs) {
+        if (error_message != nullptr) {
+            *error_message = "failed to open endpoint config: " + endpoint_config_path;
+        }
+        return false;
+    }
+
+    try {
+        nlohmann::json root;
+        ifs >> root;
+        if (!root.contains("name") || !root.at("name").is_string() ||
+            root.at("name").get<std::string>().empty())
+        {
+            if (error_message != nullptr) {
+                *error_message = "endpoint field is missing or invalid: name";
+            }
+            return false;
+        }
+        out = root.at("name").get<std::string>();
+    } catch (const std::exception& e) {
+        if (error_message != nullptr) {
+            *error_message = "failed to parse endpoint config: "
+                + endpoint_config_path + ": " + e.what();
+        }
+        return false;
+    }
+
+    return true;
+}
+
 void PrintUsage(const char* program)
 {
     std::cout
         << "Usage:\n"
-        << "  " << program << " [model.xml] [sensor-config.json] [pdu-def.json] [endpoint.json]\n\n"
+        << "  " << program << " [manifest.json]\n\n"
         << "Defaults:\n"
-        << "  model.xml          " << kDefaultModelPath << "\n"
-        << "  sensor-config.json " << kDefaultSensorConfigPath << "\n"
-        << "  pdu-def.json       " << kDefaultPduDefPath << "\n"
-        << "  endpoint.json      " << kDefaultEndpointConfigPath << "\n\n"
+        << "  manifest.json " << kDefaultManifestPath << "\n\n"
         << "Environment:\n"
-        << "  HAKO_ULTRASONIC_ASSET_NAME       asset name, default " << kDefaultAssetName << "\n"
-        << "  HAKO_ULTRASONIC_ENDPOINT_NAME    endpoint name, default " << kDefaultEndpointName << "\n";
+        << "  HAKO_ULTRASONIC_MANIFEST_PATH    manifest path, default " << kDefaultManifestPath << "\n"
+        << "  HAKO_ULTRASONIC_ASSET_NAME       asset registration name, default manifest pdu_robot\n"
+        << "  HAKO_ULTRASONIC_ENDPOINT_NAME    endpoint name, default endpoint JSON name\n";
 }
 
 void PrintPublisherHelp()
@@ -173,12 +205,54 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    model_path = argc > 1 ? argv[1] : kDefaultModelPath;
-    sensor_config_path = argc > 2 ? argv[2] : kDefaultSensorConfigPath;
-    pdu_def_path = argc > 3 ? argv[3] : kDefaultPduDefPath;
-    endpoint_config_path = argc > 4 ? argv[4] : kDefaultEndpointConfigPath;
-    asset_name = EnvOrDefault("HAKO_ULTRASONIC_ASSET_NAME", kDefaultAssetName);
-    endpoint_name = EnvOrDefault("HAKO_ULTRASONIC_ENDPOINT_NAME", kDefaultEndpointName);
+    manifest_path = argc > 1
+        ? argv[1]
+        : EnvOrDefault("HAKO_ULTRASONIC_MANIFEST_PATH", kDefaultManifestPath);
+    hako::robots::config::AssetManifest manifest {};
+    std::string manifest_error;
+    if (!hako::robots::config::LoadAssetManifestFromJson(
+            manifest_path,
+            manifest,
+            &manifest_error))
+    {
+        std::cerr << "[ERROR] Failed to load ultrasonic manifest: "
+                  << manifest_error << std::endl;
+        return 1;
+    }
+
+    const auto* ultrasonic_component =
+        manifest.FindComponent(kUltrasonicComponentId);
+    if (ultrasonic_component == nullptr) {
+        std::cerr << "[ERROR] Manifest component is missing: "
+                  << kUltrasonicComponentId << std::endl;
+        return 1;
+    }
+    if (ultrasonic_component->pdu_robot.empty()) {
+        std::cerr << "[ERROR] Manifest component pdu_robot is missing: "
+                  << kUltrasonicComponentId << std::endl;
+        return 1;
+    }
+
+    model_path = manifest.model;
+    sensor_config_path = ultrasonic_component->config;
+    pdu_def_path = manifest.pdu_def;
+    endpoint_config_path = manifest.endpoint;
+    pdu_robot_name = ultrasonic_component->pdu_robot;
+    asset_name = EnvOrDefault("HAKO_ULTRASONIC_ASSET_NAME", pdu_robot_name.c_str());
+
+    std::string endpoint_name_from_config;
+    std::string endpoint_error;
+    if (!ReadEndpointNameFromConfig(
+            endpoint_config_path,
+            endpoint_name_from_config,
+            &endpoint_error))
+    {
+        std::cerr << "[ERROR] " << endpoint_error << std::endl;
+        return 1;
+    }
+    endpoint_name = EnvOrDefault(
+        "HAKO_ULTRASONIC_ENDPOINT_NAME",
+        endpoint_name_from_config.c_str());
 
     world = std::make_shared<hako::robots::physics::impl::WorldImpl>();
     try {
@@ -196,9 +270,6 @@ int main(int argc, char** argv)
     }
 
     qpos_addr = hako::examples::sensors::FindFreejointQposAddr(model, kDefaultBaseJointName);
-    sensor_site_id =
-        hako::examples::sensors::ultrasonic::FindSiteId(model, kDefaultSensorSiteName);
-
     ultrasonic_sensor =
         std::make_unique<hako::robots::sensor::ultrasonic::UltrasonicSensor>(
             world,
@@ -211,9 +282,18 @@ int main(int argc, char** argv)
     }
 
     const auto& config = ultrasonic_sensor->GetConfig();
-    const std::string range_pdu_name = config.pdu_config.pdu_name.empty()
-        ? kDefaultRangePduName
-        : config.pdu_config.pdu_name;
+    if (config.pdu_config.pdu_name.empty()) {
+        std::cerr << "[ERROR] pdu_config.pdu_name is missing: "
+                  << sensor_config_path << std::endl;
+        return 1;
+    }
+    const std::string range_pdu_name = config.pdu_config.pdu_name;
+    const std::string sensor_site_name =
+        config.runtime_binding.source_site.empty()
+            ? kDefaultSensorSiteName
+            : config.runtime_binding.source_site;
+    sensor_site_id =
+        hako::examples::sensors::ultrasonic::FindSiteId(model, sensor_site_name);
 
     const hako_time_t delta_time_usec =
         static_cast<hako_time_t>(model->opt.timestep * 1.0e6);
@@ -233,19 +313,21 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    const hakoniwa::pdu::PduKey range_key {asset_name, range_pdu_name};
+    const hakoniwa::pdu::PduKey range_key {pdu_robot_name, range_pdu_name};
     range_adapter =
         std::make_unique<hako::robots::pdu::adapter::sensor_msgs::RangePduAdapter>(
             asset_lifecycle.Endpoint(),
             range_key);
 
     std::cout << "[INFO] Starting ultrasonic asset with:" << std::endl;
+    std::cout << "  manifest : " << manifest.path << std::endl;
     std::cout << "  model    : " << model_path << std::endl;
     std::cout << "  sensor   : " << sensor_config_path << std::endl;
     std::cout << "  pdu_def  : " << pdu_def_path << std::endl;
     std::cout << "  endpoint : " << endpoint_config_path << std::endl;
     std::cout << "[INFO] asset=" << asset_name
-              << " site=" << kDefaultSensorSiteName
+              << " pdu_robot=" << pdu_robot_name
+              << " site=" << sensor_site_name
               << " pdu=" << range_pdu_name
               << " sensor_rate_hz=" << config.update_rate
               << " pdu_config_rate_hz=" << config.pdu_config.update_rate_hz
