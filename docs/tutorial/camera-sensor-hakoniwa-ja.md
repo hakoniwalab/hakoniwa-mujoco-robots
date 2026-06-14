@@ -79,6 +79,31 @@
 >   * 画像の解像度やカラーフォーマットを変更した場合は可変長部のサイズが変化するため、**実際に撮影して得られるサイズ感に合わせて `pdu_size` を調整する**必要があります。
 >   * サイズが不足していると、`[ConvertorError][Image] buffer too small` となり、データが全く書き込まれなくなります（送信されなくなります）。
 
+> [!TIP]
+> **画像サイズを変えるときに一緒に確認するもの**
+>
+> カメラ画像の解像度は JSON の `spec.image.width` / `spec.image.height` で決まります。
+> ただし、MuJoCo のカメラセンサーは viewer window を切り取るのではなく、offscreen buffer に描画してから読み出します。
+> そのため MJCF 側にも、少なくともその画像サイズ以上の offscreen buffer を指定しておくと安全です。
+>
+> ```xml
+> <visual>
+>   <global offwidth="320" offheight="240"/>
+>   <map znear="0.05" zfar="10"/>
+> </visual>
+> ```
+>
+> viewer のメイン表示は on-screen rendering なので、window サイズに応じて大きく表示されます。
+> 一方、PDU に載せるカメラ画像は offscreen rendering の結果です。
+> 解像度を変えるときは、次の3つをそろえて確認してください。
+>
+> 1. JSON の `spec.image.width` / `spec.image.height`
+> 2. MJCF の `<visual><global offwidth/offheight>`
+> 3. PDU type list の `pdu_size`
+>
+> 例: `320x240` の RGB24 画像なら、ピクセルデータは `320 * 240 * 3 = 230,400` バイトです。
+> `sensor_msgs/Image` 固定部 `288` バイトと PDU metadata `24` バイトを加えて、`pdu_size = 230,712` にします。
+
 ### ステップ 2: PDU 定義インスタンスの編集 (`*-compact.json`)
 PDU 上の robot 名と上記で作成した型定義ファイルをマッピングします。
 
