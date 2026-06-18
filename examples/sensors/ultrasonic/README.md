@@ -253,6 +253,13 @@ Terminal 2: Python reader
 python3 examples/sensors/ultrasonic/read_range.py
 ```
 
+If this prints `protocol 'shm' requested but Hakoniwa core support is disabled`,
+the Python `hakoniwa-pdu-endpoint` runtime being loaded was built without
+Hakoniwa core support. Rebuild `hakoniwa-pdu-endpoint` with
+`HAKO_PDU_ENDPOINT_ENABLE_HAKONIWA_CORE=ON`, or set
+`HAKO_PDU_ENDPOINT_SHARED_LIB` to a core-enabled runtime library before running
+the reader.
+
 Terminal 3: start trigger
 
 ```bash

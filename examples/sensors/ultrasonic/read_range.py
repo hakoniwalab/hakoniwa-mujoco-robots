@@ -10,12 +10,27 @@ from pathlib import Path
 
 import hakopy
 from hakoniwa_pdu.pdu_msgs.sensor_msgs.pdu_conv_Range import pdu_to_py_Range
-from hakoniwa_pdu_endpoint.c_endpoint import Endpoint, PduKey
+from hakoniwa_pdu_endpoint.c_endpoint import Endpoint, EndpointError, PduKey
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_ENDPOINT_CONFIG = REPO_ROOT / "config/endpoint/ultrasonic_endpoint.json"
 DEFAULT_PDU_DEF = REPO_ROOT / "config/ultrasonic-pdudef-compact.json"
+
+
+def print_endpoint_open_hint(exc: EndpointError, endpoint_config: str) -> None:
+    print(f"[ERROR] endpoint.open() failed: {exc}")
+    print(f"[ERROR] endpoint config: {endpoint_config}")
+    if exc.err_code == 10:
+        print(
+            "[ERROR] This example uses protocol 'shm', but the loaded "
+            "hakoniwa-pdu-endpoint runtime does not have Hakoniwa core support."
+        )
+        print(
+            "[ERROR] Rebuild hakoniwa-pdu-endpoint with "
+            "HAKO_PDU_ENDPOINT_ENABLE_HAKONIWA_CORE=ON, or point "
+            "HAKO_PDU_ENDPOINT_SHARED_LIB at a core-enabled runtime library."
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -154,8 +169,12 @@ def main() -> int:
         "on_reset": on_reset,
     }
 
-    endpoint.open(endpoint_config)
-    endpoint.start()
+    try:
+        endpoint.open(endpoint_config)
+        endpoint.start()
+    except EndpointError as exc:
+        print_endpoint_open_hint(exc, endpoint_config)
+        return 1
 
     ret = hakopy.asset_register(
         args.reader_asset_name,
