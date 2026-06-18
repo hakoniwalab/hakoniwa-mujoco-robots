@@ -13,6 +13,7 @@ param(
     [string]$Glfw3Dir = "",
     [switch]$DisableViewer,
     [switch]$UseThirdpartyHakoniwa,
+    [switch]$DisableThirdpartyEndpointBenchmarks,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$AdditionalCMakeArgs
 )
@@ -191,6 +192,10 @@ if (-not [string]::IsNullOrWhiteSpace($ResolvedGenerator)) {
 
 if ($UseThirdpartyHakoniwa) {
     $ConfigureArgs += "-DHAKO_USE_THIRDPARTY_HAKONIWA=ON"
+}
+
+if ($DisableThirdpartyEndpointBenchmarks) {
+    $ConfigureArgs += "-DHAKO_PDU_ENDPOINT_BUILD_BENCHMARKS=OFF"
 }
 
 if ((-not [string]::IsNullOrWhiteSpace($Platform)) -and (-not (Is-SingleConfigGenerator $ResolvedGenerator))) {

@@ -135,9 +135,9 @@ jobs:
             -Clean `
             -Generator Ninja `
             -UseThirdpartyHakoniwa `
+            -DisableThirdpartyEndpointBenchmarks `
             -ExtraPrefixPaths "$env:RUNNER_TEMP\vcpkg\installed\x64-windows" `
             -ToolchainFile "$env:RUNNER_TEMP\vcpkg\scripts\buildsystems\vcpkg.cmake" `
-            "-DHAKO_PDU_ENDPOINT_BUILD_BENCHMARKS=OFF" `
             "-DHAKONIWA_ASSETS_LIBRARY=assets" `
             "-DHAKONIWA_CONDUCTOR_LIBRARY=conductor"
 
