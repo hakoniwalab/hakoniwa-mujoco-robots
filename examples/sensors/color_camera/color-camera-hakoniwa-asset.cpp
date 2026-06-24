@@ -15,8 +15,10 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
+#include <utility>
 
 namespace {
 
@@ -49,6 +51,7 @@ std::mutex mujoco_mutex;
 std::unique_ptr<hakoniwa::pdu::Endpoint> endpoint;
 std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::ImagePduAdapter> image_adapter;
 std::unique_ptr<hako::robots::sensor::camera::CameraSensor> camera_sensor;
+std::optional<hako::robots::sensor::camera::ImageFrame> latest_camera_frame;
 std::unique_ptr<hako::examples::sensors::color_camera::CameraMotionController> camera_motion;
 hako::examples::sensors::color_camera::AppState app_state {};
 
@@ -130,6 +133,20 @@ static int OnManualTimingControl(hako_asset_context_t* context)
     PrintPublisherHelp();
 
     while (running.load() && app_state.running.load()) {
+        {
+            std::lock_guard<std::mutex> lock(mujoco_mutex);
+            if (endpoint_ready.load()) {
+                world->advanceTimeStep();
+                if (camera_sensor != nullptr &&
+                    image_adapter != nullptr &&
+                    latest_camera_frame.has_value() &&
+                    camera_sensor->ShouldUpdate(sim_timestep) &&
+                    !image_adapter->send(*latest_camera_frame))
+                {
+                    std::cerr << "[WARN] Failed to send camera image PDU." << std::endl;
+                }
+            }
+        }
         hako_asset_usleep(delta_time_usec);
     }
 
@@ -255,8 +272,6 @@ int main(int argc, char* argv[])
                   << camera_config_path << std::endl;
         return 1;
     }
-    const double sim_timestep = world->getModel()->opt.timestep;
-    hako::robots::sensor::camera::ImageFrame frame {};
     std::cout << "[INFO] asset=" << asset_name
               << " camera=" << camera_name
               << " freejoint=" << sensor_joint_name
@@ -284,15 +299,12 @@ int main(int argc, char* argv[])
             return;
         }
         camera_motion->Update();
-        if (endpoint_ready.load()) {
-            world->advanceTimeStep();
-            if (camera_sensor->ShouldUpdate(sim_timestep)) {
-                camera_sensor->Capture(frame);
-                if (!frame.data.empty() && image_adapter != nullptr &&
-                    !image_adapter->send(frame))
-                {
-                    std::cerr << "[WARN] Failed to send camera image PDU." << std::endl;
-                }
+        if (camera_sensor != nullptr) {
+            hako::robots::sensor::camera::ImageFrame frame {};
+            camera_sensor->Capture(frame);
+            if (!frame.data.empty()) {
+                // MujocoRenderRuntime holds mujoco_mutex while invoking this callback.
+                latest_camera_frame = std::move(frame);
             }
         }
         if (app_state.pending_shot.exchange(false)) {

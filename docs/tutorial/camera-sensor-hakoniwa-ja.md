@@ -185,8 +185,24 @@ PDU 上の robot 名と上記で作成した型定義ファイルをマッピン
 
 ### ライフサイクルと呼び出し順
 この example は MuJoCo viewer を表示しながら、viewer 用の OpenGL context でカメラ画像を capture します。
-そのため、`CameraSensor::Capture()` と PDU 送信は viewer の pre-render callback 側で行い、
-Hakoniwa の manual timing callback はアセットのライフサイクル維持に使います。
+OpenGL context が必要な `CameraSensor::Capture()` は viewer の pre-render callback 側で行い、
+取得した最新フレームを共有します。MuJoCo simulation の step、`CameraSensor::ShouldUpdate()` による周期判定、
+PDU 送信は Hakoniwa の manual timing callback 側で行います。
+
+この役割分担は TB3 sample と同じです。
+
+```text
+viewer / render thread
+  camera pose 更新
+  CameraSensor::Capture()
+  latest frame 更新
+
+Hakoniwa manual timing thread
+  world->advanceTimeStep()
+  CameraSensor::ShouldUpdate(sim_timestep)
+  ImagePduAdapter::send(latest frame)
+  hako_asset_usleep(delta_time_usec)
+```
 
 前述の通り、`hako_asset_start_no_wait()` は名前に `no_wait` とありますが、箱庭の start trigger は待ちます。
 ここでのポイントは、`hako_asset_start()` と違って `IsForceStop` のような停止判定 callback を渡せることです。
@@ -198,9 +214,10 @@ endpoint の呼び出し順は次を守ります。
 3. `main()` で `endpoint.start()` を呼ぶ。
 4. worker thread で `hako_asset_start_no_wait()` を呼び、simulation start trigger を待つ。
 5. `on_initialize` callback で `endpoint.post_start()` を呼ぶ。
-6. `post_start()` 完了後、viewer pre-render callback で `world->advanceTimeStep()` を行う。
-7. `CameraSensor::ShouldUpdate()` が `true` の周期で `CameraSensor::Capture()`、`ImagePduAdapter::send()` を行う。
-8. viewer 終了後に `endpoint.stop()` / `endpoint.close()` を呼ぶ。
+6. viewer pre-render callback で `CameraSensor::Capture()` を行い、最新フレームを保存する。
+7. `post_start()` 完了後、manual timing callback で `world->advanceTimeStep()` を行う。
+8. `CameraSensor::ShouldUpdate()` が `true` の周期で、保存済みの最新フレームを `ImagePduAdapter::send()` する。
+9. viewer 終了後に `endpoint.stop()` / `endpoint.close()` を呼ぶ。
 
 `endpoint.open()` / `endpoint.start()` を `on_manual_timing_control` の中で呼ばないでください。
 manual timing callback は start trigger 後に呼ばれるため、endpoint の初期化場所としては遅すぎます。
@@ -212,7 +229,8 @@ manual timing callback は start trigger 後に呼ばれるため、endpoint の
 `CameraSensor` はこの renderer を受け取り、MuJoCo XML の `camera` 名と JSON の `spec` から画像を取得します。
 OpenGL context を持つ viewer thread で capture するため、capture 処理は pre-render callback 側に置きます。
 pre-render callback は `mjv_updateScene()` の前に呼ばれるため、MuJoCo viewer に描かれる姿勢と capture に使う姿勢が一致します。
-測定・publish の周期は `CameraSensor::ShouldUpdate()` に任せ、`spec.update_rate` に従わせます。
+PDU publish は manual timing thread に置きます。測定・publish の周期は
+`CameraSensor::ShouldUpdate()` に任せ、`spec.update_rate` に従わせます。
 
 ```cpp
 #include "hakoniwa/pdu/endpoint.hpp"
@@ -221,6 +239,7 @@ pre-render callback は `mjv_updateScene()` の前に呼ばれるため、MuJoCo
 std::unique_ptr<hakoniwa::pdu::Endpoint> endpoint;
 std::unique_ptr<hako::robots::pdu::adapter::sensor_msgs::ImagePduAdapter> image_adapter;
 std::unique_ptr<hako::robots::sensor::camera::CameraSensor> camera_sensor;
+std::optional<hako::robots::sensor::camera::ImageFrame> latest_camera_frame;
 std::atomic_bool endpoint_ready {false};
 
 // --- アセット初期化コールバック ---
@@ -251,8 +270,19 @@ static int my_manual_timing_control(hako_asset_context_t* context)
     const hako_time_t delta_time_usec = static_cast<hako_time_t>(sim_timestep * 1e6);
 
     while (running_flag) {
-        // viewer 側の pre-render callback が capture/send を行う。
-        // manual timing callback は箱庭アセットの実行状態を維持する。
+        {
+            std::lock_guard<std::mutex> lock(mujoco_mutex);
+            if (endpoint_ready.load()) {
+                world->advanceTimeStep();
+                if (camera_sensor != nullptr &&
+                    image_adapter != nullptr &&
+                    latest_camera_frame.has_value() &&
+                    camera_sensor->ShouldUpdate(sim_timestep))
+                {
+                    (void)image_adapter->send(*latest_camera_frame);
+                }
+            }
+        }
         hako_asset_usleep(delta_time_usec);
     }
     return 0;
@@ -303,22 +333,12 @@ int main()
         profile.mjcf_binding.camera_name);
     camera_sensor->LoadConfig(profile.spec);
 
-    const double sim_timestep = world->getModel()->opt.timestep;
-    ImageFrame image_frame {};
     render_runtime.SetPreRenderCallback([&]() {
-        if (!endpoint_ready.load()) {
-            return;
-        }
-
-        // カメラ body を動かす場合は、pose 更新も pre-render 側で行う。
-        world->advanceTimeStep();
-        if (!camera_sensor->ShouldUpdate(sim_timestep)) {
-            return;
-        }
-
-        camera_sensor->Capture(image_frame);
-        if (!image_frame.data.empty()) {
-            (void)image_adapter->send(image_frame);
+        // カメラ body を動かす場合は、pose 更新も capture 前に行う。
+        ImageFrame frame {};
+        camera_sensor->Capture(frame);
+        if (!frame.data.empty()) {
+            latest_camera_frame = std::move(frame);
         }
     });
 
@@ -549,7 +569,9 @@ hako-cmd start
 ```
 
 `hako-cmd start` 後、C++ publisher 側では `on_initialize` が呼ばれ、`endpoint.post_start()` が完了します。
-その後、MuJoCo viewer の描画 loop 内で `world->advanceTimeStep()` が実行され、`CameraSensor::ShouldUpdate(sim_timestep)` が `true` になった周期で `CameraSensor::Capture()`、`ImagePduAdapter::send()` が実行されます。
+viewer の描画 loop は `CameraSensor::Capture()` で最新画像を更新します。
+`hako-cmd start` 後は manual timing loop が `world->advanceTimeStep()` を実行し、
+`CameraSensor::ShouldUpdate(sim_timestep)` が `true` になった周期で最新画像を `ImagePduAdapter::send()` します。
 Python reader 側の OpenCV window にカメラ画像が表示されれば成功です。
 
 ### つまづきポイント
@@ -562,9 +584,10 @@ Python reader 側の OpenCV window にカメラ画像が表示されれば成功
   `on_manual_timing_control` の中で呼ぶと、箱庭 lifecycle と endpoint lifecycle の順序が崩れます。
   `post_start()` だけを `on_initialize` callback で呼びます。
 
-- **capture/send は viewer 側で行う**:
+- **capture は viewer、send は manual timing loop で行う**:
   カメラ画像の capture は OpenGL context に依存します。
-  この example では `hako_asset_start_no_wait()` を worker thread で動かし、main thread の MuJoCo viewer pre-render callback で capture/send します。
+  この example では `hako_asset_start_no_wait()` を worker thread で動かし、main thread の MuJoCo viewer pre-render callback で capture します。
+  capture 済みの最新フレームは、Hakoniwa manual timing loop が周期判定してPDUへ送信します。
   `mjv_updateScene()` 後の overlay callback で camera pose を更新すると、viewer 表示と capture 画像の位置がずれるため、pose 更新と capture は pre-render 側で行います。
 
 - **送信周期は `CameraSensor::ShouldUpdate(sim_timestep)` に任せる**:

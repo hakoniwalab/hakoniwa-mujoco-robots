@@ -254,6 +254,12 @@ hako-cmd start
 After the start trigger, the C++ asset enters its manual timing loop and
 publishes `CameraAsset/camera_image` periodically.
 
+The viewer pre-render callback performs only the OpenGL-dependent camera
+capture and stores the latest frame. The Hakoniwa manual timing loop advances
+MuJoCo, applies `CameraSensor::ShouldUpdate()`, and publishes that latest frame.
+This keeps PDU timing and writes on the simulation thread while retaining
+camera rendering on the thread that owns the OpenGL context.
+
 While the publisher terminal or MuJoCo viewer is active, move the camera with:
 
 ```text
