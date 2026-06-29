@@ -1,8 +1,20 @@
 {
   "$schema": "../schema/force-torque.schema.json",
-  "frame_id": "wrist_3_joint",
-  "update_rate": 100,
-  "joint_name": "wrist_3_joint",
-  "frame": "child",
-  "measure_direction": "child_to_parent"
+  "spec": {
+    "type": "force_torque",
+    "name": "wrist_3_force_torque",
+    "frame_id": "wrist_3_joint",
+    "update_rate_hz": 100,
+    "frame": "child",
+    "measure_direction": "child_to_parent"
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "joint_name": "wrist_3_joint"
+  },
+  "pdu_config": {
+    "pdu_name": "force_torque",
+    "update_rate_hz": 100
+  }
 }

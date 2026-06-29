@@ -2,87 +2,27 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hakoniwa.dev/schemas/odometry-output.schema.json",
   "title": "Hakoniwa Odometry output",
-  "oneOf": [
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "spec",
-        "mjcf_binding",
-        "pdu_config"
-      ],
-      "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "spec": {
-          "$ref": "#/$defs/spec"
-        },
-        "mjcf_binding": {
-          "$ref": "#/$defs/mjcfBinding"
-        },
-        "pdu_config": {
-          "$ref": "#/$defs/pduConfig"
-        }
-      }
-    },
-    {
-      "allOf": [
-        {
-          "$ref": "./common-output.schema.json"
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "type",
-            "frame_id",
-            "child_frame_id",
-            "source_body",
-            "mode"
-          ],
-          "properties": {
-            "$schema": {
-              "type": "string"
-            },
-            "type": {
-              "const": "odometry"
-            },
-            "name": {
-              "type": "string",
-              "minLength": 1
-            },
-            "pdu_name": {
-              "type": "string",
-              "minLength": 1
-            },
-            "update_rate_hz": {
-              "type": "number",
-              "exclusiveMinimum": 0
-            },
-            "frame_id": {
-              "type": "string",
-              "minLength": 1
-            },
-            "child_frame_id": {
-              "type": "string",
-              "minLength": 1
-            },
-            "source_body": {
-              "type": "string",
-              "minLength": 1
-            },
-            "mode": {
-              "enum": [
-                "ground_truth",
-                "encoder"
-              ]
-            }
-          }
-        }
-      ]
-    }
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "spec": {
+      "$ref": "#/$defs/spec"
+    },
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
+    },
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
+    }
+  },
   "$defs": {
     "spec": {
       "type": "object",

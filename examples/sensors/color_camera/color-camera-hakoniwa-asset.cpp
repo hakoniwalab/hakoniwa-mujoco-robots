@@ -276,7 +276,7 @@ int main(int argc, char* argv[])
               << " camera=" << camera_name
               << " freejoint=" << sensor_joint_name
               << " pdu=" << image_pdu_name
-              << " sensor_rate_hz=" << profile.spec.update_rate
+              << " sensor_rate_hz=" << profile.spec.update_rate_hz
               << " pdu_config_rate_hz=" << profile.pdu_config.update_rate_hz
               << std::endl;
     render_runtime.SetKeyCallback(

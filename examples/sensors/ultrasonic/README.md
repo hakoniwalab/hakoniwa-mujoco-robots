@@ -128,7 +128,7 @@ Important fields:
       "RayCount": 1
     },
     "RadiationType": "ultrasound",
-    "UpdateRate": 100.0
+    "update_rate_hz": 100.0
   },
   "mjcf_binding": {
     "source_site": "front_ultrasonic_site"
@@ -279,7 +279,7 @@ range_adapter->send(sensor.GetConfig(), frame);
 ```
 
 Measurement and publishing are gated by `UltrasonicSensor::ShouldUpdate()`,
-so the runtime cadence follows `spec.UpdateRate`.
+so the runtime cadence follows `spec.update_rate_hz`.
 
 The default PDU key is a PDU robot name plus a channel name:
 

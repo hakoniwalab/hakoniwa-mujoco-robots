@@ -5,59 +5,20 @@
   "description": "SDF-like but MJCF-resolved JSON config for standard Camera profiles used by Hakoniwa MuJoCo sensors.",
   "type": "object",
   "additionalProperties": false,
-  "oneOf": [
-    {
-      "required": [
-        "frame_id",
-        "update_rate",
-        "image",
-        "clip",
-        "horizontal_fov"
-      ]
-    },
-    {
-      "required": [
-        "spec"
-      ]
-    }
+  "required": [
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
       "type": "string"
-    },
-    "frame_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "update_rate": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "description": "The frequency at which the sensor generates data, in Hz."
-    },
-    "horizontal_fov": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 3.141592653589793,
-      "description": "Horizontal field of view, in radians."
-    },
-    "image": {
-      "$ref": "#/$defs/image"
-    },
-    "clip": {
-      "$ref": "#/$defs/clip"
-    },
-    "noise": {
-      "$ref": "#/$defs/noise"
     },
     "spec": {
       "$ref": "#/$defs/cameraSpec"
     },
     "mjcf_binding": {
       "$ref": "#/$defs/mjcfBinding"
-    },
-    "RuntimeBinding": {
-      "$ref": "#/$defs/mjcfBinding",
-      "description": "Backward-compatible key for mjcf_binding."
     },
     "pdu_config": {
       "$ref": "#/$defs/pduConfig"
@@ -69,7 +30,7 @@
       "additionalProperties": false,
       "required": [
         "frame_id",
-        "update_rate",
+        "update_rate_hz",
         "image",
         "clip",
         "horizontal_fov"
@@ -79,7 +40,7 @@
           "type": "string",
           "minLength": 1
         },
-        "update_rate": {
+        "update_rate_hz": {
           "type": "number",
           "exclusiveMinimum": 0,
           "description": "The frequency at which the sensor generates data, in Hz."

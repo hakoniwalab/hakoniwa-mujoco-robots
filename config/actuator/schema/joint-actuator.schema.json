@@ -5,22 +5,10 @@
   "description": "SDF-like but MJCF-resolved JSON config for joint actuators used by Hakoniwa MuJoCo controllers.",
   "type": "object",
   "additionalProperties": false,
-  "oneOf": [
-    {
-      "required": ["spec"],
-      "not": {
-        "anyOf": [
-          { "required": ["joint_name"] },
-          { "required": ["type"] }
-        ]
-      }
-    },
-    {
-      "required": ["joint_name", "type"],
-      "not": {
-        "required": ["spec"]
-      }
-    }
+  "required": [
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
@@ -32,27 +20,8 @@
     "mjcf_binding": {
       "$ref": "#/$defs/mjcfBinding"
     },
-    "RuntimeBinding": {
-      "$ref": "#/$defs/mjcfBinding",
-      "description": "Backward-compatible key for mjcf_binding."
-    },
     "pdu_config": {
       "$ref": "#/$defs/pduConfig"
-    },
-    "joint_name": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Backward-compatible top-level target MJCF joint name. Prefer spec.joint_name."
-    },
-    "type": {
-      "$ref": "#/$defs/actuatorType",
-      "description": "Backward-compatible top-level control mode. Prefer spec.type."
-    },
-    "limit": {
-      "$ref": "#/$defs/limit"
-    },
-    "dynamics": {
-      "$ref": "#/$defs/dynamics"
     }
   },
   "$defs": {

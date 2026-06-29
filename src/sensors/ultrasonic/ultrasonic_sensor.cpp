@@ -150,7 +150,7 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
             config_.cone.ray_count = common::get_json_int(j_cone, "RayCount", 1);
         }
 
-        config_.update_rate = spec.value("UpdateRate", 10.0);
+        config_.update_rate_hz = spec.value("update_rate_hz", spec.value("UpdateRate", 10.0));
 
         config_.distance_accuracy.clear();
         if (spec.contains("DistanceAccuracy") && spec.at("DistanceAccuracy").is_array()) {
@@ -173,17 +173,17 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
 
         if (const auto* rb = binding_root(root); rb != nullptr) {
 
-            config_.runtime_binding.config_style =
-                rb->value("config_style", config_.runtime_binding.config_style);
+            config_.mjcf_binding.config_style =
+                rb->value("config_style", config_.mjcf_binding.config_style);
 
-            config_.runtime_binding.runtime_source =
-                rb->value("runtime_source", config_.runtime_binding.runtime_source);
+            config_.mjcf_binding.runtime_source =
+                rb->value("runtime_source", config_.mjcf_binding.runtime_source);
 
-            config_.runtime_binding.parent_body =
-                rb->value("parent_body", config_.runtime_binding.parent_body);
+            config_.mjcf_binding.parent_body =
+                rb->value("parent_body", config_.mjcf_binding.parent_body);
 
-            config_.runtime_binding.source_site =
-                rb->value("source_site", config_.runtime_binding.source_site);
+            config_.mjcf_binding.source_site =
+                rb->value("source_site", config_.mjcf_binding.source_site);
         }
 
         hako::robots::config::ReadPduConfig(
@@ -205,10 +205,10 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
             config_.cone.ray_count = 1;
         }
 
-        if (config_.update_rate <= 0.0) {
+        if (config_.update_rate_hz <= 0.0) {
             std::cerr
-                << "ERROR: UltrasonicSensor::LoadConfig: invalid UpdateRate: "
-                << config_.update_rate << std::endl;
+                << "ERROR: UltrasonicSensor::LoadConfig: invalid update_rate_hz: "
+                << config_.update_rate_hz << std::endl;
             return false;
         }
 
@@ -224,7 +224,7 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
          * Resolve runtime frame once.
          *
          * Resolution policy:
-         * 1. RuntimeBinding.source_site, if specified, is resolved as mjOBJ_SITE.
+         * 1. mjcf_binding.source_site, if specified, is resolved as mjOBJ_SITE.
          * 2. Otherwise sensor_body_name_ is used as a fallback runtime object name.
          *    It is resolved as site first, then body.
          * 3. If sensor_body_name_ is empty, frame_id is used as a convention fallback.
@@ -232,16 +232,16 @@ bool UltrasonicSensor::LoadConfig(const std::string& config_path)
         runtime_frame_type_ = RuntimeFrameType::None;
         runtime_frame_id_ = -1;
 
-        if (!config_.runtime_binding.source_site.empty()) {
+        if (!config_.mjcf_binding.source_site.empty()) {
             const int site_id = mj_name2id(
                 model,
                 mjOBJ_SITE,
-                config_.runtime_binding.source_site.c_str());
+                config_.mjcf_binding.source_site.c_str());
 
             if (site_id < 0) {
                 std::cerr
                     << "ERROR: UltrasonicSensor::LoadConfig: Failed to find source_site: "
-                    << config_.runtime_binding.source_site << std::endl;
+                    << config_.mjcf_binding.source_site << std::endl;
                 return false;
             }
 
@@ -355,8 +355,8 @@ void UltrasonicSensor::Reset()
 
 double UltrasonicSensor::GetUpdatePeriodSec() const
 {
-    if (config_.update_rate > 0.0) {
-        return 1.0 / config_.update_rate;
+    if (config_.update_rate_hz > 0.0) {
+        return 1.0 / config_.update_rate_hz;
     }
     return 0.1;
 }

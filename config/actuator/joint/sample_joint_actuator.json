@@ -16,5 +16,10 @@
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "actuator_name": "left_motor"
+  },
+  "pdu_config": {
+    "pdu_name": "left_wheel_target",
+    "update_rate_hz": 50.0,
+    "message_type": "std_msgs/Float64"
   }
 }

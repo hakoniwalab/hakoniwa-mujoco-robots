@@ -156,8 +156,6 @@ velocity actuator の設定は `config/actuator/joint/sample_velocity_actuator.j
 `actuator_name` は MJCF の actuator 名です。
 `<joint name="position_hinge">` ではなく、`<position name="position_servo">` の名前を書きます。
 
-旧形式の `RuntimeBinding.actuator_name` も互換性のため読めますが、新しく書く場合は `mjcf_binding.actuator_name` を使います。
-
 ### `pdu_config`
 
 `pdu_config` は、この actuator を Hakoniwa PDU command に接続するときの設定です。

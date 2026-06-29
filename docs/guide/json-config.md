@@ -56,25 +56,9 @@ Conceptually:
 }
 ```
 
-Some older JSON files are not fully nested this way. For compatibility, some
-`spec` fields may still appear as top-level fields, and `mjcf_binding` may be
-represented by the `RuntimeBinding` key.
-
-```json
-{
-  "frame_id": "laser",
-  "DetectionDistance": {
-    "Min": 160,
-    "Max": 8000
-  },
-  "RuntimeBinding": {
-    "source_body": "base_scan"
-  }
-}
-```
-
-This guide uses `spec` / `mjcf_binding` / `pdu_config` for explanation and also
-mentions backward-compatible JSON key names where they still matter.
+New sensor and actuator configs should use these container keys directly. The
+schemas in this repository use `spec`, `mjcf_binding`, and `pdu_config` as the
+public contract.
 
 ## Current Common Shape
 
@@ -83,16 +67,21 @@ Many config files look roughly like this:
 ```json
 {
   "$schema": "../schema/example.schema.json",
-  "type": "example",
-  "name": "example_name",
-  "frame_id": "example_frame",
-  "pdu_name": "example_pdu",
-  "update_rate_hz": 20,
-  "RuntimeBinding": {
+  "spec": {
+    "type": "example",
+    "name": "example_name",
+    "frame_id": "example_frame"
+  },
+  "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "source_body": "example_body",
     "source_site": "example_site"
+  },
+  "pdu_config": {
+    "pdu_name": "example_pdu",
+    "update_rate_hz": 20,
+    "message_type": "example/Message"
   }
 }
 ```
@@ -150,16 +139,16 @@ Hakoniwa PDU channel name. The same name must exist in the relevant
 
 ### `update_rate_hz`
 
-Output publish rate for PDU output configs. Sensor profiles may use
-`update_rate` or `UpdateRate`; follow the existing schema for that sensor type.
+Update rate in Hz. Sensor specs and PDU configs both use `update_rate_hz`; keep
+the same value in both places unless the runtime intentionally samples and
+publishes at different rates.
 
-## `mjcf_binding` / MJCF Binding (`RuntimeBinding`)
+## `mjcf_binding` / MJCF Binding
 
-`RuntimeBinding` connects a JSON config to concrete MJCF object names. For user
-documentation, think of it as the `mjcf_binding` block.
+`mjcf_binding` connects a JSON config to concrete MJCF object names.
 
 ```json
-"RuntimeBinding": {
+"mjcf_binding": {
   "config_style": "hakoniwa-sdf-like",
   "runtime_source": "mjcf",
   "source_site": "front_ultrasonic_site"
@@ -178,8 +167,8 @@ These are MuJoCo XML names, not PDU names.
 | `actuator_name` | MJCF actuator name | `left_wheel_velocity` |
 | `frame_id_override` | Optional published frame override | `front_ultrasonic` |
 
-Schema validation cannot prove that a `RuntimeBinding` target exists in MJCF.
-That is checked when the model and config are loaded by runtime code.
+Schema validation cannot prove that a `mjcf_binding` target exists in MJCF. That
+is checked when the model and config are loaded by runtime code.
 
 ## `spec` Vs `pdu_config`
 
@@ -230,9 +219,8 @@ command PDU channel to receive:
 }
 ```
 
-Some components, such as LiDAR and ultrasonic, keep `spec` and `mjcf_binding`
-(`RuntimeBinding`) inside the sensor profile. Others, such as IMU, joint state,
-odometry, and TF, are defined as PDU output configs.
+All sensor and actuator component configs should keep behavior in `spec`, MJCF
+object names in `mjcf_binding`, and PDU channel details in `pdu_config`.
 
 ## Actuator Profile
 
@@ -252,14 +240,16 @@ An actuator profile defines how a target is written to a MuJoCo actuator.
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "actuator_name": "left_wheel_velocity"
+  },
+  "pdu_config": {
+    "pdu_name": "left_wheel_cmd",
+    "message_type": "std_msgs/Float64"
   }
 }
 ```
 
 `spec.joint_name` is the MJCF joint name. `mjcf_binding.actuator_name` is the
 MJCF actuator name. `spec.type` must match the MJCF actuator kind.
-Backward-compatible top-level `joint_name` / `type` and `RuntimeBinding` are
-still accepted, but new configs should use `spec` and `mjcf_binding`.
 
 | JSON `spec.type` | MJCF |
 | --- | --- |

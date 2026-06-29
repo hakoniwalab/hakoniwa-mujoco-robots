@@ -28,9 +28,8 @@ conceptual containers:
 - `mjcf_binding`: names of MJCF objects used by the runtime
 - `pdu_config`: PDU channel and communication-rate settings
 
-Current JSON files do not always use those exact container keys. Many `spec`
-fields are top-level fields, and `mjcf_binding` is currently represented by
-`RuntimeBinding`.
+Current sensor and actuator component schemas use these container keys as the
+public JSON shape.
 
 ### Sensor Profiles
 
@@ -57,8 +56,8 @@ Examples:
 - odometry output from a source body
 - TF output from source bodies
 
-These configs normally include `type`, `name`, `pdu_name`, and
-`update_rate_hz`.
+These configs normally include `spec.type`, `spec.name`,
+`pdu_config.pdu_name`, and `pdu_config.update_rate_hz`.
 
 ### Actuator Profiles
 
@@ -71,7 +70,8 @@ Examples:
 - control mode: `position`, `velocity`, or `torque`
 - optional effort/velocity limits
 - optional damping/friction metadata
-- optional MJCF actuator binding
+- MJCF actuator binding
+- PDU command binding
 
 ## Common Fields
 
@@ -101,23 +101,16 @@ Examples:
 - `laser`
 - `imu_link`
 
-### `update_rate` / `UpdateRate` / `update_rate_hz`
+### `update_rate_hz`
 
 Frequency in Hz.
 
-The repository currently has both SDF-like profile naming and PDU output
-config naming:
+Use `update_rate_hz` for sensor specs, PDU output configs, and actuator command
+cadence settings. The `_hz` suffix keeps the unit explicit.
 
-- `update_rate`: camera-style profiles
-- `UpdateRate`: ultrasonic-style profiles
-- `update_rate_hz`: PDU output configs
+### MJCF Binding (`mjcf_binding`)
 
-Prefer matching the existing schema for the sensor type being edited.
-
-### MJCF Binding (`RuntimeBinding`)
-
-Optional block that connects a profile to MuJoCo object names. In user-facing
-docs, this is the MJCF binding block.
+Block that connects a profile to MuJoCo object names.
 
 Common fields:
 
@@ -265,7 +258,7 @@ Key fields:
 - `spec.Cone.Horizontal`
 - `spec.Cone.Vertical`
 - `spec.Cone.RayCount`
-- `spec.UpdateRate`
+- `spec.update_rate_hz`
 - `mjcf_binding.source_site`
 - `pdu_config.pdu_name`
 - `pdu_config.update_rate_hz`
@@ -293,16 +286,18 @@ config/sensors/lidar/urg-04lx-ug01.json
 
 Key fields:
 
-- `frame_id`
-- `DetectionDistance.Min`
-- `DetectionDistance.Max`
-- `DistanceAccuracy[]`
-- `AngleRange.Min`
-- `AngleRange.Max`
-- `AngleRange.Resolution`
-- `AngleRange.ScanFrequency`
-- `AngleRange.AscendingOrderOfData`
-- optional `RuntimeBinding`
+- `spec.frame_id`
+- `spec.DetectionDistance.Min`
+- `spec.DetectionDistance.Max`
+- `spec.DistanceAccuracy[]`
+- `spec.AngleRange.Min`
+- `spec.AngleRange.Max`
+- `spec.AngleRange.Resolution`
+- `spec.AngleRange.ScanFrequency`
+- `spec.AngleRange.AscendingOrderOfData`
+- `mjcf_binding.source_body` or `mjcf_binding.source_site`
+- `pdu_config.pdu_name`
+- `pdu_config.update_rate_hz`
 
 PDU mapping:
 
@@ -324,9 +319,11 @@ config/sensors/gps/sample_gps.json
 
 Key fields:
 
-- `frame_id`
-- `update_rate`
+- `spec.frame_id`
+- `spec.update_rate_hz`
 - optional position/velocity noise blocks
+- `mjcf_binding.source_body` or `mjcf_binding.source_site`
+- `pdu_config.pdu_name`
 
 ### Contact
 
@@ -344,9 +341,11 @@ config/sensors/contact/sample_contact.json
 
 Key fields:
 
-- `frame_id`
-- `update_rate`
-- `collision_name`
+- `spec.frame_id`
+- `spec.update_rate_hz`
+- `spec.collision_name`
+- `mjcf_binding.source_body` or `mjcf_binding.source_site`
+- `pdu_config.pdu_name`
 
 ### Force/Torque
 
@@ -364,11 +363,13 @@ config/sensors/force_torque/sample_force_torque.json
 
 Key fields:
 
-- `frame_id`
-- `update_rate`
-- `joint_name`
-- `frame`: `parent`, `child`, or `sensor`
-- `measure_direction`: `parent_to_child` or `child_to_parent`
+- `spec.frame_id`
+- `spec.update_rate_hz`
+- `spec.joint_name`
+- `spec.frame`: `parent`, `child`, or `sensor`
+- `spec.measure_direction`: `parent_to_child` or `child_to_parent`
+- `mjcf_binding.source_body` or `mjcf_binding.source_site`
+- `pdu_config.pdu_name`
 
 ## Runtime Output Schemas
 
@@ -544,10 +545,8 @@ Key fields:
 - `spec.dynamics.damping`
 - `spec.dynamics.friction`
 - `mjcf_binding.actuator_name`
-
-Backward-compatible top-level `joint_name` / `type` / `limit` / `dynamics` and
-`RuntimeBinding.actuator_name` are still accepted by the schema and loader, but
-new configs should use `spec` and `mjcf_binding`.
+- `pdu_config.pdu_name`
+- `pdu_config.message_type`: `std_msgs/Float64`
 
 PDU mapping:
 

@@ -6,42 +6,100 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "frame_id",
-    "update_rate",
-    "image",
-    "clip",
-    "horizontal_fov"
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
       "type": "string"
     },
-    "frame_id": {
-      "type": "string",
-      "minLength": 1
+    "spec": {
+      "$ref": "#/$defs/depthCameraSpec"
     },
-    "update_rate": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "description": "The frequency at which the sensor generates data, in Hz."
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
     },
-    "horizontal_fov": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "maximum": 3.141592653589793,
-      "description": "Horizontal field of view, in radians."
-    },
-    "image": {
-      "$ref": "#/$defs/image"
-    },
-    "clip": {
-      "$ref": "#/$defs/clip"
-    },
-    "noise": {
-      "$ref": "#/$defs/noise"
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
     }
   },
   "$defs": {
+    "depthCameraSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "frame_id",
+        "update_rate_hz",
+        "image",
+        "clip",
+        "horizontal_fov"
+      ],
+      "properties": {
+        "frame_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "The frequency at which the sensor generates data, in Hz."
+        },
+        "horizontal_fov": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 3.141592653589793,
+          "description": "Horizontal field of view, in radians."
+        },
+        "image": {
+          "$ref": "#/$defs/image"
+        },
+        "clip": {
+          "$ref": "#/$defs/clip"
+        },
+        "noise": {
+          "$ref": "#/$defs/noise"
+        }
+      }
+    },
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "camera_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "freejoint_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "pduConfig": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/pduConfig"
+        },
+        {
+          "properties": {
+            "message_type": {
+              "const": "sensor_msgs/Image"
+            }
+          }
+        }
+      ]
+    },
     "image": {
       "type": "object",
       "additionalProperties": false,

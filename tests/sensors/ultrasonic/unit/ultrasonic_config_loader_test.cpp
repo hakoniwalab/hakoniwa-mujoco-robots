@@ -81,8 +81,8 @@ void TestLegoSpikeDistanceSensorConfig()
     HAKO_TEST_EXPECT(NearlyEqual(config.cone.horizontal, 0.0), "unexpected horizontal FOV");
     HAKO_TEST_EXPECT(NearlyEqual(config.cone.vertical, 0.0), "unexpected vertical FOV");
     HAKO_TEST_EXPECT(config.cone.ray_count == 1, "unexpected ray count");
-    HAKO_TEST_EXPECT(NearlyEqual(config.update_rate, 100.0), "unexpected update rate");
-    HAKO_TEST_EXPECT(config.runtime_binding.source_site == "front_ultrasonic_site", "unexpected source site");
+    HAKO_TEST_EXPECT(NearlyEqual(config.update_rate_hz, 100.0), "unexpected update rate");
+    HAKO_TEST_EXPECT(config.mjcf_binding.source_site == "front_ultrasonic_site", "unexpected source site");
     HAKO_TEST_EXPECT(config.pdu_config.pdu_name == "range", "unexpected pdu name");
     HAKO_TEST_EXPECT(NearlyEqual(config.pdu_config.update_rate_hz, 100.0), "unexpected pdu update rate");
     HAKO_TEST_EXPECT(config.pdu_config.message_type == "sensor_msgs/Range", "unexpected pdu message type");

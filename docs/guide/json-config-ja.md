@@ -112,23 +112,8 @@ python3 tools/inspect_asset_manifest.py \
 }
 ```
 
-古い JSON の一部は、この入れ子構造になっていません。
-互換性のため、`spec` 相当のフィールドが top-level に置かれていたり、`mjcf_binding` 相当が `RuntimeBinding` というキー名で表現されていたりする場合があります。
-
-```json
-{
-  "frame_id": "laser",
-  "DetectionDistance": {
-    "Min": 160,
-    "Max": 8000
-  },
-  "RuntimeBinding": {
-    "source_body": "base_scan"
-  }
-}
-```
-
-このガイドでは、説明上は `spec` / `mjcf_binding` / `pdu_config` で整理し、必要な箇所では互換用の旧キー名も併記します。
+新しく書くセンサ / アクチュエータ設定では、この3つのキーをそのまま使います。
+このリポジトリの schema は `spec` / `mjcf_binding` / `pdu_config` を公開上の正規形として扱います。
 
 ## 現行 JSON の共通構造
 
@@ -137,16 +122,21 @@ python3 tools/inspect_asset_manifest.py \
 ```json
 {
   "$schema": "../schema/example.schema.json",
-  "type": "example",
-  "name": "example_name",
-  "frame_id": "example_frame",
-  "pdu_name": "example_pdu",
-  "update_rate_hz": 20,
-  "RuntimeBinding": {
+  "spec": {
+    "type": "example",
+    "name": "example_name",
+    "frame_id": "example_frame"
+  },
+  "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "source_body": "example_body",
     "source_site": "example_site"
+  },
+  "pdu_config": {
+    "pdu_name": "example_pdu",
+    "update_rate_hz": 20,
+    "message_type": "example/Message"
   }
 }
 ```
@@ -208,7 +198,7 @@ MJCF の body や site の名前とは別物です。
 ```
 
 同じ文字列にしても構いませんが、意味は違います。
-`frame_id` は publish されるデータの座標系名、`RuntimeBinding.*` は MuJoCo model 内の実体名です。
+`frame_id` は publish されるデータの座標系名、`mjcf_binding.*` は MuJoCo model 内の実体名です。
 
 ### `pdu_name`
 
@@ -230,30 +220,27 @@ TB3 では `config/tb3-pdutypes.json` に次のような channel があります
 
 ### `update_rate_hz`
 
-PDU output config の publish 周期です。
-物理 timestep ごとに必ず出すのではなく、この周期に従って frame を作ります。
+Hz 単位の更新周期です。
+sensor spec と PDU config のどちらも `update_rate_hz` を使います。
+runtime が sampling 周期と publish 周期を意図的に分ける場合を除き、同じ値にしてください。
 
 ```json
 "update_rate_hz": 20
 ```
 
-sensor profile では `update_rate` や `UpdateRate` の名前を使うものもあります。
-既存 schema に合わせてください。
+## `mjcf_binding` / MJCF Binding
 
-## `mjcf_binding` / MJCF Binding (`RuntimeBinding`)
-
-`RuntimeBinding` は、JSON 設定を MJCF 内の object に結びつける block です。
-ユーザ向けには `mjcf_binding` と考えると分かりやすいです。
+`mjcf_binding` は、JSON 設定を MJCF 内の object に結びつける block です。
 
 ```json
-"RuntimeBinding": {
+"mjcf_binding": {
   "config_style": "hakoniwa-sdf-like",
   "runtime_source": "mjcf",
   "source_site": "front_ultrasonic_site"
 }
 ```
 
-重要なのは、`RuntimeBinding` は PDU 名ではなく MuJoCo XML 内の名前を書く場所だという点です。
+重要なのは、`mjcf_binding` は PDU 名ではなく MuJoCo XML 内の名前を書く場所だという点です。
 
 | フィールド | 意味 | 例 |
 | --- | --- | --- |
@@ -265,7 +252,7 @@ sensor profile では `update_rate` や `UpdateRate` の名前を使うものも
 | `actuator_name` | MJCF actuator 名 | `left_wheel_velocity` |
 | `frame_id_override` | publish 時の frame_id override | `front_ultrasonic` |
 
-`RuntimeBinding` の値は schema validation では存在確認できません。
+`mjcf_binding` の値は schema validation では存在確認できません。
 たとえば `source_site` が MJCF 内に本当にあるかは、MuJoCo model を load して `LoadConfig()` する段階で確認されます。
 
 ## `spec` と `pdu_config` の違い
@@ -340,6 +327,10 @@ actuator profile は、PDU や C++ command から受け取った target を MuJo
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "actuator_name": "left_wheel_velocity"
+  },
+  "pdu_config": {
+    "pdu_name": "left_wheel_cmd",
+    "message_type": "std_msgs/Float64"
   }
 }
 ```
@@ -347,7 +338,6 @@ actuator profile は、PDU や C++ command から受け取った target を MuJo
 `spec.joint_name` は MJCF joint 名です。
 `mjcf_binding.actuator_name` は MJCF actuator 名です。
 `spec.type` は MJCF actuator 種別と合わせます。
-旧形式の top-level `joint_name` / `type` と `RuntimeBinding` も互換性のため読めますが、新しく書く場合は `spec` / `mjcf_binding` を使います。
 
 | JSON `spec.type` | MJCF |
 | --- | --- |

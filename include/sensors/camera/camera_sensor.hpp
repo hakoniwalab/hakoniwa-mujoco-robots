@@ -42,7 +42,7 @@ namespace hako::robots::sensor::camera
     struct CameraConfig
     {
         std::string frame_id = "camera";
-        double update_rate = 30.0;
+        double update_rate_hz = 30.0;
         double horizontal_fov = 1.39626;
         ImageConfig image;
         ClipConfig clip;
@@ -53,7 +53,7 @@ namespace hako::robots::sensor::camera
     struct DepthCameraConfig
     {
         std::string frame_id = "camera_depth";
-        double update_rate = 30.0;
+        double update_rate_hz = 30.0;
         double horizontal_fov = 1.047;
         ImageConfig image{640, 480, "DEPTH_F32_M"};
         ClipConfig clip;
@@ -260,9 +260,9 @@ namespace hako::robots::sensor::camera
         }
 
     protected:
-        void StartScheduler(double update_rate)
+        void StartScheduler(double update_rate_hz)
         {
-            update_rate_ = update_rate;
+            update_rate_ = update_rate_hz;
             scheduler_.StartReady(GetUpdatePeriodSec());
         }
         double GetUpdatePeriodSec() const override

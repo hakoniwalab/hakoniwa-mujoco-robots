@@ -159,7 +159,6 @@ actuator->SetTarget(target_velocity);
   body/site/camera name exists in the MJCF model.
 - If a joint actuator does nothing, check that `mjcf_binding.actuator_name`
   matches a MuJoCo actuator name, not just a joint name.
-  The old `RuntimeBinding.actuator_name` key is still accepted for compatibility.
 - If a joint actuator reports a type mismatch, make the JSON `spec.type` match the
   MJCF actuator element: `<position>`, `<velocity>`, or `<motor>`.
 - Viewer examples need a GUI/OpenGL context. For headless checks, use CMake

@@ -1,41 +1,67 @@
 {
   "$schema": "../schema/rgbd-camera.schema.json",
-  "rgb": {
-    "frame_id": "camera_rgb_frame",
-    "update_rate": 30,
-    "horizontal_fov": 1.047,
-    "image": {
-      "width": 640,
-      "height": 480,
-      "format": "R8G8B8"
+  "spec": {
+    "type": "rgbd_camera",
+    "name": "rgbd_camera",
+    "rgb": {
+      "frame_id": "camera_rgb_frame",
+      "update_rate_hz": 30,
+      "horizontal_fov": 1.047,
+      "image": {
+        "width": 640,
+        "height": 480,
+        "format": "R8G8B8"
+      },
+      "clip": {
+        "near": 0.02,
+        "far": 300
+      },
+      "noise": {
+        "type": "gaussian",
+        "mean": 0.0,
+        "stddev": 0.007
+      }
     },
-    "clip": {
-      "near": 0.02,
-      "far": 300
-    },
-    "noise": {
-      "type": "gaussian",
-      "mean": 0.0,
-      "stddev": 0.007
+    "depth": {
+      "frame_id": "camera_depth_frame",
+      "update_rate_hz": 30,
+      "horizontal_fov": 1.047,
+      "image": {
+        "width": 640,
+        "height": 480,
+        "format": "DEPTH_F32_M"
+      },
+      "clip": {
+        "near": 0.1,
+        "far": 10.0
+      },
+      "noise": {
+        "type": "gaussian",
+        "mean": 0.0,
+        "stddev": 0.01
+      }
     }
   },
-  "depth": {
-    "frame_id": "camera_depth_frame",
-    "update_rate": 30,
-    "horizontal_fov": 1.047,
-    "image": {
-      "width": 640,
-      "height": 480,
-      "format": "DEPTH_F32_M"
-    },
-    "clip": {
-      "near": 0.1,
-      "far": 10.0
-    },
-    "noise": {
-      "type": "gaussian",
-      "mean": 0.0,
-      "stddev": 0.01
-    }
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "rgb_camera_name": "camera_rgb",
+    "depth_camera_name": "camera_depth"
+  },
+  "pdu_config": {
+    "streams": [
+      {
+        "name": "rgb",
+        "pdu_name": "camera_rgb_image",
+        "update_rate_hz": 30,
+        "message_type": "sensor_msgs/Image"
+      },
+      {
+        "name": "depth",
+        "pdu_name": "camera_depth_image",
+        "update_rate_hz": 30,
+        "message_type": "sensor_msgs/Image"
+      }
+    ]
   }
 }

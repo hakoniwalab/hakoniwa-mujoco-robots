@@ -2,125 +2,67 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://hakoniwa.dev/schemas/imu-output.schema.json",
   "title": "Hakoniwa IMU output",
-  "oneOf": [
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "spec",
-        "mjcf_binding",
-        "pdu_config"
-      ],
-      "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "spec": {
-          "$ref": "#/$defs/spec"
-        },
-        "mjcf_binding": {
-          "allOf": [
-            {
-              "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/mjcfBindingBase"
-            },
-            {
-              "type": "object",
-              "additionalProperties": false,
-              "required": [
-                "parent_body",
-                "source_body"
-              ],
-              "properties": {
-                "config_style": {
-                  "const": "hakoniwa-sdf-like"
-                },
-                "runtime_source": {
-                  "const": "mjcf"
-                },
-                "parent_body": {
-                  "type": "string",
-                  "minLength": 1
-                },
-                "source_body": {
-                  "type": "string",
-                  "minLength": 1
-                }
-              }
-            }
-          ]
-        },
-        "pdu_config": {
-          "allOf": [
-            {
-              "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/requiredPduConfig"
-            },
-            {
-              "type": "object",
-              "properties": {
-                "message_type": {
-                  "const": "sensor_msgs/Imu"
-                }
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "type",
-        "name",
-        "pdu_name",
-        "update_rate_hz",
-        "frame_id",
-        "parent_body",
-        "source_body",
-        "mode"
-      ],
-      "properties": {
-        "$schema": {
-          "type": "string"
-        },
-        "type": {
-          "const": "imu"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "pdu_name": {
-          "type": "string",
-          "minLength": 1
-        },
-        "update_rate_hz": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "frame_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "parent_body": {
-          "type": "string",
-          "minLength": 1
-        },
-        "source_body": {
-          "type": "string",
-          "minLength": 1
-        },
-        "mode": {
-          "enum": [
-            "ground_truth"
-          ]
-        },
-        "noise": {
-          "$ref": "#/$defs/noise"
-        }
-      }
-    }
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "spec": {
+      "$ref": "#/$defs/spec"
+    },
+    "mjcf_binding": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/mjcfBindingBase"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "parent_body",
+            "source_body"
+          ],
+          "properties": {
+            "config_style": {
+              "const": "hakoniwa-sdf-like"
+            },
+            "runtime_source": {
+              "const": "mjcf"
+            },
+            "parent_body": {
+              "type": "string",
+              "minLength": 1
+            },
+            "source_body": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "pdu_config": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/requiredPduConfig"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "message_type": {
+              "const": "sensor_msgs/Imu"
+            }
+          }
+        }
+      ]
+    }
+  },
   "$defs": {
     "spec": {
       "type": "object",

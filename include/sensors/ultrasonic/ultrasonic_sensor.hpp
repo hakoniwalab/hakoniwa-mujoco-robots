@@ -121,10 +121,10 @@ namespace hako::robots::sensor::ultrasonic
     };
 
     /**
-     * @brief Runtime binding information for resolving the sensor in the simulation world.
+     * @brief MJCF binding information for resolving the sensor in the simulation world.
      *
-     * This structure connects the abstract ultrasonic sensor profile to
-     * runtime objects such as MJCF bodies or sites.
+     * This structure connects the abstract ultrasonic sensor profile to MJCF
+     * bodies or sites.
      *
      * Semantics:
      * - config_style:
@@ -147,7 +147,7 @@ namespace hako::robots::sensor::ultrasonic
      * Note:
      * - For MuJoCo-based sensors, using a site as the sensor origin is recommended.
      */
-    struct RuntimeBinding
+    struct MjcfBinding
     {
         std::string config_style {"hakoniwa-sdf-like"};
         std::string runtime_source {"mjcf"};
@@ -195,23 +195,23 @@ namespace hako::robots::sensor::ultrasonic
      * - cone:
      *     Detection cone definition and ray approximation count.
      *
-     * - update_rate:
+     * - update_rate_hz:
      *     Sensor update rate in Hz.
      *
-     * - runtime_binding:
+     * - mjcf_binding:
      *     Optional binding information for resolving the sensor origin in the runtime model.
      *
      * Unit:
      * - detection_distance: meter [m]
      * - cone angles: radian [rad]
-     * - update_rate: hertz [Hz]
+     * - update_rate_hz: hertz [Hz]
      *
      * Expected constraints:
      * - detection_distance.max > detection_distance.min
      * - cone.horizontal > 0.0
      * - cone.vertical > 0.0
      * - cone.ray_count >= 1
-     * - update_rate > 0.0
+     * - update_rate_hz > 0.0
      */
     struct UltrasonicConfig
     {
@@ -220,8 +220,8 @@ namespace hako::robots::sensor::ultrasonic
         DistanceRange detection_distance {};
         std::vector<DistanceAccuracy> distance_accuracy {};
         Cone cone {};
-        double update_rate {10.0};
-        RuntimeBinding runtime_binding {};
+        double update_rate_hz {10.0};
+        MjcfBinding mjcf_binding {};
         UltrasonicPduConfig pdu_config {};
     };
 
@@ -395,7 +395,7 @@ namespace hako::robots::sensor::ultrasonic
          * @param exclude_body_name Body name to exclude from ray hit detection.
          *
          * Note:
-         * - sensor_body_name is used as a fallback when RuntimeBinding::source_site
+         * - sensor_body_name is used as a fallback when MjcfBinding::source_site
          *   is not specified or cannot be resolved.
          * - exclude_body_name is typically the robot's own base body, so the sensor
          *   does not detect its own body.
@@ -410,7 +410,7 @@ namespace hako::robots::sensor::ultrasonic
          *
          * This should initialize:
          * - config_,
-         * - scheduler_ using config_.update_rate,
+         * - scheduler_ using config_.update_rate_hz,
          * - noise_pipeline_ using config_.distance_accuracy.
          *
          * @param config_path Path to the ultrasonic sensor profile JSON.
@@ -439,10 +439,10 @@ namespace hako::robots::sensor::ultrasonic
         /**
          * @brief Get sensor update period in seconds.
          *
-         * This is normally computed from UltrasonicConfig::update_rate.
+         * This is normally computed from UltrasonicConfig::update_rate_hz.
          *
          * Formula:
-         * - period_sec = 1.0 / update_rate
+         * - period_sec = 1.0 / update_rate_hz
          *
          * @return Update period in seconds.
          */
@@ -504,7 +504,7 @@ namespace hako::robots::sensor::ultrasonic
         UltrasonicConfig config_ {};
 
         /**
-         * @brief Update scheduler for enforcing config_.update_rate.
+         * @brief Update scheduler for enforcing config_.update_rate_hz.
          */
         common::UpdateScheduler scheduler_ {};
 

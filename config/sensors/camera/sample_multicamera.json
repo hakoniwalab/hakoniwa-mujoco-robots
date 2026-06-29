@@ -1,47 +1,85 @@
 {
   "$schema": "../schema/multicamera.schema.json",
-  "cameras": [
-    {
-      "name": "left_camera",
-      "pose": {
-        "position": { "x": 0, "y": 0.06, "z": 0 },
-        "orientation": { "roll": 0, "pitch": 0, "yaw": 0 }
-      },
-      "camera_profile": {
-        "frame_id": "left_camera_frame",
-        "update_rate": 30,
-        "horizontal_fov": 1.39626,
-        "image": {
-          "width": 1280,
-          "height": 720,
-          "format": "R8G8B8"
+  "spec": {
+    "type": "multicamera",
+    "name": "stereo_camera",
+    "cameras": [
+      {
+        "name": "left_camera",
+        "pose": {
+          "position": { "x": 0, "y": 0.06, "z": 0 },
+          "orientation": { "roll": 0, "pitch": 0, "yaw": 0 }
         },
-        "clip": {
-          "near": 0.02,
-          "far": 300
+        "camera_profile": {
+          "spec": {
+            "frame_id": "left_camera_frame",
+            "update_rate_hz": 30,
+            "horizontal_fov": 1.39626,
+            "image": {
+              "width": 1280,
+              "height": 720,
+              "format": "R8G8B8"
+            },
+            "clip": {
+              "near": 0.02,
+              "far": 300
+            }
+          }
+        }
+      },
+      {
+        "name": "right_camera",
+        "pose": {
+          "position": { "x": 0, "y": -0.06, "z": 0 },
+          "orientation": { "roll": 0, "pitch": 0, "yaw": 0 }
+        },
+        "camera_profile": {
+          "spec": {
+            "frame_id": "right_camera_frame",
+            "update_rate_hz": 30,
+            "horizontal_fov": 1.39626,
+            "image": {
+              "width": 1280,
+              "height": 720,
+              "format": "R8G8B8"
+            },
+            "clip": {
+              "near": 0.02,
+              "far": 300
+            }
+          }
         }
       }
-    },
-    {
-      "name": "right_camera",
-      "pose": {
-        "position": { "x": 0, "y": -0.06, "z": 0 },
-        "orientation": { "roll": 0, "pitch": 0, "yaw": 0 }
+    ]
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "cameras": [
+      {
+        "name": "left_camera",
+        "camera_name": "left_camera"
       },
-      "camera_profile": {
-        "frame_id": "right_camera_frame",
-        "update_rate": 30,
-        "horizontal_fov": 1.39626,
-        "image": {
-          "width": 1280,
-          "height": 720,
-          "format": "R8G8B8"
-        },
-        "clip": {
-          "near": 0.02,
-          "far": 300
-        }
+      {
+        "name": "right_camera",
+        "camera_name": "right_camera"
       }
-    }
-  ]
+    ]
+  },
+  "pdu_config": {
+    "streams": [
+      {
+        "name": "left_camera",
+        "pdu_name": "left_camera_image",
+        "update_rate_hz": 30,
+        "message_type": "sensor_msgs/Image"
+      },
+      {
+        "name": "right_camera",
+        "pdu_name": "right_camera_image",
+        "update_rate_hz": 30,
+        "message_type": "sensor_msgs/Image"
+      }
+    ]
+  }
 }

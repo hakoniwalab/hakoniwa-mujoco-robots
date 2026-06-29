@@ -6,38 +6,99 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "frame_id",
-    "update_rate",
-    "joint_name"
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
       "type": "string"
     },
-    "frame_id": {
+    "spec": {
+      "$ref": "#/$defs/spec"
+    },
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
+    },
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
       "type": "string",
-      "minLength": 1,
-      "description": "The coordinate frame this sensor is attached to."
+      "minLength": 1
     },
-    "update_rate": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "description": "The frequency at which the sensor generates data, in Hz."
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name",
+        "frame_id",
+        "update_rate_hz"
+      ],
+      "properties": {
+        "type": {
+          "const": "force_torque"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "frame_id": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "The coordinate frame this sensor is attached to."
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "The frequency at which the sensor generates data, in Hz."
+        },
+        "frame": {
+          "enum": ["parent", "child", "sensor"],
+          "default": "child",
+          "description": "The frame in which the measurements are expressed."
+        },
+        "measure_direction": {
+          "enum": ["parent_to_child", "child_to_parent"],
+          "default": "child_to_parent",
+          "description": "The direction of the measured force/torque."
+        }
+      }
     },
-    "joint_name": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The name of the joint to monitor for forces and torques."
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_style",
+        "runtime_source",
+        "joint_name"
+      ],
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "joint_name": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "The MJCF joint to monitor for forces and torques."
+        }
+      }
     },
-    "frame": {
-      "enum": ["parent", "child", "sensor"],
-      "default": "child",
-      "description": "The frame in which the measurements are expressed."
-    },
-    "measure_direction": {
-      "enum": ["parent_to_child", "child_to_parent"],
-      "default": "child_to_parent",
-      "description": "The direction of the measured force/torque."
+    "pduConfig": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/pduConfig"
+        },
+        {
+          "required": [
+            "pdu_name",
+            "update_rate_hz"
+          ]
+        }
+      ]
     }
   }
 }

@@ -44,8 +44,8 @@ bool DepthCameraSensor::LoadConfig(const DepthCameraConfig& config)
         std::cerr << "Invalid depth camera image size" << std::endl;
         return false;
     }
-    if (config.update_rate <= 0.0) {
-        std::cerr << "Invalid depth camera update_rate: " << config.update_rate << std::endl;
+    if (config.update_rate_hz <= 0.0) {
+        std::cerr << "Invalid depth camera update_rate_hz: " << config.update_rate_hz << std::endl;
         return false;
     }
     if (config.horizontal_fov <= 0.0 || config.horizontal_fov > M_PI) {
@@ -63,7 +63,7 @@ bool DepthCameraSensor::LoadConfig(const DepthCameraConfig& config)
     }
 
     config_ = config;
-    StartScheduler(config_.update_rate);
+    StartScheduler(config_.update_rate_hz);
     return true;
 }
 

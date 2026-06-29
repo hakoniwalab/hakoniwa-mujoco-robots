@@ -86,14 +86,22 @@ Sensor profile example:
 ```json
 {
   "$schema": "../schema/ultrasonic.schema.json",
-  "frame_id": "front_ultrasonic",
-  "DetectionDistance": {
-    "Min": 0.05,
-    "Max": 2.0
+  "spec": {
+    "frame_id": "front_ultrasonic",
+    "RadiationType": "ultrasound",
+    "DetectionDistance": {
+      "Min": 0.05,
+      "Max": 2.0
+    },
+    "update_rate_hz": 20
   },
-  "UpdateRate": 20,
-  "RuntimeBinding": {
+  "mjcf_binding": {
     "source_site": "front_ultrasonic_site"
+  },
+  "pdu_config": {
+    "pdu_name": "range",
+    "update_rate_hz": 20,
+    "message_type": "sensor_msgs/Range"
   }
 }
 ```

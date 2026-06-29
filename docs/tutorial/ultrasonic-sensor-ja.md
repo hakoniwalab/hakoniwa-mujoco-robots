@@ -98,7 +98,7 @@ examples/sensors/ultrasonic/README.md
       "RayCount": 1
     },
     "RadiationType": "ultrasound",
-    "UpdateRate": 100.0
+    "update_rate_hz": 100.0
   },
   "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
@@ -125,7 +125,7 @@ examples/sensors/ultrasonic/README.md
 | `DistanceAccuracy` | 測定精度、ノイズに関する設定 |
 | `Cone.RayCount` | 測定に使うレイの数（この例では1） |
 | `RadiationType` | 放射タイプ（`ultrasound`） |
-| `UpdateRate` | センサー更新周期 Hz |
+| `update_rate_hz` | センサー更新周期 Hz |
 
 `frame_id` は MJCF サイト名ではありません。
 MJCF サイト名は `mjcf_binding.source_site` に書きます。
@@ -175,8 +175,8 @@ MJCF サイト名は `mjcf_binding.source_site` に書きます。
 ```
 
 PDU として実際に publish する段階では、`pdu_name` と同じ channel を PDU type list 側にも追加します。
-Hakoniwa publisher での送信周期は `spec.UpdateRate` から初期化される `UltrasonicSensor::ShouldUpdate(dt)` が基準になります。
-`pdu_config.update_rate_hz` は PDU 出力として期待する周期を明示するための設定なので、通常は `spec.UpdateRate` と同じ値にします。
+Hakoniwa publisher での送信周期は `spec.update_rate_hz` から初期化される `UltrasonicSensor::ShouldUpdate(dt)` が基準になります。
+`pdu_config.update_rate_hz` は PDU 出力として期待する周期を明示するための設定なので、通常は `spec.update_rate_hz` と同じ値にします。
 PDU への接続手順は [超音波センサ箱庭アセット化チュートリアル](ultrasonic-sensor-hakoniwa-ja.md) を参照してください。
 
 ## 3. 単体チェックする

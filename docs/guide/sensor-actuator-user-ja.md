@@ -150,7 +150,6 @@ actuator->SetTarget(target_velocity);
 - Python 側で decode に失敗する場合は、Python と C++ が同じ PDU definition JSON を使っているか確認します。
 - センサが publish しない場合は、update rate と MJCF の source body/site/camera 名を確認します。
 - joint actuator が動かない場合は、`mjcf_binding.actuator_name` が joint 名ではなく MuJoCo actuator 名に一致しているか確認します。
-  旧 JSON の `RuntimeBinding.actuator_name` も互換性のため読めます。
 - actuator type mismatch が出る場合は、JSON `spec.type` と MJCF の `<position>` / `<velocity>` / `<motor>` を一致させます。
 - viewer サンプルには GUI/OpenGL context が必要です。headless 確認には CMake configure、unit test、viewer なし target を使います。
 

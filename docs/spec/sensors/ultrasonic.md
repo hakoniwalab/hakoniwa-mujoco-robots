@@ -49,7 +49,7 @@ output: single range value [m]
     "Vertical": 1.221730476,
     "RayCount": 9
   },
-  "UpdateRate": 100.0
+  "update_rate_hz": 100.0
 }
 ```
 
@@ -387,7 +387,7 @@ RayCount > 1:
 
 ---
 
-### `UpdateRate`
+### `update_rate_hz`
 
 Type: `number`
 Required: yes
@@ -399,7 +399,7 @@ Sensor update frequency.
 Example:
 
 ```json
-"UpdateRate": 100.0
+"update_rate_hz": 100.0
 ```
 
 This means the sensor produces a new measurement at 100 Hz.
@@ -415,14 +415,14 @@ sensor period:    0.01 sec
 
 ---
 
-## Optional Runtime Binding
+## MJCF Binding
 
-A runtime implementation may support `RuntimeBinding` to resolve the sensor profile against MJCF bodies or sites.
+`mjcf_binding` resolves the sensor profile against MJCF bodies or sites.
 
 Example:
 
 ```json
-"RuntimeBinding": {
+"mjcf_binding": {
   "config_style": "hakoniwa-sdf-like",
   "runtime_source": "mjcf",
   "parent_body": "base_link",
@@ -430,7 +430,7 @@ Example:
 }
 ```
 
-### `RuntimeBinding.config_style`
+### `mjcf_binding.config_style`
 
 Type: `string`
 Required: no
@@ -442,7 +442,7 @@ hakoniwa-sdf-like
 
 Indicates that the config follows Hakoniwa's SDF-like sensor model.
 
-### `RuntimeBinding.runtime_source`
+### `mjcf_binding.runtime_source`
 
 Type: `string`
 Required: no
@@ -454,7 +454,7 @@ mjcf
 
 Indicates that the runtime pose/source is resolved from MJCF.
 
-### `RuntimeBinding.parent_body`
+### `mjcf_binding.parent_body`
 
 Type: `string`
 Required: no
@@ -467,14 +467,14 @@ Example:
 "parent_body": "base_link"
 ```
 
-### `RuntimeBinding.source_body`
+### `mjcf_binding.source_body`
 
 Type: `string`
 Required: no
 
 Name of the MJCF body used as the sensor source frame.
 
-### `RuntimeBinding.source_site`
+### `mjcf_binding.source_site`
 
 Type: `string`
 Required: no
@@ -489,12 +489,12 @@ Example:
 "source_site": "front_ultrasonic_site"
 ```
 
-### `RuntimeBinding.frame_id_override`
+### `mjcf_binding.frame_id_override`
 
 Type: `string`
 Required: no
 
-Overrides the top-level `frame_id` when publishing sensor data.
+Overrides `spec.frame_id` when publishing sensor data.
 
 ---
 
@@ -511,7 +511,7 @@ Overrides the top-level `frame_id` when publishing sensor data.
 | `Cone.Horizontal`              | radian `[rad]` |
 | `Cone.Vertical`                | radian `[rad]` |
 | `Cone.RayCount`                | count          |
-| `UpdateRate`                   | hertz `[Hz]`   |
+| `update_rate_hz`                   | hertz `[Hz]`   |
 
 ---
 
@@ -520,7 +520,8 @@ Overrides the top-level `frame_id` when publishing sensor data.
 The recommended default runtime behavior is:
 
 ```text
-1. Resolve the sensor origin and direction from frame_id or RuntimeBinding.
+1. Resolve the sensor origin and direction from `mjcf_binding.source_site`,
+   `mjcf_binding.source_body`, or `spec.frame_id`.
 2. Generate RayCount rays inside the cone.
 3. Cast rays using the MuJoCo ray-casting API.
 4. Select the nearest valid hit distance.
@@ -635,7 +636,7 @@ Example profile:
     "RayCount": 9
   },
 
-  "UpdateRate": 100.0
+  "update_rate_hz": 100.0
 }
 ```
 

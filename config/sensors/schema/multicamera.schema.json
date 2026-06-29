@@ -6,60 +6,264 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "cameras"
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
       "type": "string"
     },
-    "cameras": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": [
-          "name",
-          "pose",
-          "camera_profile"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "A unique name for this camera in the multi-camera system."
-          },
-          "pose": {
+    "spec": {
+      "$ref": "#/$defs/spec"
+    },
+    "mjcf_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "cameras": {
+          "type": "array",
+          "items": {
             "type": "object",
-            "description": "Position and orientation relative to a base frame.",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "camera_name"
+            ],
             "properties": {
-              "position": {
-                "type": "object",
-                "properties": {
-                  "x": { "type": "number" },
-                  "y": { "type": "number" },
-                  "z": { "type": "number" }
-                },
-                "required": ["x", "y", "z"]
+              "name": {
+                "type": "string",
+                "minLength": 1
               },
-              "orientation": {
-                "type": "object",
-                "properties": {
-                  "roll": { "type": "number" },
-                  "pitch": { "type": "number" },
-                  "yaw": { "type": "number" }
-                },
-                "required": ["roll", "pitch", "yaw"]
+              "camera_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "body_name": {
+                "type": "string",
+                "minLength": 1
               }
             }
-          },
-          "camera_profile": {
-            "oneOf": [
-              { "$ref": "camera.schema.json" },
-              { "$ref": "rgbd-camera.schema.json" }
-            ]
+          }
+        }
+      }
+    },
+    "pdu_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "streams"
+      ],
+      "properties": {
+        "streams": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "pdu_name",
+              "update_rate_hz",
+              "message_type"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "pdu_name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "update_rate_hz": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "message_type": {
+                "const": "sensor_msgs/Image"
+              }
+            }
           }
         }
       }
     }
   },
-  "$defs": {}
+  "$defs": {
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name",
+        "cameras"
+      ],
+      "properties": {
+        "type": {
+          "const": "multicamera"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cameras": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "pose",
+              "camera_profile"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "description": "A unique name for this camera in the multi-camera system."
+              },
+              "pose": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "position",
+                  "orientation"
+                ],
+                "properties": {
+                  "position": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "x": { "type": "number" },
+                      "y": { "type": "number" },
+                      "z": { "type": "number" }
+                    },
+                    "required": ["x", "y", "z"]
+                  },
+                  "orientation": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "roll": { "type": "number" },
+                      "pitch": { "type": "number" },
+                      "yaw": { "type": "number" }
+                    },
+                    "required": ["roll", "pitch", "yaw"]
+                  }
+                }
+              },
+              "camera_profile": {
+                "oneOf": [
+                  { "$ref": "https://hakoniwa.dev/schemas/camera.schema.json" },
+                  { "$ref": "https://hakoniwa.dev/schemas/rgbd-camera.schema.json" },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "spec"
+                    ],
+                    "properties": {
+                      "spec": {
+                        "$ref": "https://hakoniwa.dev/schemas/camera.schema.json#/$defs/cameraSpec"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "cameras": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cameraBinding"
+          }
+        }
+      }
+    },
+    "cameraBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "camera_name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "camera_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "pduConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "streams"
+      ],
+      "properties": {
+        "streams": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/pduStream"
+          }
+        }
+      }
+    },
+    "pduStream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "pdu_name",
+        "update_rate_hz",
+        "message_type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pdu_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "message_type": {
+          "const": "sensor_msgs/Image"
+        }
+      }
+    }
+  }
 }

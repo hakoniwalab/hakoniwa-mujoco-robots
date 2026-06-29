@@ -230,7 +230,7 @@ manual timing callback は start trigger 後に呼ばれるため、endpoint の
 OpenGL context を持つ viewer thread で capture するため、capture 処理は pre-render callback 側に置きます。
 pre-render callback は `mjv_updateScene()` の前に呼ばれるため、MuJoCo viewer に描かれる姿勢と capture に使う姿勢が一致します。
 PDU publish は manual timing thread に置きます。測定・publish の周期は
-`CameraSensor::ShouldUpdate()` に任せ、`spec.update_rate` に従わせます。
+`CameraSensor::ShouldUpdate()` に任せ、`spec.update_rate_hz` に従わせます。
 
 ```cpp
 #include "hakoniwa/pdu/endpoint.hpp"
@@ -592,7 +592,7 @@ Python reader 側の OpenCV window にカメラ画像が表示されれば成功
 
 - **送信周期は `CameraSensor::ShouldUpdate(sim_timestep)` に任せる**:
   `sim_timestep` は MuJoCo model の `model->opt.timestep` です。
-  `ShouldUpdate(sim_timestep)` は内部のセンサ用クロックを進め、`spec.update_rate` の周期に達したときだけ `true` を返します。
+  `ShouldUpdate(sim_timestep)` は内部のセンサ用クロックを進め、`spec.update_rate_hz` の周期に達したときだけ `true` を返します。
   PDU 用に別の手動周期カウンタを持つと、JSON の sensor spec と実際の publish 周期がずれやすくなります。
 
 - **Python の OpenCV は main thread に置く**:

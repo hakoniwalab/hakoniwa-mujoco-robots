@@ -5,18 +5,10 @@
   "description": "SDF-like but MJCF-resolved JSON config for ultrasonic range sensors used by Hakoniwa MuJoCo sensors.",
   "type": "object",
   "additionalProperties": false,
-  "anyOf": [
-    { "required": ["spec"] },
-    {
-      "required": [
-        "frame_id",
-        "RadiationType",
-        "DetectionDistance",
-        "DistanceAccuracy",
-        "Cone",
-        "UpdateRate"
-      ]
-    }
+  "required": [
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
@@ -24,37 +16,6 @@
     },
     "spec": {
       "$ref": "#/$defs/spec"
-    },
-    "frame_id": {
-      "type": "string",
-      "minLength": 1
-    },
-    "RadiationType": {
-      "type": "string",
-      "enum": ["ultrasound", "infrared"],
-      "default": "ultrasound",
-      "description": "Radiation type of the range sensor. Compatible with ROS sensor_msgs/Range: ultrasound=0, infrared=1."
-    },    
-    "DetectionDistance": {
-      "$ref": "#/$defs/distanceRange"
-    },
-    "DistanceAccuracy": {
-      "type": "array",
-      "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/distanceAccuracy"
-      }
-    },
-    "Cone": {
-      "$ref": "#/$defs/cone"
-    },
-    "UpdateRate": {
-      "type": "number",
-      "exclusiveMinimum": 0
-    },
-    "RuntimeBinding": {
-      "$ref": "#/$defs/mjcfBinding",
-      "description": "Backward-compatible key for mjcf_binding."
     },
     "mjcf_binding": {
       "$ref": "#/$defs/mjcfBinding"
@@ -73,7 +34,7 @@
         "DetectionDistance",
         "DistanceAccuracy",
         "Cone",
-        "UpdateRate"
+        "update_rate_hz"
       ],
       "properties": {
         "frame_id": {
@@ -99,7 +60,7 @@
         "Cone": {
           "$ref": "#/$defs/cone"
         },
-        "UpdateRate": {
+        "update_rate_hz": {
           "type": "number",
           "exclusiveMinimum": 0
         }

@@ -24,8 +24,8 @@ bool ValidateStereoSideConfig(const CameraConfig& config, const char* side_name)
         std::cerr << "Invalid " << side_name << " stereo image size" << std::endl;
         return false;
     }
-    if (config.update_rate <= 0.0) {
-        std::cerr << "Invalid " << side_name << " stereo update_rate: " << config.update_rate << std::endl;
+    if (config.update_rate_hz <= 0.0) {
+        std::cerr << "Invalid " << side_name << " stereo update_rate_hz: " << config.update_rate_hz << std::endl;
         return false;
     }
     if (config.horizontal_fov <= 0.0 || config.horizontal_fov > M_PI) {
@@ -98,8 +98,8 @@ bool StereoCameraSensor::LoadConfig(const StereoCameraConfig& config)
         std::cerr << "Stereo left/right horizontal_fov must match" << std::endl;
         return false;
     }
-    if (config.left.update_rate != config.right.update_rate) {
-        std::cerr << "Stereo left/right update_rate must match" << std::endl;
+    if (config.left.update_rate_hz != config.right.update_rate_hz) {
+        std::cerr << "Stereo left/right update_rate_hz must match" << std::endl;
         return false;
     }
     if (config.baseline <= 0.0) {
@@ -108,7 +108,7 @@ bool StereoCameraSensor::LoadConfig(const StereoCameraConfig& config)
     }
 
     config_ = config;
-    StartScheduler(config_.left.update_rate);
+    StartScheduler(config_.left.update_rate_hz);
     return true;
 }
 

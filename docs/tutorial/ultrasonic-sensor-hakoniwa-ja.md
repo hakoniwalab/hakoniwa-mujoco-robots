@@ -92,7 +92,7 @@ sensor_msgs/Range PDU
       "RayCount": 1
     },
     "RadiationType": "ultrasound",
-    "UpdateRate": 100.0
+    "update_rate_hz": 100.0
   },
   "mjcf_binding": {
     "config_style": "hakoniwa-sdf-like",
@@ -118,7 +118,7 @@ sensor_msgs/Range PDU
 - `DistanceAccuracy`: 距離ごとのノイズ・分解能
 - `Cone`: 超音波の検出コーン
 - `RadiationType`: `ultrasound` または `infrared`
-- `UpdateRate`: センサ更新周期 `[Hz]`
+- `update_rate_hz`: センサ更新周期 `[Hz]`
 
 ### `mjcf_binding`
 
@@ -339,7 +339,7 @@ range_adapter =
 
 simulation を 1 step 進めたあと、センサの更新周期に達していれば測定します。
 `step_dt` は MuJoCo model の `model->opt.timestep` です。
-`ShouldUpdate(step_dt)` は内部のセンサ用クロックを進め、JSON の `spec.UpdateRate` に従って `true` を返します。
+`ShouldUpdate(step_dt)` は内部のセンサ用クロックを進め、JSON の `spec.update_rate_hz` に従って `true` を返します。
 測定したら、`UltrasonicConfig` と `UltrasonicFrame` を渡して送信します。
 
 ```cpp
@@ -509,7 +509,7 @@ hako-cmd start
 
 - **送信周期は `UltrasonicSensor::ShouldUpdate(step_dt)` に任せる**:
   `step_dt` は MuJoCo model の `model->opt.timestep` です。
-  `ShouldUpdate(step_dt)` は内部のセンサ用クロックを進め、`spec.UpdateRate` の周期に達したときだけ `true` を返します。
+  `ShouldUpdate(step_dt)` は内部のセンサ用クロックを進め、`spec.update_rate_hz` の周期に達したときだけ `true` を返します。
   PDU 送信用に別の周期カウンタを持つと、センサ設定と publish 周期がずれやすくなります。
 
 - **`mjcf_binding.source_site` と `frame_id` は別物**:

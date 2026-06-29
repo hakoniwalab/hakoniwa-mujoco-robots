@@ -222,9 +222,9 @@ Viewer:
             return false;
         }
         range_pdu_name_ = config.pdu_config.pdu_name;
-        sensor_site_name_ = config.runtime_binding.source_site.empty()
+        sensor_site_name_ = config.mjcf_binding.source_site.empty()
             ? kDefaultSensorSiteName
-            : config.runtime_binding.source_site;
+            : config.mjcf_binding.source_site;
         sensor_site_id_ =
             hako::examples::sensors::ultrasonic::FindSiteId(model, sensor_site_name_);
         return true;
@@ -277,7 +277,7 @@ Viewer:
                   << " pdu_robot=" << ultrasonic_component_->pdu_robot
                   << " site=" << sensor_site_name_
                   << " pdu=" << range_pdu_name_
-                  << " sensor_rate_hz=" << config.update_rate
+                  << " sensor_rate_hz=" << config.update_rate_hz
                   << " pdu_config_rate_hz=" << config.pdu_config.update_rate_hz
                   << std::endl;
     }

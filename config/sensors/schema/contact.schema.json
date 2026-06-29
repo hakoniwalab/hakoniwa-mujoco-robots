@@ -6,28 +6,94 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "frame_id",
-    "update_rate",
-    "collision_name"
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
       "type": "string"
     },
-    "frame_id": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The coordinate frame this sensor is attached to."
+    "spec": {
+      "$ref": "#/$defs/spec"
     },
-    "update_rate": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "description": "The frequency at which the sensor generates data, in Hz."
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
     },
-    "collision_name": {
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
       "type": "string",
-      "minLength": 1,
-      "description": "The name of the collision geometry to monitor for contacts."
+      "minLength": 1
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name",
+        "frame_id",
+        "update_rate_hz",
+        "collision_name"
+      ],
+      "properties": {
+        "type": {
+          "const": "contact"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "frame_id": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "The coordinate frame this sensor is attached to."
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "The frequency at which the sensor generates data, in Hz."
+        },
+        "collision_name": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "The logical collision geometry to monitor for contacts."
+        }
+      }
+    },
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_style",
+        "runtime_source",
+        "collision_name"
+      ],
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "collision_name": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "The MJCF geometry or sensor name used for contact monitoring."
+        }
+      }
+    },
+    "pduConfig": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/pduConfig"
+        },
+        {
+          "required": [
+            "pdu_name",
+            "update_rate_hz"
+          ]
+        }
+      ]
     }
   }
 }

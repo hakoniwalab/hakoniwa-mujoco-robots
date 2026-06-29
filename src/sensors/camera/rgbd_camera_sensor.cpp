@@ -48,8 +48,8 @@ bool RgbdCameraSensor::LoadConfig(const RgbdCameraConfig& config)
         std::cerr << "Invalid RGB image size" << std::endl;
         return false;
     }
-    if (config.rgb.update_rate <= 0.0) {
-        std::cerr << "Invalid RGB update_rate: " << config.rgb.update_rate << std::endl;
+    if (config.rgb.update_rate_hz <= 0.0) {
+        std::cerr << "Invalid RGB update_rate_hz: " << config.rgb.update_rate_hz << std::endl;
         return false;
     }
     if (config.rgb.horizontal_fov <= 0.0 || config.rgb.horizontal_fov > M_PI) {
@@ -73,8 +73,8 @@ bool RgbdCameraSensor::LoadConfig(const RgbdCameraConfig& config)
         std::cerr << "Invalid depth image size" << std::endl;
         return false;
     }
-    if (config.depth.update_rate <= 0.0) {
-        std::cerr << "Invalid depth update_rate: " << config.depth.update_rate << std::endl;
+    if (config.depth.update_rate_hz <= 0.0) {
+        std::cerr << "Invalid depth update_rate_hz: " << config.depth.update_rate_hz << std::endl;
         return false;
     }
     if (config.depth.horizontal_fov <= 0.0 || config.depth.horizontal_fov > M_PI) {
@@ -103,12 +103,12 @@ bool RgbdCameraSensor::LoadConfig(const RgbdCameraConfig& config)
         std::cerr << "RGB and depth horizontal_fov must match" << std::endl;
         return false;
     }
-    if (config.rgb.update_rate != config.depth.update_rate) {
-        std::cerr << "Warning: RGB and depth update_rate differ. Using RGB update_rate." << std::endl;
+    if (config.rgb.update_rate_hz != config.depth.update_rate_hz) {
+        std::cerr << "Warning: RGB and depth update_rate_hz differ. Using RGB update_rate_hz." << std::endl;
     }
 
     config_ = config;
-    StartScheduler(config_.rgb.update_rate);
+    StartScheduler(config_.rgb.update_rate_hz);
     return true;
 }
 

@@ -26,7 +26,7 @@
       "RayCount": 1
     },
     "RadiationType": "ultrasound",
-    "UpdateRate": 100.0
+    "update_rate_hz": 100.0
   },
 
   "mjcf_binding": {

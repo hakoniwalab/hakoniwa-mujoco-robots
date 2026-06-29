@@ -87,14 +87,22 @@ JSON 側では、センサやアクチュエータの設定値と、MJCF object 
 ```json
 {
   "$schema": "../schema/ultrasonic.schema.json",
-  "frame_id": "front_ultrasonic",
-  "DetectionDistance": {
-    "Min": 0.05,
-    "Max": 2.0
+  "spec": {
+    "frame_id": "front_ultrasonic",
+    "RadiationType": "ultrasound",
+    "DetectionDistance": {
+      "Min": 0.05,
+      "Max": 2.0
+    },
+    "update_rate_hz": 20
   },
-  "UpdateRate": 20,
-  "RuntimeBinding": {
+  "mjcf_binding": {
     "source_site": "front_ultrasonic_site"
+  },
+  "pdu_config": {
+    "pdu_name": "range",
+    "update_rate_hz": 20,
+    "message_type": "sensor_msgs/Range"
   }
 }
 ```
@@ -128,7 +136,7 @@ PDU output config の例:
 ```
 
 `frame_id` は PDU/ROS 互換メッセージ上の論理フレーム名です。
-`RuntimeBinding` や `mjcf_joint` は MuJoCo XML 内の実体名です。
+`mjcf_binding` や `mjcf_joint` は MuJoCo XML 内の実体名です。
 同じ名前にしても構いませんが、役割は別です。
 
 ## 単体チェック
@@ -158,7 +166,7 @@ python3 -m pip install jsonschema mujoco
 ## 名前の対応チェック
 
 schema validation は、JSON の形が正しいかは見られます。
-一方で、`RuntimeBinding.source_site` や `actuator_name` が本当に MJCF に存在するかは、最終的には runtime load で確認します。
+一方で、`mjcf_binding.source_site` や `actuator_name` が本当に MJCF に存在するかは、最終的には runtime load で確認します。
 
 確認の目安:
 

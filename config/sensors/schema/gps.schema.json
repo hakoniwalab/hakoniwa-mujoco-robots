@@ -6,28 +6,92 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "frame_id",
-    "update_rate"
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
       "type": "string"
     },
-    "frame_id": {
-      "type": "string",
-      "minLength": 1,
-      "description": "The coordinate frame this sensor is attached to."
+    "spec": {
+      "$ref": "#/$defs/spec"
     },
-    "update_rate": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "description": "The frequency at which the sensor generates data, in Hz."
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
     },
-    "noise": {
-      "$ref": "#/$defs/noise"
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
     }
   },
   "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name",
+        "frame_id",
+        "update_rate_hz"
+      ],
+      "properties": {
+        "type": {
+          "const": "gps"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "frame_id": {
+          "$ref": "#/$defs/nonEmptyString",
+          "description": "The coordinate frame this sensor is attached to."
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "The frequency at which the sensor generates data, in Hz."
+        },
+        "noise": {
+          "$ref": "#/$defs/noise"
+        }
+      }
+    },
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config_style",
+        "runtime_source",
+        "source_body"
+      ],
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "source_body": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    },
+    "pduConfig": {
+      "allOf": [
+        {
+          "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/pduConfig"
+        },
+        {
+          "required": [
+            "pdu_name",
+            "update_rate_hz"
+          ]
+        }
+      ]
+    },
     "noise_model": {
       "type": "object",
       "properties": {

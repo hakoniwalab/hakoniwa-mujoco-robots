@@ -95,6 +95,14 @@ bool RequireNumberField(const json& root, const char* key, const std::string& pa
     return true;
 }
 
+bool RequireUpdateRateHzField(const json& root, const std::string& path, double& out)
+{
+    if (root.contains("update_rate_hz")) {
+        return RequireNumberField(root, "update_rate_hz", path, out);
+    }
+    return RequireNumberField(root, "update_rate", path, out);
+}
+
 bool RequireIntField(const json& root, const char* key, const std::string& path, int& out)
 {
     if (!root.contains(key)) {
@@ -147,7 +155,7 @@ bool ParseCameraConfigJson(const json& root, const std::string& path, CameraConf
     if (!RequireStringField(*spec, "frame_id", spec_path, config.frame_id)) {
         return false;
     }
-    if (!RequireNumberField(*spec, "update_rate", spec_path, config.update_rate)) {
+    if (!RequireUpdateRateHzField(*spec, spec_path, config.update_rate_hz)) {
         return false;
     }
     if (!RequireNumberField(*spec, "horizontal_fov", spec_path, config.horizontal_fov)) {
@@ -212,43 +220,55 @@ void LoadCameraPduConfigIfPresent(const json& root, CameraPduConfig& out)
 
 bool ParseDepthCameraConfigJson(const json& root, const std::string& path, DepthCameraConfig& out)
 {
+    const json* spec = &root;
+    std::string spec_path = path;
+    if (root.contains("spec")) {
+        if (!root.at("spec").is_object()) {
+            std::cerr << "Failed to load depth camera config JSON: field 'spec' must be an object in '"
+                      << path << "'" << std::endl;
+            return false;
+        }
+        spec = &root.at("spec");
+        spec_path = path + ":spec";
+    }
+
     DepthCameraConfig config {};
-    if (!RequireStringField(root, "frame_id", path, config.frame_id)) {
+    if (!RequireStringField(*spec, "frame_id", spec_path, config.frame_id)) {
         return false;
     }
-    if (!RequireNumberField(root, "update_rate", path, config.update_rate)) {
+    if (!RequireUpdateRateHzField(*spec, spec_path, config.update_rate_hz)) {
         return false;
     }
-    if (!RequireNumberField(root, "horizontal_fov", path, config.horizontal_fov)) {
+    if (!RequireNumberField(*spec, "horizontal_fov", spec_path, config.horizontal_fov)) {
         return false;
     }
 
     json image;
-    if (!RequireObjectField(root, "image", path, image)) {
+    if (!RequireObjectField(*spec, "image", spec_path, image)) {
         return false;
     }
-    if (!RequireIntField(image, "width", path + ":image", config.image.width)) {
+    if (!RequireIntField(image, "width", spec_path + ":image", config.image.width)) {
         return false;
     }
-    if (!RequireIntField(image, "height", path + ":image", config.image.height)) {
+    if (!RequireIntField(image, "height", spec_path + ":image", config.image.height)) {
         return false;
     }
-    if (!RequireStringField(image, "format", path + ":image", config.image.format)) {
+    if (!RequireStringField(image, "format", spec_path + ":image", config.image.format)) {
         return false;
     }
 
     json clip;
-    if (!RequireObjectField(root, "clip", path, clip)) {
+    if (!RequireObjectField(*spec, "clip", spec_path, clip)) {
         return false;
     }
-    if (!RequireNumberField(clip, "near", path + ":clip", config.clip.near)) {
+    if (!RequireNumberField(clip, "near", spec_path + ":clip", config.clip.near)) {
         return false;
     }
-    if (!RequireNumberField(clip, "far", path + ":clip", config.clip.far)) {
+    if (!RequireNumberField(clip, "far", spec_path + ":clip", config.clip.far)) {
         return false;
     }
 
-    LoadNoiseConfigIfPresent(root, config.noise);
+    LoadNoiseConfigIfPresent(*spec, config.noise);
     out = config;
     return true;
 }
@@ -296,12 +316,22 @@ bool LoadRgbdCameraConfigFromJson(const std::string& path, RgbdCameraConfig& out
         return false;
     }
 
+    const json* config_root = &root;
+    if (root.contains("spec")) {
+        if (!root.at("spec").is_object()) {
+            std::cerr << "Failed to load RGBD camera config JSON: field 'spec' must be an object in '"
+                      << path << "'" << std::endl;
+            return false;
+        }
+        config_root = &root.at("spec");
+    }
+
     json rgb;
-    if (!RequireObjectField(root, "rgb", path, rgb)) {
+    if (!RequireObjectField(*config_root, "rgb", path, rgb)) {
         return false;
     }
     json depth;
-    if (!RequireObjectField(root, "depth", path, depth)) {
+    if (!RequireObjectField(*config_root, "depth", path, depth)) {
         return false;
     }
 
@@ -324,8 +354,18 @@ bool LoadStereoCameraConfigFromJson(const std::string& path, StereoCameraConfig&
         return false;
     }
 
+    const json* config_root = &root;
+    if (root.contains("spec")) {
+        if (!root.at("spec").is_object()) {
+            std::cerr << "Failed to load multi-camera config JSON: field 'spec' must be an object in '"
+                      << path << "'" << std::endl;
+            return false;
+        }
+        config_root = &root.at("spec");
+    }
+
     json cameras;
-    if (!RequireArrayField(root, "cameras", path, cameras)) {
+    if (!RequireArrayField(*config_root, "cameras", path, cameras)) {
         return false;
     }
     if (cameras.size() < 2) {

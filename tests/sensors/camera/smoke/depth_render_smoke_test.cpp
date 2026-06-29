@@ -139,7 +139,7 @@ bool CaptureDepthFrame(
 
     hako::robots::sensor::camera::DepthCameraConfig config;
     config.frame_id = "depth_cam_frame";
-    config.update_rate = 30.0;
+    config.update_rate_hz = 30.0;
     config.horizontal_fov = capture_spec.horizontal_fov_rad;
     config.image.width = kImageWidth;
     config.image.height = kImageHeight;

@@ -1,20 +1,32 @@
 {
   "$schema": "../schema/camera.schema.json",
-  "frame_id": "camera_rgb_frame",
-  "update_rate": 30,
-  "horizontal_fov": 1.39626,
-  "image": {
-    "width": 1280,
-    "height": 720,
-    "format": "R8G8B8"
+  "spec": {
+    "frame_id": "camera_rgb_frame",
+    "update_rate_hz": 30,
+    "horizontal_fov": 1.39626,
+    "image": {
+      "width": 1280,
+      "height": 720,
+      "format": "R8G8B8"
+    },
+    "clip": {
+      "near": 0.02,
+      "far": 300
+    },
+    "noise": {
+      "type": "gaussian",
+      "mean": 0.0,
+      "stddev": 0.007
+    }
   },
-  "clip": {
-    "near": 0.02,
-    "far": 300
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "camera_name": "camera_rgb"
   },
-  "noise": {
-    "type": "gaussian",
-    "mean": 0.0,
-    "stddev": 0.007
+  "pdu_config": {
+    "pdu_name": "camera_image",
+    "update_rate_hz": 30,
+    "message_type": "sensor_msgs/Image"
   }
 }

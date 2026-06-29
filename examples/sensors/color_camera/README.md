@@ -108,7 +108,7 @@ Important fields:
 {
   "spec": {
     "frame_id": "color_camera_frame",
-    "update_rate": 10,
+    "update_rate_hz": 10,
     "horizontal_fov": 1.2,
     "image": {
       "width": 256,

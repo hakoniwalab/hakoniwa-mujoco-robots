@@ -111,7 +111,7 @@ static bool initialize_camera(
               << " config=" << config_path
               << " camera=" << camera_name
               << " pdu=" << image_key->robot << "/" << image_key->pdu
-              << " sensor_rate_hz=" << profile.spec.update_rate
+              << " sensor_rate_hz=" << profile.spec.update_rate_hz
               << " pdu_config_rate_hz=" << profile.pdu_config.update_rate_hz
               << std::endl;
 

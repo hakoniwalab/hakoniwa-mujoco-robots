@@ -18,7 +18,7 @@ void TestCameraConfigLoader()
     const bool ok = hako::robots::sensor::camera::LoadCameraConfigFromJson(path, config);
     HAKO_TEST_EXPECT(ok, "sample_camera.json should load");
     HAKO_TEST_EXPECT(config.frame_id == "camera_rgb_frame", "unexpected frame_id");
-    HAKO_TEST_EXPECT(NearlyEqual(config.update_rate, 30.0), "unexpected update_rate");
+    HAKO_TEST_EXPECT(NearlyEqual(config.update_rate_hz, 30.0), "unexpected update_rate_hz");
     HAKO_TEST_EXPECT(NearlyEqual(config.horizontal_fov, 1.39626), "unexpected horizontal_fov");
     HAKO_TEST_EXPECT(config.image.width == 1280, "unexpected image.width");
     HAKO_TEST_EXPECT(config.image.height == 720, "unexpected image.height");
@@ -37,7 +37,7 @@ void TestCameraProfileConfigLoader()
     const bool ok = hako::robots::sensor::camera::LoadCameraProfileConfigFromJson(path, config);
     HAKO_TEST_EXPECT(ok, "simple-color-camera.json should load");
     HAKO_TEST_EXPECT(config.spec.frame_id == "color_camera_frame", "unexpected profile frame_id");
-    HAKO_TEST_EXPECT(NearlyEqual(config.spec.update_rate, 10.0), "unexpected profile update_rate");
+    HAKO_TEST_EXPECT(NearlyEqual(config.spec.update_rate_hz, 10.0), "unexpected profile update_rate_hz");
     HAKO_TEST_EXPECT(NearlyEqual(config.spec.horizontal_fov, 1.2), "unexpected profile horizontal_fov");
     HAKO_TEST_EXPECT(config.spec.image.width == 256, "unexpected profile image.width");
     HAKO_TEST_EXPECT(config.spec.image.height == 128, "unexpected profile image.height");
@@ -59,7 +59,7 @@ void TestDepthCameraConfigLoader()
     const bool ok = hako::robots::sensor::camera::LoadDepthCameraConfigFromJson(path, config);
     HAKO_TEST_EXPECT(ok, "sample_depth_camera.json should load");
     HAKO_TEST_EXPECT(config.frame_id == "camera_depth_frame", "unexpected depth frame_id");
-    HAKO_TEST_EXPECT(NearlyEqual(config.update_rate, 30.0), "unexpected depth update_rate");
+    HAKO_TEST_EXPECT(NearlyEqual(config.update_rate_hz, 30.0), "unexpected depth update_rate_hz");
     HAKO_TEST_EXPECT(NearlyEqual(config.horizontal_fov, 1.047), "unexpected depth horizontal_fov");
     HAKO_TEST_EXPECT(config.image.width == 640, "unexpected depth image.width");
     HAKO_TEST_EXPECT(config.image.height == 480, "unexpected depth image.height");

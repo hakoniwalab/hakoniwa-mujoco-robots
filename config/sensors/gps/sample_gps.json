@@ -1,19 +1,32 @@
 {
   "$schema": "../schema/gps.schema.json",
-  "frame_id": "gps_link",
-  "update_rate": 10,
-  "noise": {
-    "position_horizontal": {
-      "stddev": 2.5
-    },
-    "position_vertical": {
-      "stddev": 5.0
-    },
-    "velocity_horizontal": {
-      "stddev": 0.1
-    },
-    "velocity_vertical": {
-      "stddev": 0.2
+  "spec": {
+    "type": "gps",
+    "name": "gps",
+    "frame_id": "gps_link",
+    "update_rate_hz": 10,
+    "noise": {
+      "position_horizontal": {
+        "stddev": 2.5
+      },
+      "position_vertical": {
+        "stddev": 5.0
+      },
+      "velocity_horizontal": {
+        "stddev": 0.1
+      },
+      "velocity_vertical": {
+        "stddev": 0.2
+      }
     }
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "source_body": "gps_link"
+  },
+  "pdu_config": {
+    "pdu_name": "gps",
+    "update_rate_hz": 10
   }
 }

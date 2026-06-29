@@ -6,20 +6,120 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "rgb",
-    "depth"
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
   ],
   "properties": {
     "$schema": {
       "type": "string"
     },
-    "rgb": {
-      "$ref": "camera.schema.json",
-      "description": "The properties for the RGB camera stream."
+    "spec": {
+      "$ref": "#/$defs/spec"
     },
-    "depth": {
-      "$ref": "depth-camera.schema.json",
-      "description": "The properties for the Depth camera stream."
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
+    },
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
+    }
+  },
+  "$defs": {
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name",
+        "rgb",
+        "depth"
+      ],
+      "properties": {
+        "type": {
+          "const": "rgbd_camera"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rgb": {
+          "$ref": "camera.schema.json#/$defs/cameraSpec"
+        },
+        "depth": {
+          "$ref": "depth-camera.schema.json#/$defs/depthCameraSpec"
+        }
+      }
+    },
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "rgb_camera_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "depth_camera_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "body_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "freejoint_name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "pduConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "streams"
+      ],
+      "properties": {
+        "streams": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/pduStream"
+          }
+        }
+      }
+    },
+    "pduStream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "pdu_name",
+        "update_rate_hz",
+        "message_type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pdu_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "update_rate_hz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "message_type": {
+          "const": "sensor_msgs/Image"
+        }
+      }
     }
   }
 }

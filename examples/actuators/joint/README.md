@@ -73,14 +73,17 @@ The config resolves the MuJoCo actuator by name:
     "config_style": "hakoniwa-sdf-like",
     "runtime_source": "mjcf",
     "actuator_name": "position_servo"
+  },
+  "pdu_config": {
+    "pdu_name": "position_cmd",
+    "message_type": "std_msgs/Float64"
   }
 }
 ```
 
 `spec.joint_name` is the MJCF joint name. `mjcf_binding.actuator_name` is the
-MJCF actuator name. The older top-level `joint_name` / `type` and
-`RuntimeBinding` format is still accepted for compatibility, but new configs
-should use `spec` and `mjcf_binding`.
+MJCF actuator name. `pdu_config.pdu_name` is the Hakoniwa PDU command channel
+used by asset-level integrations.
 
 The model defines the actual actuator behavior:
 

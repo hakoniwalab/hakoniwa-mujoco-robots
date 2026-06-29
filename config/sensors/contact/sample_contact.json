@@ -1,6 +1,19 @@
 {
   "$schema": "../schema/contact.schema.json",
-  "frame_id": "bumper_frame",
-  "update_rate": 50,
-  "collision_name": "bumper_collision"
+  "spec": {
+    "type": "contact",
+    "name": "bumper_contact",
+    "frame_id": "bumper_frame",
+    "update_rate_hz": 50,
+    "collision_name": "bumper_collision"
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "collision_name": "bumper_collision"
+  },
+  "pdu_config": {
+    "pdu_name": "contact",
+    "update_rate_hz": 50
+  }
 }
