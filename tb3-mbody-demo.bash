@@ -5,6 +5,7 @@
 # Examples:
 #   bash tb3-mbody-demo.bash
 #   HAKO_TB3_MODEL=waffle HAKO_TB3_ROUTE_PATTERN=figure8 bash tb3-mbody-demo.bash
+#   HAKO_TB3_MODEL=waffle_pi HAKO_TB3_ROUTE_PATTERN=figure8 bash tb3-mbody-demo.bash
 #   HAKO_TB3_ROUTE_PATTERN=dance HAKO_TB3_ENABLE_VIEWER=1 bash tb3-mbody-demo.bash
 #   HAKO_TB3_ENABLE_VIEWER=0 ACTIVATE_MODE=activate-only bash tb3-mbody-demo.bash
 
@@ -21,9 +22,12 @@ if [ -z "${HAKO_TB3_SIM:-}" ]; then
         waffle)
             export HAKO_TB3_SIM="./src/cmake-build/main_for_sample/tb3/tb3_sim_waffle"
             ;;
+        waffle_pi)
+            export HAKO_TB3_SIM="./src/cmake-build/main_for_sample/tb3/tb3_sim_waffle_pi"
+            ;;
         *)
             echo "Unsupported HAKO_TB3_MODEL: ${HAKO_TB3_MODEL}"
-            echo "Use burger or waffle, or set HAKO_TB3_SIM explicitly."
+            echo "Use burger, waffle, or waffle_pi, or set HAKO_TB3_SIM explicitly."
             exit 1
             ;;
     esac

@@ -56,3 +56,10 @@ target_compile_definitions(tb3_sim_waffle PRIVATE
     HAKO_TB3_DEFAULT_WHEEL_SEPARATION=0.288
     HAKO_TB3_VIEWER_DISABLED_BY_DEFAULT=1
 )
+
+add_tb3_sim_target(tb3_sim_waffle_pi)
+target_compile_definitions(tb3_sim_waffle_pi PRIVATE
+    HAKO_TB3_DEFAULT_MANIFEST_PATH="config/assets/tb3-mbody-waffle-pi-asset.json"
+    HAKO_TB3_DEFAULT_WHEEL_SEPARATION=0.288
+    HAKO_TB3_VIEWER_DISABLED_BY_DEFAULT=1
+)

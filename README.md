@@ -169,6 +169,7 @@ Useful variants:
 
 ```bash
 HAKO_TB3_MODEL=waffle HAKO_TB3_ROUTE_PATTERN=figure8 bash tb3-mbody-demo.bash
+HAKO_TB3_MODEL=waffle_pi HAKO_TB3_ROUTE_PATTERN=figure8 bash tb3-mbody-demo.bash
 HAKO_TB3_ENABLE_VIEWER=0 HAKO_TB3_ROUTE_PATTERN=showcase bash tb3-mbody-demo.bash
 HAKO_TB3_ROUTE_PATTERN=dance HAKO_TB3_ENABLE_VIEWER=1 bash tb3-mbody-demo.bash
 HAKO_TB3_HOLD_SEC=15 bash tb3-mbody-demo.bash
@@ -205,6 +206,19 @@ python3.12 python/tb3_route_demo.py --pattern figure8 --linear-axis 0.6 --yaw-ax
 
 `tb3_sim_waffle` defaults to `config/assets/tb3-mbody-waffle-asset.json`,
 runs without the viewer, and uses a Waffle wheel separation default of `0.288`.
+Set `HAKO_TB3_ENABLE_VIEWER=1` to show the viewer.
+
+For the MBody-generated TurtleBot3 Waffle Pi runtime demo, use:
+
+```bash
+./src/cmake-build/main_for_sample/tb3/tb3_sim_waffle_pi
+/usr/local/hakoniwa/bin/hako-cmd start
+python3.12 python/tb3_route_demo.py --pattern figure8 --linear-axis 0.6 --yaw-axis 0.7
+```
+
+`tb3_sim_waffle_pi` defaults to
+`config/assets/tb3-mbody-waffle-pi-asset.json`, runs without the viewer, and
+uses a Waffle-compatible wheel separation default of `0.288`.
 Set `HAKO_TB3_ENABLE_VIEWER=1` to show the viewer.
 
 3. LiDAR visualizer
