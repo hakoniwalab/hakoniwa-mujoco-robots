@@ -147,6 +147,12 @@ Prepare 4 terminals.
 python python/tb3_gamepad.py
 ```
 
+For a joystick-free scripted route demo, use:
+
+```bash
+python python/tb3_route_demo.py --pattern square
+```
+
 3. LiDAR visualizer
 ```bash
 python python/lidar_visualizer.py
@@ -238,26 +244,61 @@ If Hakoniwa core is also outside `/usr/local/hakoniwa`, set:
 export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
 ```
 
-### 3) Install hakoniwa-pdu Python package (required for Python tools)
+### 3) Install Python runtime packages (required for Python tools)
 
-Python controllers and visualizers under `python/` use the `hakoniwa_pdu` module.
+Python controllers and visualizers under `python/` are intended to run with
+Python 3.12. They use two Python-side Hakoniwa pieces:
+
+- `hakopy`: Hakoniwa core Python binding installed by `hakoniwa-core-pro`.
+- `hakoniwa-pdu`: PDU message types, serializers, and `PduManager` installed
+  with `pip`.
+
+Install `hakoniwa-core-pro` first, following its README. The core install step
+installs the `hakopy` Python binding. Newer installer flows may also write a
+Hakoniwa environment file; source it when it exists:
 
 ```bash
-python -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
+test -f /usr/local/hakoniwa/env.bash && source /usr/local/hakoniwa/env.bash
+```
+
+If that file does not exist, set the equivalent environment variables manually
+when needed:
+
+```bash
+export HAKONIWA_HOME=/usr/local/hakoniwa
+export PATH="${HAKONIWA_HOME}/bin:${PATH}"
+export CMAKE_PREFIX_PATH="${HAKONIWA_HOME}:${CMAKE_PREFIX_PATH:-}"
+export PKG_CONFIG_PATH="${HAKONIWA_HOME}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+```
+
+Then use the same Python 3.12 executable for checks, installs, and scripts:
+
+```bash
+python3.12 -c "import hakopy; print(hakopy)"
+python3.12 -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
+```
+
+If Python 3.12 is managed by a version manager such as pyenv, use the same
+resolved executable consistently:
+
+```bash
+PYTHON_CMD="$(command -v python3.12)" ./doctor.bash
+"$(command -v python3.12)" python/tb3_route_demo.py --pattern square
 ```
 
 Check the installed version:
 
 ```bash
-python -m pip show hakoniwa-pdu
+python3.12 -m pip show hakoniwa-pdu
 ```
 
 This is required for commands such as:
 
 ```bash
-python python/tb3_gamepad.py
-python -m python.forklift_simple_auto config/forklift-unit-compact.json
-python python/lidar_visualizer.py
+python3.12 python/tb3_gamepad.py
+python3.12 python/tb3_route_demo.py --pattern square
+python3.12 -m python.forklift_simple_auto config/forklift-unit-compact.json
+python3.12 python/lidar_visualizer.py
 ```
 
 ### 4) OS notes
@@ -424,6 +465,11 @@ python -m python.forklift_gamepad config/custom-compact.json
 - TurtleBot3 gamepad control:
 ```bash
 python python/tb3_gamepad.py
+```
+
+- TurtleBot3 scripted route demo without a joystick:
+```bash
+python python/tb3_route_demo.py --pattern square
 ```
 
 - LiDAR visualizer:
@@ -604,22 +650,43 @@ Fix any `FAIL` lines, then run:
 ./build.bash
 ```
 
-### Q2. `hakoniwa-pdu` is installed, but Python still fails. Why?
+### Q2. Python tools fail even after installing `hakoniwa-pdu`. Why?
 
-`pip` and `python` may point to different Python installations. Use the same Python command that runs the script:
+`hakoniwa-pdu` does not provide `hakopy`. `hakopy` is the Python binding built
+and installed by `hakoniwa-core-pro`, and this repository expects Python 3.12
+for Python-side Hakoniwa tools.
+
+The most common cause is a Python environment mismatch. These must all refer to
+the same Python 3.12 environment:
+
+- the Python used when `hakoniwa-core-pro` installed `hakopy`
+- the Python used to run `python3.12 -m pip install hakoniwa-pdu`
+- the Python used to run scripts such as `python/tb3_route_demo.py`
+
+First install `hakoniwa-core-pro` following its README, then check that
+`hakopy` is visible to Python 3.12:
 
 ```bash
-python -m pip show hakoniwa-pdu
-python -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
+test -f /usr/local/hakoniwa/env.bash && source /usr/local/hakoniwa/env.bash
+python3.12 -c "import hakopy; print(hakopy)"
 ```
 
-`./doctor.bash` prints the Python executable it checks.
+Then install `hakoniwa-pdu` into that same Python:
+
+```bash
+python3.12 -m pip show hakoniwa-pdu
+python3.12 -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
+```
+
+If `import hakopy` fails, reinstall or rebuild `hakoniwa-core-pro` with Python
+3.12 available, then re-run the install step. `./doctor.bash` prints the Python
+executable it checks.
 
 If you want to check a specific Python environment, pass `PYTHON_CMD`:
 
 ```bash
-PYTHON_CMD=/path/to/python ./doctor.bash
-/path/to/python -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
+PYTHON_CMD=/path/to/python3.12 ./doctor.bash
+/path/to/python3.12 -m pip install --upgrade "hakoniwa-pdu>=1.6.1"
 ```
 
 ### Q3. CMake cannot find `hakoniwa-core-pro` or `hakoniwa-pdu-endpoint`.
@@ -678,6 +745,7 @@ The top-level README keeps only the entry points, setup, and sample commands. Us
 - `src/main_for_sample/forklift/main_unit.cpp`: unit model verification
 - `src/main_for_sample/tb3/main.cpp`: TurtleBot3 sample (Hakoniwa asset / endpoint / 2D LiDAR)
 - `python/tb3_gamepad.py`: TurtleBot3 Python controller asset (PS4/DualSense)
+- `python/tb3_route_demo.py`: TurtleBot3 scripted route controller for joystick-free demos
 - `python/lidar_visualizer.py`: generic LiDAR visualizer (world view)
 - `examples/README.md`: standalone example index
 - `examples/sensors/ultrasonic/README.md`: ultrasonic sensor example

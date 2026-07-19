@@ -119,6 +119,29 @@ PY
     fi
 }
 
+check_python_module() {
+    local python_cmd="$1"
+    local module_name="$2"
+    local install_hint="$3"
+
+    if ! have_command "$python_cmd"; then
+        fail "$python_cmd not found. Install Python 3.12 or set PYTHON_CMD."
+        return
+    fi
+
+    if "$python_cmd" - "$module_name" <<'PY'
+import importlib
+import sys
+
+importlib.import_module(sys.argv[1])
+PY
+    then
+        ok "$module_name import works for $python_cmd"
+    else
+        fail "$module_name import failed for $python_cmd. $install_hint"
+    fi
+}
+
 check_glfw() {
     if have_command pkg-config && pkg-config --exists glfw3; then
         ok "glfw3 found by pkg-config"
@@ -141,6 +164,8 @@ check_command git "Install Git."
 
 if [ -n "${PYTHON_CMD:-}" ]; then
     :
+elif have_command python3.12; then
+    PYTHON_CMD=python3.12
 elif have_command python3; then
     PYTHON_CMD=python3
 elif have_command python; then
@@ -149,6 +174,7 @@ else
     PYTHON_CMD=python3
 fi
 
+check_python_module "$PYTHON_CMD" hakopy "Install hakoniwa-core-pro with Python 3.12 available, then source /usr/local/hakoniwa/env.bash."
 check_python_package "$PYTHON_CMD" hakoniwa-pdu 1.6.1
 
 if [ -f "$ROOT_DIR/MUJOCO_VERSION.txt" ]; then
