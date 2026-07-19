@@ -102,8 +102,10 @@ def build_route(args: argparse.Namespace) -> list[RoutePhase]:
             loop = index + 1
             phases.extend(
                 [
-                    RoutePhase(f"loop-{loop}-arc-left", args.forward_sec, linear, yaw * 0.7),
-                    RoutePhase(f"loop-{loop}-arc-right", args.forward_sec, linear, -yaw * 0.7),
+                    RoutePhase(f"loop-{loop}-left-loop", args.forward_sec, linear * 0.75, yaw),
+                    RoutePhase(f"loop-{loop}-center-cross", args.stop_sec * 0.5, 0.0, 0.0),
+                    RoutePhase(f"loop-{loop}-right-loop", args.forward_sec, linear * 0.75, -yaw),
+                    RoutePhase(f"loop-{loop}-settle", args.stop_sec * 0.5, 0.0, 0.0),
                 ]
             )
     elif args.pattern == "dance":
@@ -173,6 +175,12 @@ def run_route(args: argparse.Namespace) -> None:
         for _ in range(max(1, int(args.rate_hz * args.stop_sec))):
             send_command(pdu_manager, args.robot, args.pdu, stop)
             time.sleep(interval_sec)
+        if args.hold_sec > 0.0:
+            print(f"[INFO] holding neutral command for {args.hold_sec:.2f}s")
+            deadline = time.monotonic() + args.hold_sec
+            while time.monotonic() < deadline:
+                send_command(pdu_manager, args.robot, args.pdu, stop)
+                time.sleep(interval_sec)
         print("[INFO] TB3 route demo finished")
 
 
@@ -241,6 +249,12 @@ def parse_args() -> argparse.Namespace:
         default=50.0,
         help="Command publish rate in Hz (default: 50.0)",
     )
+    parser.add_argument(
+        "--hold-sec",
+        type=float,
+        default=0.0,
+        help="Keep sending neutral commands after the route so viewers remain open (default: 0.0)",
+    )
     args = parser.parse_args()
 
     if args.loops < 1:
@@ -255,6 +269,8 @@ def parse_args() -> argparse.Namespace:
         parser.error("--stop-sec must be >= 0")
     if args.rate_hz <= 0.0:
         parser.error("--rate-hz must be > 0")
+    if args.hold_sec < 0.0:
+        parser.error("--hold-sec must be >= 0")
     return args
 
 

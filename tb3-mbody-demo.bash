@@ -5,6 +5,7 @@
 # Examples:
 #   bash tb3-mbody-demo.bash
 #   HAKO_TB3_MODEL=waffle HAKO_TB3_ROUTE_PATTERN=figure8 bash tb3-mbody-demo.bash
+#   HAKO_TB3_ROUTE_PATTERN=dance HAKO_TB3_ENABLE_VIEWER=1 bash tb3-mbody-demo.bash
 #   HAKO_TB3_ENABLE_VIEWER=0 ACTIVATE_MODE=activate-only bash tb3-mbody-demo.bash
 
 ACTIVATE_MODE=${ACTIVATE_MODE:-"immediate"}

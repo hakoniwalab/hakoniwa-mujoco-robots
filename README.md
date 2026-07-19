@@ -162,13 +162,16 @@ bash tb3-mbody-demo.bash
 
 This uses `hakoniwa-pdu`'s launcher to start the simulator, issue
 `hako-cmd start`, and run a joystick-free scripted route demo. It defaults to
-Burger with the MuJoCo viewer enabled and the more dynamic `dance` route.
+Burger with the MuJoCo viewer, LiDAR plot, trajectory trail, and a `figure8`
+route.
 
 Useful variants:
 
 ```bash
 HAKO_TB3_MODEL=waffle HAKO_TB3_ROUTE_PATTERN=figure8 bash tb3-mbody-demo.bash
 HAKO_TB3_ENABLE_VIEWER=0 HAKO_TB3_ROUTE_PATTERN=showcase bash tb3-mbody-demo.bash
+HAKO_TB3_ROUTE_PATTERN=dance HAKO_TB3_ENABLE_VIEWER=1 bash tb3-mbody-demo.bash
+HAKO_TB3_HOLD_SEC=15 bash tb3-mbody-demo.bash
 ACTIVATE_MODE=activate-only bash tb3-mbody-demo.bash
 ```
 
@@ -188,7 +191,8 @@ For a visual Burger demo, run:
 ```bash
 HAKO_TB3_ENABLE_VIEWER=1 ./src/cmake-build/main_for_sample/tb3/tb3_sim_burger
 /usr/local/hakoniwa/bin/hako-cmd start
-python3.12 python/tb3_route_demo.py --pattern dance --linear-axis 0.65 --yaw-axis 0.75
+python3.12 python/tb3_lidar_visualizer.py
+python3.12 python/tb3_route_demo.py --pattern figure8 --forward-sec 5.0 --linear-axis 0.6 --yaw-axis 0.85 --hold-sec 6
 ```
 
 For the MBody-generated TurtleBot3 Waffle runtime demo, use:

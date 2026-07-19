@@ -31,6 +31,7 @@ DEFAULT_POINT_SIZE = 4.0
 DEFAULT_LOCAL_VIEW_SIZE = 1.0
 DEFAULT_FOLLOW_GAIN = 0.08
 DEFAULT_DEBUG_INTERVAL_SEC = 1.0
+DEFAULT_TRAIL_MAX_POINTS = 1000
 
 
 def _to_float_list(values):
@@ -45,6 +46,10 @@ def _get_env_float(name: str, default_value: float) -> float:
     value = os.getenv(name)
     if value is None or value == "":
         return default_value
+    try:
+        return float(value)
+    except ValueError:
+        return default_value
 
 
 def _get_env_bool(name: str, default_value: bool = False) -> bool:
@@ -52,8 +57,14 @@ def _get_env_bool(name: str, default_value: bool = False) -> bool:
     if value is None or value == "":
         return default_value
     return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_env_int(name: str, default_value: int) -> int:
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default_value
     try:
-        return float(value)
+        return int(value)
     except ValueError:
         return default_value
 
@@ -72,6 +83,8 @@ class LiDARWindow(QMainWindow):
         self.last_sensor_x = 0.0
         self.last_sensor_y = 0.0
         self.last_sensor_yaw = 0.0
+        self.trail_x = []
+        self.trail_y = []
         self.view_center_x = _get_env_float("LIDAR_VIEW_CENTER_X", 0.0)
         self.view_center_y = _get_env_float("LIDAR_VIEW_CENTER_Y", 0.0)
         self.follow_gain = _get_env_float("LIDAR_FOLLOW_GAIN", DEFAULT_FOLLOW_GAIN)
@@ -82,6 +95,8 @@ class LiDARWindow(QMainWindow):
         self.min_plot_range = _get_env_float("LIDAR_MIN_PLOT_RANGE", 1.0)
         self.point_size = _get_env_float("LIDAR_POINT_SIZE", DEFAULT_POINT_SIZE)
         self.local_view_size = _get_env_float("LIDAR_LOCAL_VIEW_SIZE", DEFAULT_LOCAL_VIEW_SIZE)
+        self.trail_enabled = _get_env_bool("HAKO_LIDAR_TRAIL", True)
+        self.trail_max_points = max(_get_env_int("HAKO_LIDAR_TRAIL_MAX_POINTS", DEFAULT_TRAIL_MAX_POINTS), 2)
         self.debug_enabled = _get_env_bool("HAKO_LIDAR_DEBUG", False)
         self.debug_interval_sec = max(_get_env_float("HAKO_LIDAR_DEBUG_INTERVAL", DEFAULT_DEBUG_INTERVAL_SEC), 0.1)
         self._last_debug_at = 0.0
@@ -191,6 +206,12 @@ class LiDARWindow(QMainWindow):
             self.last_sensor_x = sensor_x
             self.last_sensor_y = sensor_y
             self.last_sensor_yaw = sensor_yaw
+            if self.trail_enabled:
+                self.trail_x.append(sensor_x)
+                self.trail_y.append(sensor_y)
+                if len(self.trail_x) > self.trail_max_points:
+                    self.trail_x = self.trail_x[-self.trail_max_points:]
+                    self.trail_y = self.trail_y[-self.trail_max_points:]
         else:
             sensor_x = self.last_sensor_x
             sensor_y = self.last_sensor_y
@@ -246,6 +267,8 @@ class LiDARWindow(QMainWindow):
         self.ax.grid(True)
 
         self.ax.scatter([sensor_x], [sensor_y], s=50, marker="x")
+        if self.trail_enabled and len(self.trail_x) >= 2:
+            self.ax.plot(self.trail_x, self.trail_y, color="black", linewidth=1.4, alpha=0.75)
         arrow_len = max(0.08, half_view * 0.18)
         self.ax.arrow(
             sensor_x,

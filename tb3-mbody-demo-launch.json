@@ -33,27 +33,50 @@
       "delay_sec": 1
     },
     {
+      "name": "lidar_visualizer",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/tb3_lidar_visualizer.py"
+      ],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "LIDAR_LOCAL_VIEW_SIZE": "${HAKO_LIDAR_LOCAL_VIEW_SIZE:-4.0}",
+          "LIDAR_POINT_SIZE": "${HAKO_LIDAR_POINT_SIZE:-8.0}",
+          "LIDAR_FOLLOW_GAIN": "${HAKO_LIDAR_FOLLOW_GAIN:-0.25}",
+          "HAKO_LIDAR_TRAIL": "${HAKO_LIDAR_TRAIL:-1}",
+          "HAKO_LIDAR_TRAIL_MAX_POINTS": "${HAKO_LIDAR_TRAIL_MAX_POINTS:-1000}",
+          "MPLCONFIGDIR": "${HAKO_MPLCONFIGDIR:-/tmp/hakoniwa-matplotlib}"
+        }
+      },
+      "start_grace_sec": 1,
+      "delay_sec": 1
+    },
+    {
       "name": "route_demo",
       "activation_timing": "after_start",
       "command": "${HAKO_PYTHON:-python3.12}",
       "args": [
         "python/tb3_route_demo.py",
         "--pattern",
-        "${HAKO_TB3_ROUTE_PATTERN:-dance}",
+        "${HAKO_TB3_ROUTE_PATTERN:-figure8}",
         "--loops",
         "${HAKO_TB3_ROUTE_LOOPS:-1}",
         "--linear-axis",
-        "${HAKO_TB3_LINEAR_AXIS:-0.65}",
+        "${HAKO_TB3_LINEAR_AXIS:-0.60}",
         "--yaw-axis",
-        "${HAKO_TB3_YAW_AXIS:-0.75}",
+        "${HAKO_TB3_YAW_AXIS:-0.85}",
         "--forward-sec",
-        "${HAKO_TB3_FORWARD_SEC:-1.8}",
+        "${HAKO_TB3_FORWARD_SEC:-5.0}",
         "--turn-sec",
         "${HAKO_TB3_TURN_SEC:-1.0}",
         "--stop-sec",
         "${HAKO_TB3_STOP_SEC:-0.5}",
         "--rate-hz",
-        "${HAKO_TB3_RATE_HZ:-50}"
+        "${HAKO_TB3_RATE_HZ:-50}",
+        "--hold-sec",
+        "${HAKO_TB3_HOLD_SEC:-6.0}"
       ],
       "cwd": ".",
       "start_grace_sec": 1,
