@@ -54,9 +54,9 @@ bool Tb3HakoniwaAdapter::ResolveManifestPduKey(
 
 bool Tb3HakoniwaAdapter::Initialize(std::string* error_message)
 {
-    const hakoniwa::pdu::PduKey gamepad_key {"TB3", "hako_cmd_game"};
-    const hakoniwa::pdu::PduKey base_pose_key {"TB3", "base_link_pos"};
-    const hakoniwa::pdu::PduKey base_scan_pose_key {"TB3", "base_scan_pos"};
+    const hakoniwa::pdu::PduKey gamepad_key {runtime_.pdu_robot_name, "hako_cmd_game"};
+    const hakoniwa::pdu::PduKey base_pose_key {runtime_.pdu_robot_name, "base_link_pos"};
+    const hakoniwa::pdu::PduKey base_scan_pose_key {runtime_.pdu_robot_name, "base_scan_pos"};
 
     hakoniwa::pdu::PduKey laser_scan_key;
     hakoniwa::pdu::PduKey imu_key;

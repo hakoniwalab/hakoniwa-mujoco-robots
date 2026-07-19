@@ -18,6 +18,8 @@
 #include "viewer/mujoco_viewer.hpp"
 
 #include "config/asset_manifest.hpp"
+#include "hakoniwa/mirrored_rigid_body.hpp"
+#include "hakoniwa/pdu_bound_rigid_body_loader.hpp"
 #include "hakoniwa/pdu/endpoint.hpp"
 #include "physics/physics_impl.hpp"
 #include "robots/tb3/tb3_hakoniwa_adapter.hpp"
@@ -162,6 +164,34 @@ static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
         return -1;
     }
 
+    std::vector<std::unique_ptr<hakoniwa::MirroredRigidBody>> mirrored_bodies;
+    std::vector<int> mirror_update_counts;
+    if (!runtime.mirror_bindings_config.empty()) {
+        try {
+            const auto bindings = hakoniwa::PduBoundRigidBodyBindingsLoader::load(
+                runtime.mirror_bindings_config,
+                runtime.endpoint_path);
+            for (const auto& binding : bindings) {
+                if (binding.type != hakoniwa::PduBoundRigidBodyType::Mirrored) {
+                    std::cerr << "[WARN] Ignoring non-mirrored TB3 binding: "
+                              << binding.robot_name << std::endl;
+                    continue;
+                }
+                mirrored_bodies.push_back(
+                    std::make_unique<hakoniwa::MirroredRigidBody>(world, endpoint, binding));
+                mirror_update_counts.push_back(0);
+                std::cout << "[INFO] TB3 mirror body configured:"
+                          << " robot=" << binding.robot_name
+                          << " body=" << binding.body_name
+                          << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] Failed to load TB3 mirror bindings: "
+                      << e.what() << std::endl;
+            return -1;
+        }
+    }
+
     hako::robots::sensor::ImuFrame imu_frame {};
     hako::robots::sensor::lidar::LaserScanFrame laser_scan_frame {};
     hako::robots::sensor::JointStateFrame joint_state_frame {};
@@ -180,6 +210,11 @@ static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
             // --- 制御 ---
             tb3.ApplyCommand(command);
             tb3.Step();
+            for (std::size_t index = 0; index < mirrored_bodies.size(); ++index) {
+                if (mirrored_bodies[index]->mirror_from_pdu()) {
+                    ++mirror_update_counts[index];
+                }
+            }
             // --- base_link_pos 送信（1ms周期） ---
             (void)tb3_io.PublishBasePose(tb3.GetBasePosition(), tb3.GetBaseEuler());
 
@@ -220,6 +255,17 @@ static int run_manual_timing_control(hakoniwa::pdu::Endpoint& endpoint)
             // --- デバッグログ（500ステップごと） ---
             if ((step % 500) == 0) {
                 tb3.EmitDebugLog(step);
+                for (std::size_t index = 0; index < mirrored_bodies.size(); ++index) {
+                    const auto position = mirrored_bodies[index]->position();
+                    const auto euler = mirrored_bodies[index]->euler();
+                    std::cout << "[TB3-MIRROR] step=" << step
+                              << " robot=" << mirrored_bodies[index]->robot_name()
+                              << " body=" << mirrored_bodies[index]->body_name()
+                              << " updates=" << mirror_update_counts[index]
+                              << " pos=(" << position.x << ", " << position.y << ", " << position.z << ")"
+                              << " yaw=" << euler.z
+                              << std::endl;
+                }
             }
             ++step;
         }
@@ -296,7 +342,9 @@ int main(int argc, const char* argv[])
         runtime.asset_name,
         runtime.asset_config_path,
         static_cast<hako_time_t>(world->getModel()->opt.timestep * 1e6),
-        HAKO_ASSET_MODEL_PLANT
+        HAKO_ASSET_MODEL_PLANT,
+        100000,
+        runtime.start_conductor
     });
     lifecycle = &asset_lifecycle;
 

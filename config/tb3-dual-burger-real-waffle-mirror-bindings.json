@@ -1,0 +1,12 @@
+{
+  "robots": [
+    {
+      "name": "TB3_WAFFLE",
+      "bodyName": "waffle_mirror_base_link",
+      "type": "mirrored",
+      "channels": {
+        "pos": "base_link_pos"
+      }
+    }
+  ]
+}

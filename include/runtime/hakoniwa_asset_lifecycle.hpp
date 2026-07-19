@@ -18,6 +18,7 @@ namespace hako::robots::runtime
         hako_time_t delta_time_usec {0};
         HakoAssetModelType model_type {HAKO_ASSET_MODEL_PLANT};
         hako_time_t conductor_cycle_usec {100000};
+        bool start_conductor {true};
     };
 
     class HakoniwaAssetLifecycle

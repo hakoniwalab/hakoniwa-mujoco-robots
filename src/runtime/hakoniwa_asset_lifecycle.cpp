@@ -101,8 +101,13 @@ bool HakoniwaAssetLifecycle::RegisterAndRunAssetInternal(
     callbacks_.on_reset = StaticOnReset;
     active_instance_ = this;
 
-    hako_conductor_start(config_.delta_time_usec, config_.conductor_cycle_usec);
-    conductor_started_.store(true);
+    if (config_.start_conductor) {
+        hako_conductor_start(config_.delta_time_usec, config_.conductor_cycle_usec);
+        conductor_started_.store(true);
+    } else {
+        std::cout << "[INFO] Conductor start is disabled for asset: "
+                  << config_.asset_name << std::endl;
+    }
     const int register_result = hako_asset_register(
         config_.asset_name.c_str(),
         config_.pdu_def_path.c_str(),

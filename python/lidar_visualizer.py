@@ -103,7 +103,11 @@ class LiDARWindow(QMainWindow):
         self._update_count = 0
 
         self.setWindowTitle(f"{robot_name} LiDAR")
-        self.setGeometry(50, 50, 800, 800)
+        window_x = _get_env_int("HAKO_LIDAR_WINDOW_X", 50)
+        window_y = _get_env_int("HAKO_LIDAR_WINDOW_Y", 50)
+        window_width = _get_env_int("HAKO_LIDAR_WINDOW_WIDTH", 800)
+        window_height = _get_env_int("HAKO_LIDAR_WINDOW_HEIGHT", 800)
+        self.setGeometry(window_x, window_y, window_width, window_height)
 
         self.figure = Figure()
         self.canvas = FigureCanvas(self.figure)

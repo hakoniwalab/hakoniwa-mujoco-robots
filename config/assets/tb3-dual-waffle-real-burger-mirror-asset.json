@@ -1,0 +1,57 @@
+{
+  "$schema": "schema/hakoniwa-asset-manifest.schema.json",
+  "name": "tb3_dual_waffle_real_burger_mirror_asset",
+  "description": "Dual TurtleBot3 world: Waffle is the real controlled robot and Burger is a mirrored remote body.",
+  "model": "../../models/tb3/tb3_waffle_real_burger_mirror.xml",
+  "pdu_def": "../tb3-dual-pdudef-compact.json",
+  "endpoint": "../endpoint/tb3_dual_waffle_endpoint.json",
+  "components": [
+    {
+      "id": "left_wheel_actuator",
+      "kind": "actuator",
+      "type": "joint_actuator",
+      "config": "../actuator/joint/tb3_mbody_left_wheel.json"
+    },
+    {
+      "id": "right_wheel_actuator",
+      "kind": "actuator",
+      "type": "joint_actuator",
+      "config": "../actuator/joint/tb3_mbody_right_wheel.json"
+    },
+    {
+      "id": "wheel_joint_states",
+      "kind": "state_output",
+      "type": "joint_state",
+      "config": "../sensors/joint_state/tb3-wheel-joint-states.json",
+      "pdu_robot": "TB3_WAFFLE"
+    },
+    {
+      "id": "lidar",
+      "kind": "sensor",
+      "type": "lidar_2d",
+      "config": "../sensors/lidar/lds-02.json",
+      "pdu_robot": "TB3_WAFFLE"
+    },
+    {
+      "id": "imu",
+      "kind": "sensor",
+      "type": "imu",
+      "config": "../sensors/imu/tb3-imu.json",
+      "pdu_robot": "TB3_WAFFLE"
+    },
+    {
+      "id": "odometry",
+      "kind": "state_output",
+      "type": "odometry",
+      "config": "../sensors/odometry/tb3-ground-truth-odom.json",
+      "pdu_robot": "TB3_WAFFLE"
+    },
+    {
+      "id": "tf",
+      "kind": "state_output",
+      "type": "tf",
+      "config": "../sensors/tf/tb3-basic-tf.json",
+      "pdu_robot": "TB3_WAFFLE"
+    }
+  ]
+}

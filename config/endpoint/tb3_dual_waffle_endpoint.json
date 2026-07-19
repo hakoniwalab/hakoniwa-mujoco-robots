@@ -1,0 +1,6 @@
+{
+  "name": "tb3_dual_waffle_endpoint",
+  "pdu_def_path": "../tb3-dual-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_tb3_dual_comm.json"
+}

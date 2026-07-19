@@ -1,0 +1,18 @@
+{
+  "paths": [
+    {
+      "id": "tb3-endpoint",
+      "path": "tb3-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "TB3_BURGER",
+      "pdutypes_id": "tb3-endpoint"
+    },
+    {
+      "name": "TB3_WAFFLE",
+      "pdutypes_id": "tb3-endpoint"
+    }
+  ]
+}

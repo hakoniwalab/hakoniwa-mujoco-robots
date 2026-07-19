@@ -1,0 +1,191 @@
+{
+  "version": "0.1",
+  "defaults": {
+    "cwd": ".",
+    "stdout": "logs/${asset}.out",
+    "stderr": "logs/${asset}.err",
+    "env": {
+      "prepend": {
+        "lib_path": [
+          "/usr/local/hakoniwa/lib"
+        ],
+        "PATH": [
+          "/usr/local/hakoniwa/bin"
+        ]
+      }
+    },
+    "start_grace_sec": 1,
+    "delay_sec": 1
+  },
+  "assets": [
+    {
+      "name": "tb3_burger_real",
+      "activation_timing": "before_start",
+      "command": "./src/cmake-build/main_for_sample/tb3/tb3_sim_burger",
+      "args": [],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "HAKO_ASSET_NAME": "tb3_burger_real",
+          "HAKO_TB3_PDU_ROBOT_NAME": "TB3_BURGER",
+          "HAKO_TB3_ENDPOINT_NAME": "tb3_dual_burger_endpoint",
+          "HAKO_TB3_MANIFEST_PATH": "config/assets/tb3-dual-burger-real-waffle-mirror-asset.json",
+          "HAKO_TB3_MIRROR_BINDINGS_PATH": "config/tb3-dual-burger-real-waffle-mirror-bindings.json",
+          "HAKO_TB3_ENABLE_VIEWER": "${HAKO_TB3_ENABLE_VIEWER:-1}"
+        }
+      },
+      "start_grace_sec": 2,
+      "delay_sec": 1
+    },
+    {
+      "name": "tb3_waffle_real",
+      "activation_timing": "before_start",
+      "command": "./src/cmake-build/main_for_sample/tb3/tb3_sim_waffle",
+      "args": [],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "HAKO_ASSET_NAME": "tb3_waffle_real",
+          "HAKO_TB3_PDU_ROBOT_NAME": "TB3_WAFFLE",
+          "HAKO_TB3_ENDPOINT_NAME": "tb3_dual_waffle_endpoint",
+          "HAKO_TB3_MANIFEST_PATH": "config/assets/tb3-dual-waffle-real-burger-mirror-asset.json",
+          "HAKO_TB3_MIRROR_BINDINGS_PATH": "config/tb3-dual-waffle-real-burger-mirror-bindings.json",
+          "HAKO_TB3_DISABLE_CONDUCTOR_START": "1",
+          "HAKO_TB3_DISABLE_VIEWER": "1"
+        }
+      },
+      "start_grace_sec": 2,
+      "delay_sec": 1
+    },
+    {
+      "name": "burger_lidar_visualizer",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/lidar_visualizer.py",
+        "config/tb3-dual-pdudef-compact.json",
+        "TB3_BURGER"
+      ],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "LIDAR_LOCAL_VIEW_SIZE": "${HAKO_LIDAR_LOCAL_VIEW_SIZE:-4.0}",
+          "LIDAR_POINT_SIZE": "${HAKO_LIDAR_POINT_SIZE:-8.0}",
+          "LIDAR_FOLLOW_GAIN": "${HAKO_LIDAR_FOLLOW_GAIN:-0.25}",
+          "HAKO_LIDAR_TRAIL": "${HAKO_LIDAR_TRAIL:-1}",
+          "HAKO_LIDAR_TRAIL_MAX_POINTS": "${HAKO_LIDAR_TRAIL_MAX_POINTS:-1000}",
+          "HAKO_LIDAR_WINDOW_X": "${HAKO_BURGER_LIDAR_WINDOW_X:-40}",
+          "HAKO_LIDAR_WINDOW_Y": "${HAKO_BURGER_LIDAR_WINDOW_Y:-80}",
+          "HAKO_LIDAR_WINDOW_WIDTH": "${HAKO_LIDAR_WINDOW_WIDTH:-640}",
+          "HAKO_LIDAR_WINDOW_HEIGHT": "${HAKO_LIDAR_WINDOW_HEIGHT:-640}",
+          "MPLCONFIGDIR": "${HAKO_MPLCONFIGDIR:-/tmp/hakoniwa-matplotlib}"
+        }
+      },
+      "start_grace_sec": 1,
+      "delay_sec": 0
+    },
+    {
+      "name": "waffle_lidar_visualizer",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/lidar_visualizer.py",
+        "config/tb3-dual-pdudef-compact.json",
+        "TB3_WAFFLE"
+      ],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "LIDAR_LOCAL_VIEW_SIZE": "${HAKO_LIDAR_LOCAL_VIEW_SIZE:-4.0}",
+          "LIDAR_POINT_SIZE": "${HAKO_LIDAR_POINT_SIZE:-8.0}",
+          "LIDAR_FOLLOW_GAIN": "${HAKO_LIDAR_FOLLOW_GAIN:-0.25}",
+          "HAKO_LIDAR_TRAIL": "${HAKO_LIDAR_TRAIL:-1}",
+          "HAKO_LIDAR_TRAIL_MAX_POINTS": "${HAKO_LIDAR_TRAIL_MAX_POINTS:-1000}",
+          "HAKO_LIDAR_WINDOW_X": "${HAKO_WAFFLE_LIDAR_WINDOW_X:-720}",
+          "HAKO_LIDAR_WINDOW_Y": "${HAKO_WAFFLE_LIDAR_WINDOW_Y:-80}",
+          "HAKO_LIDAR_WINDOW_WIDTH": "${HAKO_LIDAR_WINDOW_WIDTH:-640}",
+          "HAKO_LIDAR_WINDOW_HEIGHT": "${HAKO_LIDAR_WINDOW_HEIGHT:-640}",
+          "MPLCONFIGDIR": "${HAKO_MPLCONFIGDIR:-/tmp/hakoniwa-matplotlib}"
+        }
+      },
+      "start_grace_sec": 1,
+      "delay_sec": 0
+    },
+    {
+      "name": "burger_route_demo",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/tb3_route_demo.py",
+        "--config-path",
+        "config/tb3-dual-pdudef-compact.json",
+        "--robot",
+        "TB3_BURGER",
+        "--pattern",
+        "${HAKO_TB3_BURGER_ROUTE_PATTERN:-figure8}",
+        "--loops",
+        "${HAKO_TB3_ROUTE_LOOPS:-1}",
+        "--linear-axis",
+        "${HAKO_TB3_BURGER_LINEAR_AXIS:-0.60}",
+        "--yaw-axis",
+        "${HAKO_TB3_BURGER_YAW_AXIS:-0.85}",
+        "--forward-sec",
+        "${HAKO_TB3_FORWARD_SEC:-5.0}",
+        "--turn-sec",
+        "${HAKO_TB3_TURN_SEC:-1.0}",
+        "--stop-sec",
+        "${HAKO_TB3_STOP_SEC:-0.5}",
+        "--rate-hz",
+        "${HAKO_TB3_RATE_HZ:-50}",
+        "--hold-sec",
+        "${HAKO_TB3_HOLD_SEC:-6.0}"
+      ],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "PYTHONUNBUFFERED": "1"
+        }
+      },
+      "start_grace_sec": 1,
+      "delay_sec": 0
+    },
+    {
+      "name": "waffle_route_demo",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/tb3_route_demo.py",
+        "--config-path",
+        "config/tb3-dual-pdudef-compact.json",
+        "--robot",
+        "TB3_WAFFLE",
+        "--pattern",
+        "${HAKO_TB3_WAFFLE_ROUTE_PATTERN:-dance}",
+        "--loops",
+        "${HAKO_TB3_ROUTE_LOOPS:-1}",
+        "--linear-axis",
+        "${HAKO_TB3_WAFFLE_LINEAR_AXIS:-0.55}",
+        "--yaw-axis",
+        "${HAKO_TB3_WAFFLE_YAW_AXIS:-0.70}",
+        "--forward-sec",
+        "${HAKO_TB3_FORWARD_SEC:-5.0}",
+        "--turn-sec",
+        "${HAKO_TB3_TURN_SEC:-1.0}",
+        "--stop-sec",
+        "${HAKO_TB3_STOP_SEC:-0.5}",
+        "--rate-hz",
+        "${HAKO_TB3_RATE_HZ:-50}",
+        "--hold-sec",
+        "${HAKO_TB3_HOLD_SEC:-6.0}"
+      ],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "PYTHONUNBUFFERED": "1"
+        }
+      },
+      "start_grace_sec": 1,
+      "delay_sec": 0
+    }
+  ]
+}

@@ -23,6 +23,9 @@ namespace hako::robots::tb3
         std::string odom_config {};
         std::string tf_config {};
         std::string camera_config {};
+        std::string pdu_robot_name {"TB3"};
+        std::string mirror_bindings_config {};
+        bool start_conductor {true};
         std::string asset_name {};
         std::string asset_config_path {};
         std::string left_wheel_actuator_config {};

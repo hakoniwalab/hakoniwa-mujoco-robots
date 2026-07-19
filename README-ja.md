@@ -135,6 +135,25 @@ Hakoniwa PDU をハブとして、MuJoCo（C++）と Python controller / visuali
 
 ここでは **MuJoCo + Hakoniwa + TurtleBot3 + gamepad + LiDAR** を最短で確認する手順を示します。
 
+自動実行デモ:
+
+```bash
+bash tb3-mbody-demo.bash
+```
+
+複数プロセスのミラー構成デモ:
+
+```bash
+bash tb3-dual-mirror-demo.bash
+```
+
+`tb3-dual-mirror-demo.bash` は、2つのシミュレータプロセスと2つの制御プロセスを起動します。
+Process A は real Burger + mirrored Waffle で、ConductorとViewerを持ちます。
+Process B は real Waffle + mirrored Burger で、ConductorとViewerは無効です。
+ViewerはProcess Aだけで、`TB3_WAFFLE/base_link_pos` から反映されたWaffleミラーを表示します。
+LiDAR表示は2つのウィンドウを開き、`TB3_BURGER/laser_scan` と `TB3_WAFFLE/laser_scan` をそれぞれ表示します。
+複数のシミュレータassetを別プロセスで動かす場合は、Conductorを起動するプロセスを1つだけにしてください。
+
 ターミナルを 4 つ用意してください。
 
 1. simulator

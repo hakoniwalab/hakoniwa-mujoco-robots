@@ -141,6 +141,9 @@ Demo choices:
   Use this when a gamepad is available.
 - Automated: `tb3-mbody-demo.bash`. Use this for scripted route demos, CI-like
   checks, or AI-agent execution where no joystick is available.
+- Multi-process mirror: `tb3-dual-mirror-demo.bash`. Use this to run two
+  independently simulated TurtleBot3 processes where each process owns one real
+  robot and mirrors the other robot through pose PDU.
 - MBody-generated models: `tb3-mbody-demo.bash` with `HAKO_TB3_MODEL=burger`,
   `waffle`, or `waffle_pi`.
 
@@ -184,6 +187,27 @@ HAKO_TB3_ROUTE_PATTERN=dance HAKO_TB3_ENABLE_VIEWER=1 bash tb3-mbody-demo.bash
 HAKO_TB3_HOLD_SEC=15 bash tb3-mbody-demo.bash
 ACTIVATE_MODE=activate-only bash tb3-mbody-demo.bash
 ```
+
+For a multi-process mirror demo, use:
+
+```bash
+bash tb3-dual-mirror-demo.bash
+```
+
+This launcher starts four processes:
+
+- Process A: real Burger + mirrored Waffle, Conductor owner, Viewer enabled.
+- Process B: real Waffle + mirrored Burger, Conductor disabled, Viewer disabled.
+- Controller A: drives `TB3_BURGER/hako_cmd_game`.
+- Controller B: drives `TB3_WAFFLE/hako_cmd_game`.
+- LiDAR visualizers: show `TB3_BURGER/laser_scan` and `TB3_WAFFLE/laser_scan`.
+
+Process A's viewer is the intended observation point. It shows the local real
+Burger and the remote Waffle mirrored from `TB3_WAFFLE/base_link_pos`. Process B
+still runs real Waffle physics and publishes `TB3_WAFFLE/base_link_pos`, but it
+does not open a viewer. Two LiDAR plot windows are opened side by side, one for
+each real robot's `laser_scan` PDU. Only one simulator process should own
+Conductor startup.
 
 Use the manual commands below when debugging each process separately.
 

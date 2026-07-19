@@ -38,6 +38,9 @@ namespace
 
     std::string resolve_repo_path(const std::string& path)
     {
+        if (path.empty()) {
+            return {};
+        }
         const std::filesystem::path candidate(path);
         if (candidate.is_absolute()) {
             return candidate.lexically_normal().string();
@@ -148,6 +151,10 @@ Tb3RuntimeConfig LoadTb3RuntimeConfig(
         25.0);
     config.lidar_yaw_bias_deg = get_env_double("HAKO_TB3_LIDAR_YAW_BIAS_DEG", 0.0);
     config.lidar_origin_offset = get_env_double("HAKO_TB3_LIDAR_ORIGIN_OFFSET", 0.0);
+    config.pdu_robot_name = get_env_string("HAKO_TB3_PDU_ROBOT_NAME", "TB3");
+    config.mirror_bindings_config = resolve_repo_path(
+        get_env_string("HAKO_TB3_MIRROR_BINDINGS_PATH", ""));
+    config.start_conductor = get_env_string("HAKO_TB3_DISABLE_CONDUCTOR_START", "") != "1";
     config.asset_name = get_env_string("HAKO_ASSET_NAME", "tb3_sim");
     config.asset_config_path = get_env_string("HAKO_ASSET_CONFIG_PATH", manifest.pdu_def);
     return config;

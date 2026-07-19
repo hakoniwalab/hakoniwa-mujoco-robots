@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="tb3_burger_real_waffle_mirror">
+  <compiler angle="radian" />
+  <option timestep="0.001" gravity="0 0 -9.81" integrator="implicit" />
+  <visual>
+    <global offwidth="320" offheight="240" />
+    <map znear="0.05" zfar="10" />
+  </visual>
+  <asset>
+    <texture name="minimal_grid" type="2d" builtin="checker" width="256" height="256" rgb1="0.92 0.92 0.92" rgb2="0.62 0.62 0.62" />
+    <material name="minimal_grid" texture="minimal_grid" texrepeat="4 4" texuniform="true" reflectance="0.1" />
+    <mesh name="burger_base" content_type="model/stl" file="../../../hakoniwa-mbody-registry/bodies/turtlebot3_burger/source/turtlebot3_description/meshes/bases/burger_base.stl" scale="0.001 0.001 0.001" />
+    <mesh name="left_tire" content_type="model/stl" file="../../../hakoniwa-mbody-registry/bodies/turtlebot3_burger/source/turtlebot3_description/meshes/wheels/left_tire.stl" scale="0.001 0.001 0.001" />
+    <mesh name="right_tire" content_type="model/stl" file="../../../hakoniwa-mbody-registry/bodies/turtlebot3_burger/source/turtlebot3_description/meshes/wheels/right_tire.stl" scale="0.001 0.001 0.001" />
+    <mesh name="lds" content_type="model/stl" file="../../../hakoniwa-mbody-registry/bodies/turtlebot3_burger/source/turtlebot3_description/meshes/sensors/lds.stl" scale="0.001 0.001 0.001" />
+    <material name="mirror_heading" rgba="0.95 0.95 0.95 0.85" />
+  </asset>
+  <worldbody>
+    <geom name="ground" type="plane" size="6 6 0.05" material="minimal_grid" friction="1.0" />
+    <geom name="front_marker" type="box" pos="2.0 0 0.18" size="0.05 0.35 0.18" rgba="0.85 0.2 0.2 1" contype="0" conaffinity="0" />
+    <geom name="side_marker" type="box" pos="0 1.6 0.18" size="0.35 0.05 0.18" rgba="0.2 0.35 0.85 1" contype="0" conaffinity="0" />
+    <light name="top_light" pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8" />
+    <camera name="overview" pos="1.6 -2.1 1.3" xyaxes="0.8 0.6 0 -0.35 0.47 0.81" />
+
+    <body name="base_footprint" pos="0 0.7 0.02">
+      <freejoint />
+      <body name="base_link" pos="0 0 0.01">
+        <inertial pos="0 0 0" quat="0.994532 -0.0072214 -0.0815456 -0.0648458" mass="0.825735" diaginertia="0.00221987 0.00211778 0.00200059" />
+        <geom pos="-0.032 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.4 0.4 0.4 1" mesh="burger_base" />
+        <geom size="0.07 0.07 0.0715" pos="-0.032 0 0.07" type="box" rgba="0.4 0.4 0.4 1" />
+        <body name="wheel_left_link" pos="0 0.08 0.023" quat="0.707388 -0.706825 0 0">
+          <inertial pos="0 0 0" quat="-0.000890159 0.706886 0.000889646 0.707326" mass="0.0284989" diaginertia="2.07126e-05 1.11924e-05 1.11756e-05" />
+          <joint name="wheel_left_joint" pos="0 0 0" axis="0 0 1" />
+          <geom quat="0.707388 0.706825 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.3 0.3 0.3 1" mesh="left_tire" />
+          <geom size="0.033 0.009" type="cylinder" rgba="0.3 0.3 0.3 1" />
+        </body>
+        <body name="wheel_right_link" pos="0 -0.08 0.023" quat="0.707388 -0.706825 0 0">
+          <inertial pos="0 0 0" quat="-0.000890159 0.706886 0.000889646 0.707326" mass="0.0284989" diaginertia="2.07126e-05 1.11924e-05 1.11756e-05" />
+          <joint name="wheel_right_joint" pos="0 0 0" axis="0 0 1" />
+          <geom quat="0.707388 0.706825 0 0" type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.3 0.3 0.3 1" mesh="right_tire" />
+          <geom size="0.033 0.009" type="cylinder" rgba="0.3 0.3 0.3 1" />
+        </body>
+        <body name="caster_back_link" pos="-0.081 0 -0.004" quat="0.707388 -0.706825 0 0">
+          <inertial pos="0 0 0" mass="0.005" diaginertia="0.001 0.001 0.001" />
+          <geom size="0.015 0.0045 0.01" pos="0 0.001 0" type="box" />
+        </body>
+        <body name="imu_link" pos="-0.032 0 0.068" />
+        <body name="base_scan" pos="-0.032 0 0.172">
+          <inertial pos="0 0 0" mass="0.114" diaginertia="0.001 0.001 0.001" />
+          <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.3 0.3 0.3 1" mesh="lds" />
+          <geom size="0.055 0.01575" pos="0.015 0 -0.0065" type="cylinder" rgba="0.3 0.3 0.3 1" />
+        </body>
+      </body>
+    </body>
+
+    <body name="waffle_mirror_base_link" pos="0 -0.7 0.03">
+      <freejoint />
+      <geom name="waffle_mirror_base" size="0.133 0.133 0.047" pos="-0.064 0 0.047" type="box" rgba="0.4 0.4 0.4 1" contype="0" conaffinity="0" />
+      <body name="waffle_mirror_wheel_left_link" pos="0 0.144 0.023" quat="0.707388 -0.706825 0 0">
+        <geom name="waffle_mirror_left_tire" size="0.033 0.009" type="cylinder" rgba="0.3 0.3 0.3 1" contype="0" conaffinity="0" />
+      </body>
+      <body name="waffle_mirror_wheel_right_link" pos="0 -0.144 0.023" quat="0.707388 -0.706825 0 0">
+        <geom name="waffle_mirror_right_tire" size="0.033 0.009" type="cylinder" rgba="0.3 0.3 0.3 1" contype="0" conaffinity="0" />
+      </body>
+      <body name="waffle_mirror_caster_back_right_link" pos="-0.177 -0.064 -0.004" quat="0.707388 -0.706825 0 0">
+        <geom name="waffle_mirror_caster_back_right" size="0.015 0.0045 0.01" pos="0 0.001 0" type="box" contype="0" conaffinity="0" />
+      </body>
+      <body name="waffle_mirror_caster_back_left_link" pos="-0.177 0.064 -0.004" quat="0.707388 -0.706825 0 0">
+        <geom name="waffle_mirror_caster_back_left" size="0.015 0.0045 0.01" pos="0 0.001 0" type="box" contype="0" conaffinity="0" />
+      </body>
+      <body name="waffle_mirror_base_scan" pos="-0.064 0 0.122">
+        <geom name="waffle_mirror_lds" size="0.055 0.01575" pos="0.015 0 -0.0065" type="cylinder" rgba="0.3 0.3 0.3 1" contype="0" conaffinity="0" />
+      </body>
+      <body name="waffle_mirror_camera_link" pos="0.064 -0.065 0.094">
+        <geom name="waffle_mirror_camera" size="0.006 0.066 0.01" pos="0.003 0.065 0.007" type="box" material="mirror_heading" contype="0" conaffinity="0" />
+        <body name="waffle_mirror_camera_rgb_frame" pos="0.005 0.018 0.013">
+          <body name="waffle_mirror_camera_rgb_optical_frame" quat="0.500398 -0.5 0.499602 -0.5" />
+        </body>
+        <body name="waffle_mirror_camera_depth_frame" pos="0.005 0.028 0.013">
+          <body name="waffle_mirror_camera_depth_optical_frame" quat="0.500398 -0.5 0.499602 -0.5" />
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <velocity name="left_motor" joint="wheel_left_joint" ctrllimited="true" ctrlrange="-12 12" kv="0.75" />
+    <velocity name="right_motor" joint="wheel_right_joint" ctrllimited="true" ctrlrange="-12 12" kv="0.75" />
+  </actuator>
+</mujoco>
