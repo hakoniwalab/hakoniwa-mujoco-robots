@@ -1,0 +1,98 @@
+{
+  "version": "0.1",
+  "defaults": {
+    "cwd": ".",
+    "stdout": "logs/${asset}.out",
+    "stderr": "logs/${asset}.err",
+    "env": {
+      "prepend": {
+        "lib_path": [
+          "/usr/local/hakoniwa/lib"
+        ],
+        "PATH": [
+          "/usr/local/hakoniwa/bin"
+        ]
+      }
+    },
+    "start_grace_sec": 1,
+    "delay_sec": 1
+  },
+  "assets": [
+    {
+      "name": "tb3_sim_mbody",
+      "activation_timing": "before_start",
+      "command": "${HAKO_TB3_SIM:-./src/cmake-build/main_for_sample/tb3/tb3_sim_burger}",
+      "args": [],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "HAKO_TB3_ENABLE_VIEWER": "${HAKO_TB3_ENABLE_VIEWER:-1}"
+        }
+      },
+      "start_grace_sec": 2,
+      "delay_sec": 1
+    },
+    {
+      "name": "lidar_visualizer",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/tb3_lidar_visualizer.py"
+      ],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "LIDAR_LOCAL_VIEW_SIZE": "${HAKO_LIDAR_LOCAL_VIEW_SIZE:-4.0}",
+          "LIDAR_POINT_SIZE": "${HAKO_LIDAR_POINT_SIZE:-8.0}",
+          "LIDAR_FOLLOW_GAIN": "${HAKO_LIDAR_FOLLOW_GAIN:-0.25}",
+          "HAKO_LIDAR_TRAIL": "${HAKO_LIDAR_TRAIL:-1}",
+          "HAKO_LIDAR_TRAIL_MAX_POINTS": "${HAKO_LIDAR_TRAIL_MAX_POINTS:-1000}",
+          "MPLCONFIGDIR": "${HAKO_MPLCONFIGDIR:-/tmp/hakoniwa-matplotlib}"
+        }
+      },
+      "start_grace_sec": 1,
+      "delay_sec": 1
+    },
+    {
+      "name": "obstacle_avoider",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/tb3_obstacle_avoider.py",
+        "--rate-hz",
+        "${HAKO_TB3_RATE_HZ:-20.0}",
+        "--duration-sec",
+        "${HAKO_TB3_DURATION_SEC:-30.0}",
+        "--desired-dist-m",
+        "${HAKO_TB3_DESIRED_DIST_M:-0.75}",
+        "--linear-speed",
+        "${HAKO_TB3_LINEAR_SPEED:-0.34}",
+        "--front-clearance-m",
+        "${HAKO_TB3_FRONT_CLEARANCE_M:-0.65}",
+        "--front-release-m",
+        "${HAKO_TB3_FRONT_RELEASE_M:-0.90}",
+        "--slowdown-dist-m",
+        "${HAKO_TB3_SLOWDOWN_DIST_M:-1.20}",
+        "--wall-detect-m",
+        "${HAKO_TB3_WALL_DETECT_M:-1.25}",
+        "--corner-turn-speed",
+        "${HAKO_TB3_CORNER_TURN_SPEED:-0.62}",
+        "--corner-hold-sec",
+        "${HAKO_TB3_CORNER_HOLD_SEC:-0.75}",
+        "--distance-gain",
+        "${HAKO_TB3_DISTANCE_GAIN:-1.15}",
+        "--angle-gain",
+        "${HAKO_TB3_ANGLE_GAIN:-0.70}",
+        "--sensor-alpha",
+        "${HAKO_TB3_SENSOR_ALPHA:-0.28}",
+        "--max-yaw-step",
+        "${HAKO_TB3_MAX_YAW_STEP:-0.08}",
+        "--max-follow-yaw-axis",
+        "${HAKO_TB3_MAX_FOLLOW_YAW_AXIS:-0.36}"
+      ],
+      "cwd": ".",
+      "start_grace_sec": 1,
+      "delay_sec": 0
+    }
+  ]
+}
