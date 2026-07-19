@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstdlib>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -29,6 +30,10 @@
 #include "sensors/camera/camera_sensor.hpp"
 #include "sensors/camera/mujoco_camera_renderer.hpp"
 
+#ifndef HAKO_TB3_VIEWER_DISABLED_BY_DEFAULT
+#define HAKO_TB3_VIEWER_DISABLED_BY_DEFAULT 0
+#endif
+
 namespace {
 std::shared_ptr<hako::robots::physics::IWorld> world;
 std::mutex data_mutex;
@@ -43,6 +48,16 @@ std::atomic_bool render_running {true};
 hako::robots::config::AssetManifest asset_manifest;
 Tb3RuntimeConfig runtime;
 hako::robots::runtime::HakoniwaAssetLifecycle* lifecycle {nullptr};
+
+bool env_flag_enabled(const char* name)
+{
+    const char* value = std::getenv(name);
+    if (value == nullptr || value[0] == '\0') {
+        return false;
+    }
+    const std::string normalized(value);
+    return normalized == "1" || normalized == "true" || normalized == "TRUE" || normalized == "yes" || normalized == "YES";
+}
 
 std::optional<hakoniwa::pdu::PduKey> make_manifest_pdu_key(
     const hako::robots::config::AssetManifest& manifest,
@@ -293,32 +308,58 @@ int main(int argc, const char* argv[])
     }
     std::cout << "[INFO] TB3 endpoint started successfully." << std::endl;
 
-    render_running.store(true);
-    MujocoRenderRuntime render_runtime(
-        world->getModel(),
-        world->getData(),
-        render_running,
-        data_mutex,
+    const bool camera_enabled = !runtime.camera_config.empty();
 #if USE_VIEWER
-        MujocoRenderWindowMode::Visible
+    const bool viewer_enabled =
+        !env_flag_enabled("HAKO_TB3_DISABLE_VIEWER") &&
+        (HAKO_TB3_VIEWER_DISABLED_BY_DEFAULT == 0 ||
+         env_flag_enabled("HAKO_TB3_ENABLE_VIEWER"));
 #else
-        MujocoRenderWindowMode::Hidden
+    constexpr bool viewer_enabled = false;
 #endif
-    );
+    const bool render_required = viewer_enabled || camera_enabled;
 
-    if (!initialize_camera(world, asset_lifecycle.Endpoint(), render_runtime, runtime.camera_config)) {
-        std::cerr << "[ERROR] Failed to initialize camera." << std::endl;
-        running_flag = false;
-        render_running.store(false);
-        lifecycle = nullptr;
-        asset_lifecycle.StopAndClose();
-        return 1;
+    render_running.store(render_required);
+    std::unique_ptr<MujocoRenderRuntime> render_runtime;
+    if (render_required) {
+        render_runtime = std::make_unique<MujocoRenderRuntime>(
+            world->getModel(),
+            world->getData(),
+            render_running,
+            data_mutex,
+#if USE_VIEWER
+            MujocoRenderWindowMode::Visible
+#else
+            MujocoRenderWindowMode::Hidden
+#endif
+        );
+    }
+
+    if (camera_enabled) {
+        if (render_runtime == nullptr ||
+            !initialize_camera(world, asset_lifecycle.Endpoint(), *render_runtime, runtime.camera_config))
+        {
+            std::cerr << "[ERROR] Failed to initialize camera." << std::endl;
+            running_flag = false;
+            render_running.store(false);
+            lifecycle = nullptr;
+            asset_lifecycle.StopAndClose();
+            return 1;
+        }
+    } else {
+        std::cout << "[INFO] TB3 camera disabled: no color_camera component in manifest." << std::endl;
     }
 
     std::thread sim_thread(simulation_thread, std::ref(asset_lifecycle));
 
 #if USE_VIEWER
-    render_runtime.Run();
+    if (viewer_enabled && render_runtime != nullptr) {
+        render_runtime->Run();
+    } else {
+        while (running_flag) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    }
 #else
     while (running_flag) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -7,6 +7,10 @@ namespace hako::robots::tb3
 {
 namespace
 {
+#ifndef HAKO_TB3_DEFAULT_MANIFEST_PATH
+#define HAKO_TB3_DEFAULT_MANIFEST_PATH "config/assets/tb3-hakoniwa-asset.json"
+#endif
+
     std::filesystem::path repo_root_path()
     {
         const char* env = std::getenv("HAKO_TB3_ROOT");
@@ -86,7 +90,7 @@ namespace
 std::string GetTb3ManifestPathFromEnvironment()
 {
     const std::string default_path =
-        (repo_root_path() / "config/assets/tb3-hakoniwa-asset.json").string();
+        (repo_root_path() / HAKO_TB3_DEFAULT_MANIFEST_PATH).string();
     return resolve_repo_path(get_env_string("HAKO_TB3_MANIFEST_PATH", default_path));
 }
 

@@ -87,6 +87,16 @@ def build_route(args: argparse.Namespace) -> list[RoutePhase]:
             side = (index % 4) + 1
             phases.append(RoutePhase(f"side-{side}", args.forward_sec, linear, 0.0))
             phases.append(RoutePhase(f"turn-{side}", args.turn_sec, 0.0, yaw))
+    elif args.pattern == "showcase":
+        phases.extend(
+            [
+                RoutePhase("forward", args.forward_sec, linear, 0.0),
+                RoutePhase("arc-left", args.forward_sec, linear * 0.8, yaw * 0.6),
+                RoutePhase("spin-left", args.turn_sec, 0.0, yaw),
+                RoutePhase("arc-right", args.forward_sec, linear * 0.8, -yaw * 0.6),
+                RoutePhase("settle", args.stop_sec, 0.0, 0.0),
+            ]
+        )
     else:
         raise ValueError(f"unsupported pattern: {args.pattern}")
 
@@ -157,7 +167,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pdu", default=DEFAULT_PDU, help=f"Command PDU name (default: {DEFAULT_PDU})")
     parser.add_argument(
         "--pattern",
-        choices=("straight", "spin", "square"),
+        choices=("straight", "spin", "square", "showcase"),
         default="square",
         help="Route pattern to send (default: square)",
     )
