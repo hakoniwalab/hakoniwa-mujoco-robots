@@ -102,7 +102,20 @@ bool Tb3HakoniwaAdapter::Initialize(std::string* error_message)
     tf_adapter_ = std::make_unique<hako::robots::pdu::adapter::tf2_msgs::TfPduAdapter>(
         endpoint_,
         tf_key);
+
+    if (!SeedNeutralGamepadCommand()) {
+        std::cerr << "[WARN] Failed to seed neutral TB3 gamepad command PDU." << std::endl;
+    }
     return true;
+}
+
+bool Tb3HakoniwaAdapter::SeedNeutralGamepadCommand() const
+{
+    if (gamepad_adapter_ == nullptr) {
+        return false;
+    }
+    HakoCpp_GameControllerOperation neutral {};
+    return gamepad_adapter_->send(neutral);
 }
 
 bool Tb3HakoniwaAdapter::RecvCommand(Tb3Command& out)

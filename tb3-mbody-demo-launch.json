@@ -1,0 +1,63 @@
+{
+  "version": "0.1",
+  "defaults": {
+    "cwd": ".",
+    "stdout": "logs/${asset}.out",
+    "stderr": "logs/${asset}.err",
+    "env": {
+      "prepend": {
+        "lib_path": [
+          "/usr/local/hakoniwa/lib"
+        ],
+        "PATH": [
+          "/usr/local/hakoniwa/bin"
+        ]
+      }
+    },
+    "start_grace_sec": 1,
+    "delay_sec": 1
+  },
+  "assets": [
+    {
+      "name": "tb3_sim_mbody",
+      "activation_timing": "before_start",
+      "command": "${HAKO_TB3_SIM:-./src/cmake-build/main_for_sample/tb3/tb3_sim_burger}",
+      "args": [],
+      "cwd": ".",
+      "env": {
+        "set": {
+          "HAKO_TB3_ENABLE_VIEWER": "${HAKO_TB3_ENABLE_VIEWER:-1}"
+        }
+      },
+      "start_grace_sec": 2,
+      "delay_sec": 1
+    },
+    {
+      "name": "route_demo",
+      "activation_timing": "after_start",
+      "command": "${HAKO_PYTHON:-python3.12}",
+      "args": [
+        "python/tb3_route_demo.py",
+        "--pattern",
+        "${HAKO_TB3_ROUTE_PATTERN:-dance}",
+        "--loops",
+        "${HAKO_TB3_ROUTE_LOOPS:-1}",
+        "--linear-axis",
+        "${HAKO_TB3_LINEAR_AXIS:-0.65}",
+        "--yaw-axis",
+        "${HAKO_TB3_YAW_AXIS:-0.75}",
+        "--forward-sec",
+        "${HAKO_TB3_FORWARD_SEC:-1.8}",
+        "--turn-sec",
+        "${HAKO_TB3_TURN_SEC:-1.0}",
+        "--stop-sec",
+        "${HAKO_TB3_STOP_SEC:-0.5}",
+        "--rate-hz",
+        "${HAKO_TB3_RATE_HZ:-50}"
+      ],
+      "cwd": ".",
+      "start_grace_sec": 1,
+      "delay_sec": 0
+    }
+  ]
+}

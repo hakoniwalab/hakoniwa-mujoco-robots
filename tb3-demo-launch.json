@@ -28,7 +28,7 @@
     {
       "name": "camera_reader",
       "activation_timing": "before_start",
-      "command": "/Users/tmori/.pyenv/versions/3.12.3/bin/python",
+      "command": "${HAKO_PYTHON:-python3.12}",
       "args": [
         "examples/sensors/color_camera/read_camera.py",
         "--endpoint-config",
@@ -41,7 +41,7 @@
     {
       "name": "gamepad",
       "activation_timing": "after_start",
-      "command": "/Users/tmori/.pyenv/versions/3.12.3/bin/python",
+      "command": "${HAKO_PYTHON:-python3.12}",
       "args": [
         "python/tb3_gamepad.py"
       ],

@@ -97,6 +97,28 @@ def build_route(args: argparse.Namespace) -> list[RoutePhase]:
                 RoutePhase("settle", args.stop_sec, 0.0, 0.0),
             ]
         )
+    elif args.pattern == "figure8":
+        for index in range(args.loops):
+            loop = index + 1
+            phases.extend(
+                [
+                    RoutePhase(f"loop-{loop}-arc-left", args.forward_sec, linear, yaw * 0.7),
+                    RoutePhase(f"loop-{loop}-arc-right", args.forward_sec, linear, -yaw * 0.7),
+                ]
+            )
+    elif args.pattern == "dance":
+        for index in range(args.loops):
+            loop = index + 1
+            phases.extend(
+                [
+                    RoutePhase(f"loop-{loop}-dash", args.forward_sec * 0.7, linear, 0.0),
+                    RoutePhase(f"loop-{loop}-arc-left", args.forward_sec, linear * 0.8, yaw * 0.8),
+                    RoutePhase(f"loop-{loop}-spin", args.turn_sec, 0.0, yaw),
+                    RoutePhase(f"loop-{loop}-reverse-arc", args.forward_sec * 0.8, -linear * 0.6, -yaw * 0.6),
+                    RoutePhase(f"loop-{loop}-arc-right", args.forward_sec, linear * 0.8, -yaw * 0.8),
+                    RoutePhase(f"loop-{loop}-pause", args.stop_sec, 0.0, 0.0),
+                ]
+            )
     else:
         raise ValueError(f"unsupported pattern: {args.pattern}")
 
@@ -167,7 +189,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pdu", default=DEFAULT_PDU, help=f"Command PDU name (default: {DEFAULT_PDU})")
     parser.add_argument(
         "--pattern",
-        choices=("straight", "spin", "square", "showcase"),
+        choices=("straight", "spin", "square", "showcase", "figure8", "dance"),
         default="square",
         help="Route pattern to send (default: square)",
     )
@@ -175,7 +197,7 @@ def parse_args() -> argparse.Namespace:
         "--loops",
         type=int,
         default=1,
-        help="Number of square loops. Used only with --pattern square (default: 1)",
+        help="Number of repeated loops for square, figure8, or dance patterns (default: 1)",
     )
     parser.add_argument(
         "--linear-axis",

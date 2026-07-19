@@ -55,6 +55,7 @@ namespace hako::robots::tb3
             const std::string& config_path,
             hakoniwa::pdu::PduKey& out,
             std::string* error_message) const;
+        bool SeedNeutralGamepadCommand() const;
 
         hakoniwa::pdu::Endpoint& endpoint_;
         const hako::robots::config::AssetManifest& manifest_;
