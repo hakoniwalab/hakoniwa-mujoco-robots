@@ -135,6 +135,15 @@ Hakoniwa PDU is the hub, and MuJoCo (C++) communicates with Python controllers /
 
 This is the shortest path to verify **MuJoCo + Hakoniwa + TurtleBot3 + gamepad + LiDAR**.
 
+Demo choices:
+
+- Interactive: `tb3-demo.bash` or the manual `tb3_sim` + `tb3_gamepad.py` flow.
+  Use this when a gamepad is available.
+- Automated: `tb3-mbody-demo.bash`. Use this for scripted route demos, CI-like
+  checks, or AI-agent execution where no joystick is available.
+- MBody-generated models: `tb3-mbody-demo.bash` with `HAKO_TB3_MODEL=burger`,
+  `waffle`, or `waffle_pi`.
+
 Prepare 4 terminals.
 
 1. simulator
