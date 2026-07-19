@@ -10,6 +10,9 @@ namespace
 #ifndef HAKO_TB3_DEFAULT_MANIFEST_PATH
 #define HAKO_TB3_DEFAULT_MANIFEST_PATH "config/assets/tb3-hakoniwa-asset.json"
 #endif
+#ifndef HAKO_TB3_DEFAULT_WHEEL_SEPARATION
+#define HAKO_TB3_DEFAULT_WHEEL_SEPARATION 0.16
+#endif
 
     std::filesystem::path repo_root_path()
     {
@@ -133,7 +136,9 @@ Tb3RuntimeConfig LoadTb3RuntimeConfig(
         "HAKO_TB3_COMMAND_DEADZONE",
         0.1);
     config.wheel_radius = get_env_double("HAKO_TB3_WHEEL_RADIUS", 0.033);
-    config.wheel_separation = get_env_double("HAKO_TB3_WHEEL_SEPARATION", 0.16);
+    config.wheel_separation = get_env_double(
+        "HAKO_TB3_WHEEL_SEPARATION",
+        HAKO_TB3_DEFAULT_WHEEL_SEPARATION);
     config.max_wheel_angular_velocity = get_env_double_compat(
         "HAKO_TB3_MAX_WHEEL_ANGULAR_VELOCITY",
         "HAKO_TB3_MAX_TORQUE",

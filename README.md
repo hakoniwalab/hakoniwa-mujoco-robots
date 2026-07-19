@@ -173,6 +173,18 @@ HAKO_TB3_ENABLE_VIEWER=1 ./src/cmake-build/main_for_sample/tb3/tb3_sim_burger
 python3.12 python/tb3_route_demo.py --pattern showcase --linear-axis 0.6 --yaw-axis 0.6
 ```
 
+For the MBody-generated TurtleBot3 Waffle runtime demo, use:
+
+```bash
+./src/cmake-build/main_for_sample/tb3/tb3_sim_waffle
+/usr/local/hakoniwa/bin/hako-cmd start
+python3.12 python/tb3_route_demo.py --pattern straight --duration-sec 2 --linear-axis 0.6 --stop-sec 0.8
+```
+
+`tb3_sim_waffle` defaults to `config/assets/tb3-mbody-waffle-asset.json`,
+runs without the viewer, and uses a Waffle wheel separation default of `0.288`.
+Set `HAKO_TB3_ENABLE_VIEWER=1` to show the viewer.
+
 3. LiDAR visualizer
 ```bash
 python python/lidar_visualizer.py

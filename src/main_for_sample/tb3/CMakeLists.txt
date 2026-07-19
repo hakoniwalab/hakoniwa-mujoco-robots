@@ -49,3 +49,10 @@ target_compile_definitions(tb3_sim_burger PRIVATE
     HAKO_TB3_DEFAULT_MANIFEST_PATH="config/assets/tb3-mbody-burger-asset.json"
     HAKO_TB3_VIEWER_DISABLED_BY_DEFAULT=1
 )
+
+add_tb3_sim_target(tb3_sim_waffle)
+target_compile_definitions(tb3_sim_waffle PRIVATE
+    HAKO_TB3_DEFAULT_MANIFEST_PATH="config/assets/tb3-mbody-waffle-asset.json"
+    HAKO_TB3_DEFAULT_WHEEL_SEPARATION=0.288
+    HAKO_TB3_VIEWER_DISABLED_BY_DEFAULT=1
+)
