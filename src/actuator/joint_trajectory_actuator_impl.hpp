@@ -388,33 +388,64 @@ namespace hako::robots::actuator::impl
 
         void Update() override
         {
+            // No trajectory is available, or the MuJoCo runtime is not ready.
             if (!trajectory_active_ || data_ == nullptr || trajectory_.points.empty()) {
                 return;
             }
 
-            const double elapsed = std::max(0.0, data_->time - trajectory_start_time_sec_);
+            // Compute the elapsed simulation time since this trajectory was accepted.
+            // JointTrajectoryPoint::time_from_start is interpreted relative to
+            // trajectory_start_time_sec_.
+            const double elapsed =
+                std::max(0.0, data_->time - trajectory_start_time_sec_);
+
             const auto& points = trajectory_.points;
 
-            if (points.size() == 1 || elapsed <= points.front().time_from_start_sec) {
+            // A single trajectory point cannot be interpolated.
+            // Also, before reaching the first scheduled point, hold its target values.
+            if (points.size() == 1 ||
+                elapsed <= points.front().time_from_start_sec)
+            {
                 ApplyPoint(points.front());
                 return;
             }
+
+            // Once the trajectory reaches its final scheduled time,
+            // stop interpolating and keep applying the final target values.
             if (elapsed >= points.back().time_from_start_sec) {
                 ApplyPoint(points.back());
                 return;
             }
 
+            // Find the first trajectory point scheduled after the current elapsed time.
+            // The previous point and this point define the interpolation interval.
             const auto upper = std::upper_bound(
-                points.begin(), points.end(), elapsed,
+                points.begin(),
+                points.end(),
+                elapsed,
                 [](double time, const JointTrajectoryPointTarget& point) {
                     return time < point.time_from_start_sec;
                 });
+
             const auto lower = upper - 1;
-            const double span = upper->time_from_start_sec - lower->time_from_start_sec;
+
+            // Compute the normalized position within the current time interval.
+            //
+            // alpha = 0.0 means the lower point.
+            // alpha = 1.0 means the upper point.
+            const double span =
+                upper->time_from_start_sec - lower->time_from_start_sec;
+
             const double alpha = span > 0.0
                 ? (elapsed - lower->time_from_start_sec) / span
                 : 1.0;
-            ApplyInterpolated(*lower, *upper, std::clamp(alpha, 0.0, 1.0));
+
+            // Linearly interpolate the target value of every configured joint
+            // and apply the resulting values to the corresponding MJCF actuators.
+            ApplyInterpolated(
+                *lower,
+                *upper,
+                std::clamp(alpha, 0.0, 1.0));
         }
 
         void ClearTrajectory() override
