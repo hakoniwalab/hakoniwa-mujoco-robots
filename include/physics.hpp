@@ -46,6 +46,7 @@ namespace hako::robots::physics
         virtual std::shared_ptr<IRigidBody> getRigidBody(const std::string& model_name) = 0;
         virtual std::shared_ptr<actuator::ITorqueActuator> getTorqueActuator(const std::string& name) = 0;
         virtual std::shared_ptr<actuator::IJointActuator> createJointActuator() { return nullptr; }
+        virtual std::shared_ptr<actuator::IJointTrajectoryActuator> createJointTrajectoryActuator() { return nullptr; }
     };
 
 }
