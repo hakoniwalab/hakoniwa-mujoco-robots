@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/joint-trajectory-actuator.schema.json",
+  "title": "Hakoniwa Joint Trajectory Actuator profile",
+  "description": "SDF-like but MJCF-resolved JSON config for multi-joint trajectory actuators used by Hakoniwa MuJoCo controllers.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec",
+    "mjcf_binding",
+    "pdu_config"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "spec": {
+      "$ref": "#/$defs/spec"
+    },
+    "mjcf_binding": {
+      "$ref": "#/$defs/mjcfBinding"
+    },
+    "pdu_config": {
+      "$ref": "#/$defs/pduConfig"
+    }
+  },
+  "$defs": {
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "joints"
+      ],
+      "properties": {
+        "joints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/joint"
+          }
+        }
+      }
+    },
+    "actuatorType": {
+      "type": "string",
+      "enum": [
+        "position",
+        "velocity",
+        "torque"
+      ],
+      "description": "The per-joint control mode. Position uses JointTrajectoryPoint.positions, velocity uses velocities, and torque uses effort."
+    },
+    "joint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "name"
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/actuatorType"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The logical joint name used in JointTrajectory.joint_names."
+        },
+        "limit": {
+          "$ref": "#/$defs/limit"
+        },
+        "dynamics": {
+          "$ref": "#/$defs/dynamics"
+        }
+      }
+    },
+    "limit": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lower": {
+          "type": "number",
+          "description": "Lower position limit in radians for hinge joints."
+        },
+        "upper": {
+          "type": "number",
+          "description": "Upper position limit in radians for hinge joints."
+        },
+        "effort": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum torque or force target allowed."
+        },
+        "velocity": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Maximum velocity target allowed."
+        }
+      }
+    },
+    "dynamics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "damping": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Damping coefficient metadata."
+        },
+        "friction": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Friction coefficient metadata."
+        }
+      }
+    },
+    "mjcfBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actuators"
+      ],
+      "properties": {
+        "config_style": {
+          "const": "hakoniwa-sdf-like"
+        },
+        "runtime_source": {
+          "const": "mjcf"
+        },
+        "actuators": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/actuatorBinding"
+          }
+        }
+      }
+    },
+    "actuatorBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "actuator_name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The logical joint name corresponding to JointTrajectory.joint_names."
+        },
+        "actuator_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The matching MJCF actuator element name."
+        }
+      }
+    },
+    "pduConfig": {
+      "$ref": "https://hakoniwa.dev/schemas/component-common.schema.json#/$defs/pduConfig"
+    }
+  }
+}
