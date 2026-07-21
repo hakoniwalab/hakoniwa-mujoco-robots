@@ -1,0 +1,6 @@
+{
+  "name": "rover_twist_endpoint",
+  "pdu_def_path": "../rover-twist-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_rover_twist_comm.json"
+}

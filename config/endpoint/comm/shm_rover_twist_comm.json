@@ -1,0 +1,16 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "rover_twist_shm",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "RoverTwistAsset",
+        "pdu": [
+          { "name": "cmd_vel", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

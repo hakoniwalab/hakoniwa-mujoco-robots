@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "rover-twist-command",
+      "path": "rover-twist-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "RoverTwistAsset",
+      "pdutypes_id": "rover-twist-command"
+    }
+  ]
+}
