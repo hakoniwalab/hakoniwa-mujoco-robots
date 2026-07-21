@@ -3,6 +3,8 @@
 #include "actuator.hpp"
 #include "trajectory_msgs/pdu_cpptype_JointTrajectory.hpp"
 
+#include <utility>
+
 namespace hako::robots::pdu::converter::trajectory_msgs
 {
     inline double ToSeconds(const HakoCpp_Duration& duration)
