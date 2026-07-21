@@ -97,6 +97,7 @@ namespace hako::robots::actuator
     struct JointTrajectoryPointTarget {
         std::vector<double> positions;
         std::vector<double> velocities;
+        std::vector<double> accelerations;
         std::vector<double> effort;
         double time_from_start_sec {0.0};
     };
