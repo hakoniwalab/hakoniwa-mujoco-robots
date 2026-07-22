@@ -26,6 +26,7 @@
 | color-camera の PNG capture を試す | [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md) |
 | camera sensor の設定手順を理解する | [docs/tutorial/camera-sensor-ja.md](docs/tutorial/camera-sensor-ja.md) |
 | MJCF の position / velocity actuator を試す | [examples/actuators/joint/README.md](examples/actuators/joint/README.md) |
+| Unitree Go1 MJCF の joint I/O を試す | [examples/actuators/unitree_go1/README.md](examples/actuators/unitree_go1/README.md) |
 | sensor/actuator の使い方を理解する | [docs/guide/sensor-actuator-user-ja.md](docs/guide/sensor-actuator-user-ja.md) |
 | JSON 設定の構造を理解する | [docs/guide/json-config-ja.md](docs/guide/json-config-ja.md) |
 | MJCF XML / JSON の書き方と単体確認を理解する | [docs/guide/mjcf-json-authoring-ja.md](docs/guide/mjcf-json-authoring-ja.md) |
@@ -39,6 +40,7 @@
 examples/sensors/ultrasonic/        ultrasonic range sensor + viewer ray
 examples/sensors/color_camera/      RGB camera sensor + PNG capture
 examples/actuators/joint/           MuJoCo position / velocity joint actuators
+examples/actuators/unitree_go1/     Unitree Go1 MJCF joint I/O smoke
 ```
 
 ## Demo Videos

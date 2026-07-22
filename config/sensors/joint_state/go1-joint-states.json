@@ -1,0 +1,42 @@
+{
+  "$schema": "../schema/joint-state-output.schema.json",
+  "spec": {
+    "type": "joint_state",
+    "name": "joint_states",
+    "joints": [
+      { "name": "FR_hip" },
+      { "name": "FR_thigh" },
+      { "name": "FR_calf" },
+      { "name": "FL_hip" },
+      { "name": "FL_thigh" },
+      { "name": "FL_calf" },
+      { "name": "RR_hip" },
+      { "name": "RR_thigh" },
+      { "name": "RR_calf" },
+      { "name": "RL_hip" },
+      { "name": "RL_thigh" },
+      { "name": "RL_calf" }
+    ]
+  },
+  "mjcf_binding": {
+    "joints": [
+      { "name": "FR_hip", "mjcf_joint": "FR_hip_joint" },
+      { "name": "FR_thigh", "mjcf_joint": "FR_thigh_joint" },
+      { "name": "FR_calf", "mjcf_joint": "FR_calf_joint" },
+      { "name": "FL_hip", "mjcf_joint": "FL_hip_joint" },
+      { "name": "FL_thigh", "mjcf_joint": "FL_thigh_joint" },
+      { "name": "FL_calf", "mjcf_joint": "FL_calf_joint" },
+      { "name": "RR_hip", "mjcf_joint": "RR_hip_joint" },
+      { "name": "RR_thigh", "mjcf_joint": "RR_thigh_joint" },
+      { "name": "RR_calf", "mjcf_joint": "RR_calf_joint" },
+      { "name": "RL_hip", "mjcf_joint": "RL_hip_joint" },
+      { "name": "RL_thigh", "mjcf_joint": "RL_thigh_joint" },
+      { "name": "RL_calf", "mjcf_joint": "RL_calf_joint" }
+    ]
+  },
+  "pdu_config": {
+    "pdu_name": "joint_states",
+    "update_rate_hz": 50.0,
+    "message_type": "sensor_msgs/JointState"
+  }
+}

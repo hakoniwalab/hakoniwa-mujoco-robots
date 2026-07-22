@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "go1-joint-command",
+      "path": "go1-joint-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "Go1JointAsset",
+      "pdutypes_id": "go1-joint-command"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "go1_joint_endpoint",
+  "pdu_def_path": "../go1-joint-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_go1_joint_comm.json"
+}

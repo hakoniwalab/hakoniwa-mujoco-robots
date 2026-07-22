@@ -21,3 +21,10 @@ Available examples:
   - shared differential-drive kinematics helper
   - MuJoCo-only `--check` smoke
   - Hakoniwa `geometry_msgs/Twist` command receiver and Python sender
+- [Unitree Go1 Joint I/O Example](unitree_go1/README.md)
+  - vendored MuJoCo Menagerie MJCF and mesh assets
+  - 12 position actuators bound by stable MJCF names
+  - Menagerie `home` keyframe ctrl values
+  - MuJoCo-only `--check` smoke and viewer perturbation controls
+  - Hakoniwa `std_msgs/Float64MultiArray` joint command receiver
+  - Python 12-joint target sender and `sensor_msgs/JointState` readback

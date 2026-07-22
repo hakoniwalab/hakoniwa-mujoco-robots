@@ -26,6 +26,7 @@ Use these entry points first. The rest of this README includes advanced notes an
 | Try small sensor examples | [examples/sensors/README.md](examples/sensors/README.md) |
 | Try color-camera PNG capture | [examples/sensors/color_camera/README.md](examples/sensors/color_camera/README.md) |
 | Try MJCF position / velocity actuators | [examples/actuators/joint/README.md](examples/actuators/joint/README.md) |
+| Try Unitree Go1 MJCF joint I/O | [examples/actuators/unitree_go1/README.md](examples/actuators/unitree_go1/README.md) |
 | Learn the sensor/actuator workflow | [docs/guide/sensor-actuator-user.md](docs/guide/sensor-actuator-user.md) |
 | Understand JSON config structure | [docs/guide/json-config.md](docs/guide/json-config.md) |
 | Learn MJCF XML / JSON authoring and standalone checks | [docs/guide/mjcf-json-authoring.md](docs/guide/mjcf-json-authoring.md) |
@@ -39,6 +40,7 @@ Current standalone examples:
 examples/sensors/ultrasonic/        ultrasonic range sensor + viewer ray
 examples/sensors/color_camera/      RGB camera sensor + PNG capture
 examples/actuators/joint/           MuJoCo position / velocity joint actuators
+examples/actuators/unitree_go1/     Unitree Go1 MJCF joint I/O smoke
 ```
 
 ## Demo Videos
