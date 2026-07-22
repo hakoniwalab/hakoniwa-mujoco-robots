@@ -1,0 +1,66 @@
+{
+  "$schema": "../schema/joint-state-output.schema.json",
+  "spec": {
+    "type": "joint_state",
+    "name": "joint_states",
+    "joints": [
+      { "name": "rh_WRJ2" },
+      { "name": "rh_WRJ1" },
+      { "name": "rh_THJ5" },
+      { "name": "rh_THJ4" },
+      { "name": "rh_THJ3" },
+      { "name": "rh_THJ2" },
+      { "name": "rh_THJ1" },
+      { "name": "rh_FFJ4" },
+      { "name": "rh_FFJ3" },
+      { "name": "rh_FFJ2" },
+      { "name": "rh_FFJ1" },
+      { "name": "rh_MFJ4" },
+      { "name": "rh_MFJ3" },
+      { "name": "rh_MFJ2" },
+      { "name": "rh_MFJ1" },
+      { "name": "rh_RFJ4" },
+      { "name": "rh_RFJ3" },
+      { "name": "rh_RFJ2" },
+      { "name": "rh_RFJ1" },
+      { "name": "rh_LFJ5" },
+      { "name": "rh_LFJ4" },
+      { "name": "rh_LFJ3" },
+      { "name": "rh_LFJ2" },
+      { "name": "rh_LFJ1" }
+    ]
+  },
+  "mjcf_binding": {
+    "joints": [
+      { "name": "rh_WRJ2", "mjcf_joint": "rh_WRJ2" },
+      { "name": "rh_WRJ1", "mjcf_joint": "rh_WRJ1" },
+      { "name": "rh_THJ5", "mjcf_joint": "rh_THJ5" },
+      { "name": "rh_THJ4", "mjcf_joint": "rh_THJ4" },
+      { "name": "rh_THJ3", "mjcf_joint": "rh_THJ3" },
+      { "name": "rh_THJ2", "mjcf_joint": "rh_THJ2" },
+      { "name": "rh_THJ1", "mjcf_joint": "rh_THJ1" },
+      { "name": "rh_FFJ4", "mjcf_joint": "rh_FFJ4" },
+      { "name": "rh_FFJ3", "mjcf_joint": "rh_FFJ3" },
+      { "name": "rh_FFJ2", "mjcf_joint": "rh_FFJ2" },
+      { "name": "rh_FFJ1", "mjcf_joint": "rh_FFJ1" },
+      { "name": "rh_MFJ4", "mjcf_joint": "rh_MFJ4" },
+      { "name": "rh_MFJ3", "mjcf_joint": "rh_MFJ3" },
+      { "name": "rh_MFJ2", "mjcf_joint": "rh_MFJ2" },
+      { "name": "rh_MFJ1", "mjcf_joint": "rh_MFJ1" },
+      { "name": "rh_RFJ4", "mjcf_joint": "rh_RFJ4" },
+      { "name": "rh_RFJ3", "mjcf_joint": "rh_RFJ3" },
+      { "name": "rh_RFJ2", "mjcf_joint": "rh_RFJ2" },
+      { "name": "rh_RFJ1", "mjcf_joint": "rh_RFJ1" },
+      { "name": "rh_LFJ5", "mjcf_joint": "rh_LFJ5" },
+      { "name": "rh_LFJ4", "mjcf_joint": "rh_LFJ4" },
+      { "name": "rh_LFJ3", "mjcf_joint": "rh_LFJ3" },
+      { "name": "rh_LFJ2", "mjcf_joint": "rh_LFJ2" },
+      { "name": "rh_LFJ1", "mjcf_joint": "rh_LFJ1" }
+    ]
+  },
+  "pdu_config": {
+    "pdu_name": "joint_states",
+    "update_rate_hz": 50.0,
+    "message_type": "sensor_msgs/JointState"
+  }
+}

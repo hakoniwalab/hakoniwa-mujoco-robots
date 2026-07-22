@@ -68,6 +68,50 @@ namespace hako::robots::actuator
         }
     };
 
+    enum class ActuatorTransmissionType {
+        Joint,
+        Tendon,
+        Site,
+        Body,
+        Unknown
+    };
+
+    struct NamedActuatorConfig {
+        std::string actuator_name;
+        ActuatorType type {ActuatorType::Position};
+        struct {
+            double lower {0.0};
+            double upper {0.0};
+            bool has_limits {false};
+        } limit;
+        struct {
+            std::string pdu_name;
+            double update_rate_hz {0.0};
+            std::string message_type;
+        } pdu_config;
+    };
+
+    struct NamedActuatorBinding {
+        int actuator_id {-1};
+        ActuatorTransmissionType transmission_type {ActuatorTransmissionType::Unknown};
+        std::string target_name;
+        int target_id {-1};
+        bool ctrl_limited {false};
+        double ctrl_lower {0.0};
+        double ctrl_upper {0.0};
+    };
+
+    class INamedActuator : public IActuator
+    {
+    public:
+        virtual ~INamedActuator() {}
+        virtual bool BindConfig(const NamedActuatorConfig& config) = 0;
+        virtual bool LoadConfig(const std::string& config_path) = 0;
+        virtual const NamedActuatorConfig& GetConfig() const = 0;
+        virtual const NamedActuatorBinding& GetBinding() const = 0;
+        virtual void SetTarget(double target) = 0;
+    };
+
     struct JointTrajectoryJointConfig {
         std::string name;
         ActuatorType type {ActuatorType::Position};

@@ -3,6 +3,7 @@
 #include "physics.hpp"
 #include "actuator/actuator_impl.hpp"
 #include "actuator/joint_actuator_impl.hpp"
+#include "actuator/named_actuator_impl.hpp"
 #include "actuator/joint_trajectory_actuator_impl.hpp"
 
 #include <cmath>
@@ -179,6 +180,9 @@ namespace impl {
         }
         std::shared_ptr<actuator::IJointActuator> createJointActuator() override {
             return std::make_shared<actuator::impl::JointActuatorImpl>(model, data);
+        }
+        std::shared_ptr<actuator::INamedActuator> createNamedActuator() override {
+            return std::make_shared<actuator::impl::NamedActuatorImpl>(model, data);
         }
         std::shared_ptr<actuator::IJointTrajectoryActuator> createJointTrajectoryActuator() override {
             return std::make_shared<actuator::impl::JointTrajectoryActuatorImpl>(model, data);

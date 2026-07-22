@@ -1,0 +1,6 @@
+{
+  "name": "shadow_hand_endpoint",
+  "pdu_def_path": "../shadow-hand-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_shadow_hand_comm.json"
+}

@@ -414,6 +414,7 @@ if(USE_VIEWER)
     target_include_directories(mujoco-common
         PUBLIC mujoco-common
         PUBLIC ${PROJECT_ROOT_DIR}/include
+        PUBLIC ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
     )
     target_include_directories(mujoco-common SYSTEM PUBLIC "${MUJOCO_SOURCE_DIR}")
     hako_configure_target_warnings(mujoco-common)
@@ -428,6 +429,7 @@ else()
     target_include_directories(mujoco-common
         PUBLIC mujoco-common
         PUBLIC ${PROJECT_ROOT_DIR}/include
+        PUBLIC ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
     )
     target_include_directories(mujoco-common SYSTEM PUBLIC "${MUJOCO_SOURCE_DIR}")
     hako_configure_target_warnings(mujoco-common)
