@@ -12,6 +12,52 @@ writing a plant asset:
 
 Do not assume that the command dimension equals the observed joint count.
 
+## Prepare the Shadow Hand model
+
+The MuJoCo Menagerie mesh assets are not committed directly to this repository.
+The source definition is owned by the `hakoniwa-mbody-registry` submodule and
+pins the upstream Menagerie revision used by this sample.
+
+Initialize the submodule first:
+
+```bash
+git submodule update --init thirdparty/hakoniwa-mbody-registry
+```
+
+The mbody tools require PyYAML. If the submodule does not already have a local
+virtual environment, prepare one once:
+
+```bash
+cd thirdparty/hakoniwa-mbody-registry
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r requirements.txt
+cd ../..
+```
+
+Then materialize the pinned Shadow Hand MJCF and mesh assets:
+
+```bash
+bash examples/actuators/shadow_hand/prepare-model.bash
+```
+
+This calls the mbody-registry `forge.sh` MJCF passthrough flow and materializes
+the complete upstream `shadow_hand/` tree under:
+
+```text
+thirdparty/hakoniwa-mbody-registry/bodies/shadow_hand/source/shadow_hand/
+```
+
+The OBJ/STL/DAE-style upstream source assets remain local materialized files;
+the reproducible source definition and pinned revision are what stay under Git
+control.
+
+Use the materialized scene in the commands below:
+
+```bash
+SHADOW_HAND_MODEL=thirdparty/hakoniwa-mbody-registry/bodies/shadow_hand/source/shadow_hand/scene_right.xml
+```
+
 ## Build
 
 ```bash
@@ -23,13 +69,13 @@ cmake --build src/cmake-build --target shadow-hand-hakoniwa-asset
 ## Inspect
 
 ```bash
-./src/cmake-build/examples/actuators/shadow_hand/shadow-hand-actuator-map
+./src/cmake-build/examples/actuators/shadow_hand/shadow-hand-actuator-map "$SHADOW_HAND_MODEL"
 ```
 
 Expected signals:
 
-- the model-local Apache-2.0 `LICENSE` is present
-- `thirdparty/mujoco_menagerie/shadow_hand/scene_right.xml` loads
+- the model-local Apache-2.0 `LICENSE` is present in the materialized upstream tree
+- the materialized `shadow_hand/scene_right.xml` loads
 - the model summary includes `nu=20`, `njnt=25`, and `ntendon=4`
 - the actuator command table lists 20 named position actuators
 - four actuators target fixed tendons:
@@ -45,7 +91,7 @@ unnamed joint from the Shadow Hand `JointState` contract.
 ## MuJoCo-Only Check
 
 ```bash
-./src/cmake-build/examples/actuators/shadow_hand/shadow-hand-actuator-map --check
+./src/cmake-build/examples/actuators/shadow_hand/shadow-hand-actuator-map --check "$SHADOW_HAND_MODEL"
 ```
 
 The check applies a conservative open target, then a bounded close target, and
@@ -119,7 +165,7 @@ excluded.
 Terminal 1:
 
 ```bash
-./src/cmake-build/examples/actuators/shadow_hand/shadow-hand-hakoniwa-asset --no-viewer
+./src/cmake-build/examples/actuators/shadow_hand/shadow-hand-hakoniwa-asset --no-viewer "$SHADOW_HAND_MODEL"
 ```
 
 Wait until the plant asset is registered and reaches:
@@ -172,9 +218,14 @@ registers, sender asset registers, then `hako-cmd start`.
 
 ## License
 
-The Shadow Hand MJCF and mesh assets are vendored from MuJoCo Menagerie at
-`thirdparty/mujoco_menagerie/shadow_hand`.
+Shadow Hand is materialized from `google-deepmind/mujoco_menagerie` through the
+pinned source definition in:
 
-Keep the model-local `thirdparty/mujoco_menagerie/shadow_hand/LICENSE` file
-with redistributed model artifacts. The local README states that the original
-URDF and assets were provided by Shadow Robot Company under Apache-2.0.
+```text
+thirdparty/hakoniwa-mbody-registry/sources/shadow_hand.yaml
+```
+
+The fetched model tree includes the model-local Apache-2.0 `LICENSE` from
+MuJoCo Menagerie. Keep that license with any redistributed model artifacts.
+The upstream Shadow Hand model states that the original URDF and assets were
+provided by Shadow Robot Company under Apache-2.0.
