@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [switch]$Clean,
+    [switch]$DoctorOnly,
     [string]$BuildDirName = "build-win",
     [string]$Generator = "",
     [string]$Platform = "",
@@ -179,6 +180,11 @@ if ($Clean -and (Test-Path -LiteralPath $BuildDir)) {
 }
 
 Invoke-Preflight
+
+if ($DoctorOnly) {
+    Write-Host "Environment looks ready for build-win.ps1."
+    exit 0
+}
 
 $ConfigureArgs = @(
     "-S", $SourceDir,
