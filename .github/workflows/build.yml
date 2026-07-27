@@ -40,8 +40,10 @@ jobs:
         run: |
           brew install glfw boost ninja
 
-      - name: Configure
+      - name: Build through hako.py
         shell: bash
+        env:
+          HAKO_BUILD_DIR: build-ci
         run: |
           set -euxo pipefail
 
@@ -51,7 +53,8 @@ jobs:
             CMAKE_PREFIX_ARGS+=("-DCMAKE_PREFIX_PATH=$(brew --prefix glfw);$(brew --prefix boost)")
           fi
 
-          cmake -S src -B build-ci -G Ninja \
+          python tools/hako.py build -- \
+            -G Ninja \
             -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
             -DUSE_VIEWER=ON \
             -DHAKONIWA_ASSETS_LIBRARY=assets \
@@ -75,12 +78,6 @@ jobs:
 
           echo "==== Git submodule status ===="
           git submodule status --recursive
-
-      - name: Build
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cmake --build build-ci --parallel
 
       - name: List build outputs
         shell: bash
@@ -128,10 +125,10 @@ jobs:
         run: |
           choco install ninja -y
 
-      - name: Configure and build
+      - name: Build through hako.py
         shell: pwsh
         run: |
-          .\build-win.ps1 `
+          python tools/hako.py build -- `
             -Clean `
             -Generator Ninja `
             -UseThirdpartyHakoniwa `
