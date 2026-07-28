@@ -27,6 +27,12 @@ class ManifestTests(unittest.TestCase):
         resolved = HAKO._resolved_build_dir("out/mujoco", REPO_ROOT)
         self.assertEqual(resolved, (REPO_ROOT / "out" / "mujoco").resolve())
 
+    def test_absolute_build_directory_is_rejected(self):
+        with self.assertRaisesRegex(HAKO.ConfigError, "repository-relative"):
+            HAKO.resolve_config(
+                {"version": 1, "build": {"dir": str(REPO_ROOT / "out")}}
+            )
+
     def test_unknown_key_is_rejected(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "build.yaml"
@@ -68,7 +74,6 @@ class NativeMappingTests(unittest.TestCase):
         self.assertEqual(env["HAKO_BUILD_DIR"], str(expected))
 
     def test_windows_explicit_build_dir_maps_to_native_argument(self):
-        expected = (REPO_ROOT / "out" / "mujoco").resolve()
         with patch.object(HAKO.sys, "platform", "win32"), patch.object(
             HAKO, "_powershell", return_value="pwsh"
         ):
@@ -83,7 +88,7 @@ class NativeMappingTests(unittest.TestCase):
                 "-File",
                 str(REPO_ROOT / "build-win.ps1"),
                 "-BuildDirName",
-                str(expected),
+                "out/mujoco",
             ],
         )
 
