@@ -1,0 +1,6 @@
+# Minimal user-facing build intent for hakoniwa-mujoco-robots.
+# "auto" preserves the existing platform-native build directory.
+version: 1
+
+build:
+  dir: auto
