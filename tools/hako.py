@@ -26,12 +26,6 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def _native_args(values: list[str]) -> list[str]:
-    if values and values[0] == "--":
-        return values[1:]
-    return values
-
-
 def _powershell() -> str:
     for name in ("powershell.exe", "pwsh", "powershell"):
         found = shutil.which(name)
@@ -145,7 +139,6 @@ def resolve_command(
     build_dir: str = "auto",
 ) -> tuple[list[str], dict[str, str]]:
     root = _repo_root()
-    args = _native_args(native_args)
     env = dict(os.environ)
     resolved_build_dir = _resolved_build_dir(build_dir, root)
 
@@ -163,7 +156,7 @@ def resolve_command(
             cmd.append("-DoctorOnly")
         if resolved_build_dir is not None:
             cmd.extend(["-BuildDirName", build_dir])
-        cmd.extend(args)
+        cmd.extend(native_args)
         return cmd, env
 
     if command == "doctor":
@@ -174,7 +167,7 @@ def resolve_command(
         raise HakoError(f"unsupported command: {command}")
     if resolved_build_dir is not None:
         env["HAKO_BUILD_DIR"] = str(resolved_build_dir)
-    return ["bash", str(script), *args], env
+    return ["bash", str(script), *native_args], env
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -188,22 +181,29 @@ def create_parser() -> argparse.ArgumentParser:
         default=None,
         help=f"build manifest (default: repository root/{DEFAULT_MANIFEST})",
     )
-    parser.add_argument(
-        "native_args",
-        nargs=argparse.REMAINDER,
-        help="arguments passed to the platform-native script; use '--' before them",
-    )
     return parser
 
 
+def parse_cli(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[str]]:
+    values = list(sys.argv[1:] if argv is None else argv)
+    if "--" in values:
+        separator = values.index("--")
+        own_args = values[:separator]
+        native_args = values[separator + 1 :]
+    else:
+        own_args = values
+        native_args = []
+    return create_parser().parse_args(own_args), native_args
+
+
 def main(argv: list[str] | None = None) -> int:
-    args = create_parser().parse_args(argv)
+    args, native_args = parse_cli(argv)
     root = _repo_root()
     manifest = resolve_manifest_path(args.config, root)
     cfg = resolve_config(load_simple_yaml(manifest))
     build_dir = cfg["build"]["dir"]
 
-    command, env = resolve_command(args.command, args.native_args, build_dir=build_dir)
+    command, env = resolve_command(args.command, native_args, build_dir=build_dir)
     print(f"Build manifest: {manifest}")
     print(f"Build directory: {build_dir}")
     print(">", subprocess.list2cmdline(command))
