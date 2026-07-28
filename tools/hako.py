@@ -115,6 +115,8 @@ def resolve_config(raw: Mapping[str, Any]) -> Dict[str, Any]:
     build_dir = build["dir"]
     if not isinstance(build_dir, str) or not build_dir.strip():
         raise ConfigError("build.dir must be a non-empty string")
+    if build_dir != "auto" and Path(build_dir).expanduser().is_absolute():
+        raise ConfigError("build.dir must be 'auto' or a repository-relative path")
     return {"version": 1, "build": {"dir": build_dir}}
 
 
@@ -133,10 +135,7 @@ def resolve_manifest_path(value: str | None, root: Path) -> Path:
 def _resolved_build_dir(build_dir: str, root: Path) -> Path | None:
     if build_dir == "auto":
         return None
-    path = Path(build_dir).expanduser()
-    if not path.is_absolute():
-        path = root / path
-    return path.resolve()
+    return (root / build_dir).resolve()
 
 
 def resolve_command(
@@ -163,7 +162,7 @@ def resolve_command(
         if command == "doctor":
             cmd.append("-DoctorOnly")
         if resolved_build_dir is not None:
-            cmd.extend(["-BuildDirName", str(resolved_build_dir)])
+            cmd.extend(["-BuildDirName", build_dir])
         cmd.extend(args)
         return cmd, env
 
