@@ -58,6 +58,14 @@ class ManifestTests(unittest.TestCase):
                     custom.resolve(),
                 )
 
+    def test_config_option_stays_with_hako_and_native_args_follow_separator(self):
+        args, native_args = HAKO.parse_cli(
+            ["build", "--config", "custom.yaml", "--", "-G", "Ninja"]
+        )
+        self.assertEqual(args.command, "build")
+        self.assertEqual(args.config, "custom.yaml")
+        self.assertEqual(native_args, ["-G", "Ninja"])
+
 
 class NativeMappingTests(unittest.TestCase):
     def test_posix_auto_keeps_existing_native_default(self):
