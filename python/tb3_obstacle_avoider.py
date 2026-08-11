@@ -236,6 +236,7 @@ def run_wall_follower(args: argparse.Namespace) -> None:
     interval_sec = 1.0 / args.rate_hz
     state = WallFollowerState()
     started_at = time.monotonic()
+    has_valid_scan = False
     
     print(
         f"[INFO] Wall follower started. rate={args.rate_hz:.1f}Hz "
@@ -254,7 +255,22 @@ def run_wall_follower(args: argparse.Namespace) -> None:
                 time.sleep(interval_sec)
                 continue
 
-            scan = runtime["pdu_to_py_LaserScan"](raw_scan)
+            try:
+                scan = runtime["pdu_to_py_LaserScan"](raw_scan)
+            except ValueError as exc:
+                # A newly joined asset can observe the allocated LaserScan slot
+                # before the simulator publishes its first complete packet.
+                # Keep this visible, but wait for a valid producer sample rather
+                # than treating the startup boundary as a controller failure.
+                if has_valid_scan:
+                    raise
+                now = time.monotonic()
+                if now - state.last_log_at >= args.log_interval_sec:
+                    state.last_log_at = now
+                    print(f"[WARN] LaserScan PDU is not ready: {exc}", file=sys.stderr)
+                time.sleep(interval_sec)
+                continue
+            has_valid_scan = True
             raw_sectors = read_sectors(scan, args.sector_percentile)
             sectors = smooth_sectors(state, raw_sectors, args.sensor_alpha)
             linear_axis, yaw_axis = decide_command(args, state, sectors, time.monotonic())
