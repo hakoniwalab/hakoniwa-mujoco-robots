@@ -48,6 +48,7 @@ function Resolve-ExistingPath {
 function Add-Issue {
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
         [System.Collections.Generic.List[string]]$Issues,
         [Parameter(Mandatory = $true)]
         [string]$Message

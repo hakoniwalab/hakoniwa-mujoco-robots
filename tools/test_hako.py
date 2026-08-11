@@ -68,6 +68,13 @@ class ManifestTests(unittest.TestCase):
 
 
 class NativeMappingTests(unittest.TestCase):
+    def test_windows_preflight_accepts_an_initially_empty_issue_collection(self):
+        script = (REPO_ROOT / "build-win.ps1").read_text(encoding="utf-8-sig")
+        function_start = script.index("function Add-Issue")
+        function_end = script.index("function Test-CMakeConfig", function_start)
+        add_issue = script[function_start:function_end]
+        self.assertIn("[AllowEmptyCollection()]", add_issue)
+
     def test_posix_auto_keeps_existing_native_default(self):
         with patch.object(HAKO.sys, "platform", "linux"):
             command, env = HAKO.resolve_command("build", [], build_dir="auto")
