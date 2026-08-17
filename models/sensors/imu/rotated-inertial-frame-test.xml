@@ -3,7 +3,7 @@
   <option gravity="0 0 0" />
   <worldbody>
     <body name="base_link" pos="0 0 0">
-      <freejoint name="base_freejoint" />
+      <freejoint name="base_freejoint" align="false" />
       <inertial
         pos="0 0 0"
         quat="0.7071067811865476 0 0.7071067811865476 0"
