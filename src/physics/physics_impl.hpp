@@ -124,7 +124,10 @@ namespace impl {
         hako::robots::types::BodyVelocity GetBodyVelocity() override
         {
             mjtNum object_velocity[6] = {};
-            mj_objectVelocity(model, data, mjOBJ_BODY, body_id, object_velocity, 1);
+            // mjOBJ_XBODY uses the regular body frame (xpos/xmat). mjOBJ_BODY
+            // would express local velocity in the body's inertial frame
+            // (xipos/ximat), which can be rotated independently by <inertial>.
+            mj_objectVelocity(model, data, mjOBJ_XBODY, body_id, object_velocity, 1);
             hako::robots::types::BodyVelocity body_vel;
             body_vel.x = object_velocity[3];
             body_vel.y = object_velocity[4];
@@ -134,7 +137,9 @@ namespace impl {
         hako::robots::types::BodyAngularVelocity GetBodyAngularVelocity() override
         {
             mjtNum object_velocity[6] = {};
-            mj_objectVelocity(model, data, mjOBJ_BODY, body_id, object_velocity, 1);
+            // Keep angular velocity in the same regular body frame used by
+            // xquat and by sensor/body frame conventions.
+            mj_objectVelocity(model, data, mjOBJ_XBODY, body_id, object_velocity, 1);
             hako::robots::types::BodyAngularVelocity angular_vel;
             angular_vel.x = object_velocity[0];
             angular_vel.y = object_velocity[1];
