@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mujoco model="rotated_inertial_frame_test">
+  <option gravity="0 0 0" />
+  <worldbody>
+    <body name="base_link" pos="0 0 0">
+      <freejoint name="base_freejoint" />
+      <inertial
+        pos="0 0 0"
+        quat="0.7071067811865476 0 0.7071067811865476 0"
+        mass="1"
+        diaginertia="1 1 1" />
+      <geom type="sphere" size="0.05" />
+    </body>
+  </worldbody>
+</mujoco>
