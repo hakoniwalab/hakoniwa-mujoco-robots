@@ -138,6 +138,26 @@ jobs:
             "-DHAKONIWA_ASSETS_LIBRARY=assets" `
             "-DHAKONIWA_CONDUCTOR_LIBRARY=conductor"
 
+      - name: Verify color-camera Windows runtime layout
+        shell: pwsh
+        run: |
+          $runtimeDir = Join-Path "build-win" "examples/sensors/color_camera"
+          $requiredFiles = @(
+            "color-camera-example.exe",
+            "color-camera-hakoniwa-asset.exe",
+            "mujoco.dll",
+            "glfw3.dll"
+          )
+
+          foreach ($name in $requiredFiles) {
+            $path = Join-Path $runtimeDir $name
+            if (-not (Test-Path $path -PathType Leaf)) {
+              throw "Required Windows runtime artifact is missing: $path"
+            }
+          }
+
+          Write-Host "Verified color-camera executables and shared runtime DLLs in $runtimeDir"
+
       - name: Show submodule status
         shell: pwsh
         run: |
