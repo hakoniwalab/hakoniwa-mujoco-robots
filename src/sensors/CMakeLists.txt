@@ -83,6 +83,10 @@ if(HAKO_BUILD_SENSOR_TESTS)
         ${PROJECT_ROOT_DIR}/tests/sensors/camera/unit/depth_encoding_test.cpp
     )
     hako_add_sensor_test(
+        imu_body_frame_velocity_test
+        ${PROJECT_ROOT_DIR}/tests/sensors/imu/unit/imu_body_frame_velocity_test.cpp
+    )
+    hako_add_sensor_test(
         ultrasonic_config_loader_test
         ${PROJECT_ROOT_DIR}/tests/sensors/ultrasonic/unit/ultrasonic_config_loader_test.cpp
     )
@@ -104,6 +108,11 @@ if(HAKO_BUILD_SENSOR_TESTS)
             depth_encoding_test
     )
     add_custom_target(
+        imu_unit_tests
+        DEPENDS
+            imu_body_frame_velocity_test
+    )
+    add_custom_target(
         ultrasonic_unit_tests
         DEPENDS
             ultrasonic_config_loader_test
@@ -114,6 +123,7 @@ if(HAKO_BUILD_SENSOR_TESTS)
         sensor_unit_tests
         DEPENDS
             camera_unit_tests
+            imu_unit_tests
             ultrasonic_unit_tests
     )
     add_custom_target(
@@ -122,6 +132,7 @@ if(HAKO_BUILD_SENSOR_TESTS)
         COMMAND $<TARGET_FILE:camera_sensor_msgs_converter_test>
         COMMAND $<TARGET_FILE:camera_rgba_color_test>
         COMMAND $<TARGET_FILE:depth_encoding_test>
+        COMMAND $<TARGET_FILE:imu_body_frame_velocity_test>
         COMMAND $<TARGET_FILE:ultrasonic_config_loader_test>
         COMMAND $<TARGET_FILE:ultrasonic_range_pdu_converter_test>
         COMMAND $<TARGET_FILE:ultrasonic_measurement_test>
