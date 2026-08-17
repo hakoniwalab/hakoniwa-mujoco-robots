@@ -57,3 +57,11 @@ target_compile_definitions(color-camera-hakoniwa-asset
 
 hako_configure_windows_runtime(color-camera-example)
 hako_configure_windows_runtime(color-camera-hakoniwa-asset)
+
+if(WIN32)
+    # Both executables share this binary directory and deploy the same MuJoCo
+    # and GLFW runtime DLLs in POST_BUILD commands. Ninja can otherwise finish
+    # the two targets concurrently and race while copying the same DLLs.
+    # Serialize only this pair; the rest of the build remains parallel.
+    add_dependencies(color-camera-hakoniwa-asset color-camera-example)
+endif()
