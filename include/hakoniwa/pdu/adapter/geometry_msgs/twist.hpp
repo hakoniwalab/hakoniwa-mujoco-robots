@@ -149,6 +149,9 @@ namespace hako::robots::pdu::adapter::geometry_msgs
             if (resolved_key.channel_id < 0) {
                 throw std::runtime_error("failed to resolve Twist event PDU channel");
             }
+            if (endpoint_.set_recv_event(resolved_key) != HAKO_PDU_ERR_OK) {
+                throw std::runtime_error("failed to register Twist receive event");
+            }
             endpoint_.subscribe_on_recv_callback(
                 resolved_key,
                 [this](const hakoniwa::pdu::PduResolvedKey&, std::span<const std::byte> payload) {
@@ -161,6 +164,16 @@ namespace hako::robots::pdu::adapter::geometry_msgs
                     std::lock_guard<std::mutex> lock(mutex_);
                     pending_ = pdu;
                 });
+        }
+
+        bool take(HakoCpp_Twist& out)
+        {
+            std::optional<HakoCpp_Twist> pending = take_pending_();
+            if (!pending.has_value()) {
+                return false;
+            }
+            out = *pending;
+            return true;
         }
 
         bool take_pose(hakoniwa::PduRigidBodyPose& out)
