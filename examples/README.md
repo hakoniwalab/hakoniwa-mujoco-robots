@@ -45,3 +45,8 @@ Available examples:
   - JSON config loaded through `JointActuatorImpl`
   - `SetTarget()` writes targets to MuJoCo `ctrl[]`
   - Hakoniwa PDU command receiver and Python command sender examples
+- [Generic Ackermann Golf Cart](actuators/generic_ackermann/README.md)
+  - original primitive-based golf-cart appearance
+  - Ackermann inner/outer front steering geometry
+  - rear-wheel velocity drive using shared joint actuators
+  - PS5 DualSense control through `GameControllerOperation`

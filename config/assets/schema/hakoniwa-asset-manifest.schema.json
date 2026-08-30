@@ -32,6 +32,10 @@
     "endpoint": {
       "$ref": "#/$defs/path"
     },
+    "runtime_config": {
+      "$ref": "#/$defs/path",
+      "description": "Optional asset-family-specific runtime contract."
+    },
     "components": {
       "type": "array",
       "minItems": 1,

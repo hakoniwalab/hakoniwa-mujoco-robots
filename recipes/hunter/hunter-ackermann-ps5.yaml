@@ -1,0 +1,27 @@
+id: hunter-ackermann-ps5
+title: Hunter V2 with the Generic Ackermann Asset and PS5 Controller
+recipe_version: 1.0
+
+goal:
+  description: Demonstrate that the same generic C++ Hakoniwa asset runs Hunter by replacing only its Ackermann Asset Package.
+
+asset_package:
+  manifest: recipes/hunter/asset-manifest.json
+  runtime_config: recipes/hunter/ackermann-runtime.json
+  model_owner: hakoniwa-mbody-registry
+  model: bodies/hunter_v2/generated/hunter_v2.minimal_world.xml
+  shared_binary: generic-ackermann-hakoniwa-asset
+
+procedure:
+  - {order: 1, command: "python3.12 tools/recipe/hunter.py forge", action: "Generate the pinned Hunter model."}
+  - {order: 2, command: "python3.12 tools/recipe/hunter.py configure", action: "Generate the Launcher with the Hunter Manifest."}
+  - {order: 3, command: "python3.12 tools/recipe/hunter.py build", action: "Build the shared generic Ackermann C++ asset."}
+  - {order: 4, command: "python3.12 tools/recipe/hunter.py smoke", action: "Run the same compiled asset headlessly with Hunter."}
+  - {order: 5, command: "python3.12 tools/recipe/hunter.py start", action: "Start Launcher and PS5 control."}
+  - {order: 6, command: "python3.12 tools/recipe/hunter.py stop", action: "Stop the Launcher session."}
+
+acceptance:
+  - Asset Manifest and Ackermann runtime JSON pass their schemas
+  - semantic component, joint, and actuator bindings exist in the MJCF
+  - the shared C++ binary passes idle, straight, and turn checks
+  - no Hunter-specific C++ control implementation is introduced

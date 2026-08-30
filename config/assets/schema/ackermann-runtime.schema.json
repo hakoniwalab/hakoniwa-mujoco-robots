@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hakoniwa.dev/schemas/ackermann-runtime.schema.json",
+  "title": "Hakoniwa generic Ackermann runtime configuration",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["geometry", "bindings", "control", "smoke"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "geometry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wheelbase_m", "track_width_m", "wheel_radius_m", "max_steering_angle_rad", "max_wheel_angular_velocity_rad_s"],
+      "properties": {
+        "wheelbase_m": {"type": "number", "exclusiveMinimum": 0},
+        "track_width_m": {"type": "number", "exclusiveMinimum": 0},
+        "wheel_radius_m": {"type": "number", "exclusiveMinimum": 0},
+        "max_steering_angle_rad": {"type": "number", "exclusiveMinimum": 0},
+        "max_wheel_angular_velocity_rad_s": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_name", "pdu_name", "endpoint_name", "base_freejoint", "components", "joints", "actuators"],
+      "properties": {
+        "asset_name": {"$ref": "#/$defs/name"},
+        "pdu_name": {"$ref": "#/$defs/name"},
+        "endpoint_name": {"$ref": "#/$defs/name"},
+        "base_freejoint": {"$ref": "#/$defs/name"},
+        "components": {"$ref": "#/$defs/fourRoles"},
+        "joints": {"$ref": "#/$defs/fourRoles"},
+        "actuators": {"$ref": "#/$defs/fourRoles"}
+      }
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_linear_velocity_m_s", "deadzone", "max_linear_acceleration_m_s2", "max_steering_rate_rad_s", "realtime_sync_steps"],
+      "properties": {
+        "max_linear_velocity_m_s": {"type": "number", "exclusiveMinimum": 0},
+        "deadzone": {"type": "number", "minimum": 0, "exclusiveMaximum": 1},
+        "max_linear_acceleration_m_s2": {"type": "number", "exclusiveMinimum": 0},
+        "max_steering_rate_rad_s": {"type": "number", "exclusiveMinimum": 0},
+        "realtime_sync_steps": {"type": "integer", "minimum": 1}
+      }
+    },
+    "smoke": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration_sec", "straight_speed_m_s", "turn_speed_m_s", "turn_steering_rad", "idle_max_horizontal_drift_m", "straight_min_progress_ratio", "turn_min_displacement_m", "turn_min_abs_yaw_rad", "steering_tracking_error_rad"],
+      "properties": {
+        "duration_sec": {"type": "number", "exclusiveMinimum": 0},
+        "straight_speed_m_s": {"type": "number", "exclusiveMinimum": 0},
+        "turn_speed_m_s": {"type": "number", "exclusiveMinimum": 0},
+        "turn_steering_rad": {"type": "number", "exclusiveMinimum": 0},
+        "idle_max_horizontal_drift_m": {"type": "number", "minimum": 0},
+        "straight_min_progress_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "turn_min_displacement_m": {"type": "number", "minimum": 0},
+        "turn_min_abs_yaw_rad": {"type": "number", "minimum": 0},
+        "steering_tracking_error_rad": {"type": "number", "minimum": 0}
+      }
+    }
+  },
+  "$defs": {
+    "name": {"type": "string", "minLength": 1},
+    "fourRoles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steering_left", "steering_right", "drive_left", "drive_right"],
+      "properties": {
+        "steering_left": {"$ref": "#/$defs/name"},
+        "steering_right": {"$ref": "#/$defs/name"},
+        "drive_left": {"$ref": "#/$defs/name"},
+        "drive_right": {"$ref": "#/$defs/name"}
+      }
+    }
+  }
+}

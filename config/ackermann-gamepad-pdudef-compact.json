@@ -1,0 +1,14 @@
+{
+  "paths": [
+    {
+      "id": "ackermann-gamepad-command",
+      "path": "ackermann-gamepad-pdutypes.json"
+    }
+  ],
+  "robots": [
+    {
+      "name": "AckermannVehicle",
+      "pdutypes_id": "ackermann-gamepad-command"
+    }
+  ]
+}

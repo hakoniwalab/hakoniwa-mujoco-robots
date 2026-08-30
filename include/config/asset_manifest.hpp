@@ -21,6 +21,7 @@ namespace hako::robots::config
         std::string model {};
         std::string pdu_def {};
         std::string endpoint {};
+        std::string runtime_config {};
         std::vector<AssetManifestComponent> components {};
 
         const AssetManifestComponent* FindComponent(const std::string& id) const;

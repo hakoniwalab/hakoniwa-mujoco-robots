@@ -1,0 +1,51 @@
+id: generic-ackermann-ps5
+title: Generic Ackermann Golf Cart with PS5 Controller
+recipe_version: 1.0
+
+goal:
+  description: Run the generic Ackermann golf cart in MuJoCo and operate it with a PS5 DualSense controller.
+
+foundation_contract:
+  mode: required
+  reason: Core SHM, hako-cmd, the PDU endpoint, and Launcher own the reproducible runtime lifecycle.
+
+runtime:
+  plant:
+    activation_timing: before_start
+    target: generic-ackermann-hakoniwa-asset
+    manifest: recipes/generic_ackermann/asset-manifest.json
+    model_owner: hakoniwa-mbody-registry
+    model: bodies/generic_ackermann_golf_cart/generated/model.minimal_world.xml
+  controller:
+    activation_timing: after_start
+    script: python/ackermann_gamepad.py
+    mapping: recipes/generic_ackermann/ps5-controller-macos.json
+
+model_forge:
+  recipe: recipes/generic_ackermann/generic-ackermann-model-forge.yaml
+  command: python3.12 tools/recipe/generic_ackermann.py forge
+  generated_files_are_read_only: true
+
+controls:
+  steering: PS5 left stick horizontal
+  throttle_and_reverse: PS5 right stick vertical
+
+physics:
+  wheelbase_m: 1.55
+  track_width_m: 1.04
+  wheel_radius_m: 0.25
+  center_steering_limit_rad: 0.70
+  inner_wheel_joint_limit_rad: 0.90
+  simulation_timestep_sec: 0.002
+  realtime_pacing_steps: 1
+  max_linear_velocity_m_s: 3.5
+  max_linear_acceleration_m_s2: 6.0
+
+acceptance:
+  automatic_command: python3.12 tools/recipe/generic_ackermann.py smoke
+  manual_commands:
+    - python3.12 tools/recipe/generic_ackermann.py forge
+    - python3.12 tools/recipe/generic_ackermann.py configure
+    - python3.12 tools/recipe/generic_ackermann.py build
+    - python3.12 tools/recipe/generic_ackermann.py start
+    - python3.12 tools/recipe/generic_ackermann.py stop

@@ -1,0 +1,100 @@
+id: hunter-model-forge
+title: Hunter V2 Ackermann Model Forge Validation
+recipe_version: 1.0
+
+execution_environment:
+  workspace:
+    mode: managed
+  python:
+    environment: foundation-venv
+    path: work/foundation/install/python
+
+runtime_dependencies:
+  python:
+    interpreter: work/foundation/install/python
+    requirements: recipes/requirements/ackermann-forge.txt
+    packages:
+      - {name: PyYAML, version: 6.0.3, purpose: Ackermann Forge Recipe parsing}
+      - {name: xacro, version: 2.1.1, purpose: ROS-free Hunter Xacro expansion}
+      - {name: mujoco, version: 3.10.0, purpose: URDF conversion and MJCF load verification}
+      - {name: trimesh, version: 4.12.2, purpose: DAE mesh processing}
+      - {name: pycollada, version: 0.9.3, purpose: Collada input parsing}
+
+foundation_contract:
+  mode: not_required
+  reason: Model forging is offline and does not use Hakoniwa Core or shared memory; Foundation Python remains the managed interpreter.
+
+recipe_local_requirements_schema_version: 1
+recipe_local_requirements:
+  hakoniwa-mbody-registry:
+    root:
+      default_path: ../hakoniwa-mbody-registry
+      override_env: HAKONIWA_MBODY_REGISTRY_ROOT
+      relative_to: recipe_repository
+    source:
+      type: git
+      url: https://github.com/hakoniwalab/hakoniwa-mbody-registry.git
+      revision: main
+    required_artifacts:
+      - {path: tools/ackermann/forge.py, kind: file}
+      - {path: tools/ackermann/validate.py, kind: file}
+      - {path: tools/ackermann/optimize.py, kind: file}
+      - {path: sources/hunter_v2.yaml, kind: file}
+
+goal:
+  description: Validate that the Ackermann Forge reproducibly converts a pinned external Xacro/DAE vehicle into MuJoCo artifacts.
+
+scope:
+  included:
+    - pinned upstream source acquisition
+    - ROS-free Xacro package resolution
+    - explicit removal of Gazebo and ros2_control runtime extensions
+    - explicit removal of conflicting URDF mimic couplings
+    - deterministic DAE-to-OBJ and URDF-to-MJCF conversion
+    - explicit visual material, actuator, primitive collision, contact, and world overlays
+    - byte-for-byte artifact comparison and MuJoCo load
+    - Recipe-defined headless dynamics validation, scoring, and optional Optuna search
+  excluded:
+    - Hakoniwa runtime adapter and PDU binding
+    - PS5 operation
+    - automatic promotion of optimizer results and manual driving acceptance
+
+upstream:
+  repository: https://github.com/LCAS/hunter_robot.git
+  revision: e073b273674459a13ec57b8731d06ddc8770546f
+  license: Apache-2.0
+  package: hunter_description
+
+ownership:
+  source_and_body_recipe: hakoniwa-mbody-registry
+  validation_entrypoint: hakoniwa-mujoco-robots
+
+procedure:
+  - order: 1
+    action: Resolve MBody and install pinned Forge dependencies into Foundation Python.
+    command: python tools/recipe.py configure --recipe ../hakoniwa-mujoco-robots/recipes/hunter/hunter-model-forge.yaml
+  - order: 2
+    action: Fetch the pinned source and generate canonical artifacts.
+    command: python3.12 tools/recipe/hunter.py forge
+  - order: 3
+    action: Re-fetch into a temporary body tree, regenerate, load with MuJoCo, and compare all artifacts.
+    command: python3.12 tools/recipe/hunter.py verify-forge
+  - order: 4
+    action: Run the shared headless Ackermann scenarios and write a scored JSON report.
+    command: python3.12 tools/recipe/hunter.py validate
+  - order: 5
+    action: Optionally search candidate actuator parameters without changing the accepted Recipe.
+    command: python3.12 tools/recipe/hunter.py optimize
+  - order: 6
+    action: Confirm required Recipe inputs and canonical output are present.
+    command: python3.12 tools/recipe/hunter.py doctor
+
+acceptance:
+  - seven generated URDF/MJCF artifacts are byte-for-byte identical
+  - final minimal-world MJCF loads in MuJoCo
+  - final model exposes four actuators
+  - three-second idle check stays within horizontal and vertical settlement limits
+  - straight and both turn directions meet the Recipe-defined dynamics tolerances
+  - steering angles and rear-wheel differential targets are tracked
+  - numerical stability and minimum headless RTF pass
+  - upstream source remains pinned and locally materialized

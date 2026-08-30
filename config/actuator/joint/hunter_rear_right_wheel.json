@@ -1,0 +1,6 @@
+{
+  "$schema": "../schema/joint-actuator.schema.json",
+  "spec": {"joint_name": "rear_right_wheel_joint", "type": "velocity", "limit": {"velocity": 10.0}},
+  "mjcf_binding": {"config_style": "hakoniwa-sdf-like", "runtime_source": "mjcf", "actuator_name": "rear_right_wheel_motor"},
+  "pdu_config": {"pdu_name": "rear_right_wheel_target", "update_rate_hz": 50.0, "message_type": "std_msgs/Float64"}
+}

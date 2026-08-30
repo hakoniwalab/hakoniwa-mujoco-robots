@@ -1,0 +1,18 @@
+{
+  "$schema": "../schema/joint-actuator.schema.json",
+  "spec": {
+    "joint_name": "front_left_steer_joint",
+    "type": "position",
+    "limit": { "lower": -0.90, "upper": 0.90 }
+  },
+  "mjcf_binding": {
+    "config_style": "hakoniwa-sdf-like",
+    "runtime_source": "mjcf",
+    "actuator_name": "front_left_steer_motor"
+  },
+  "pdu_config": {
+    "pdu_name": "front_left_steer_target",
+    "update_rate_hz": 50.0,
+    "message_type": "std_msgs/Float64"
+  }
+}

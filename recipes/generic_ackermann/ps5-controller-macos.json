@@ -1,0 +1,16 @@
+{
+  "Os": ["Darwin"],
+  "mode": 2,
+  "stick": {
+    "Left": {
+      "UD": {"index": 1, "average": true, "valueInverse": false, "conversion": {"paramA": 0.9, "paramB": 0.1, "paramC": 0.0}},
+      "LR": {"index": 0, "average": true, "valueInverse": false, "conversion": {"paramA": 0.9, "paramB": 0.1, "paramC": 0.0}}
+    },
+    "Right": {
+      "UD": {"index": 3, "average": true, "valueInverse": false, "conversion": {"paramA": 0.9, "paramB": 0.1, "paramC": 0.0}},
+      "LR": {"index": 2, "average": true, "valueInverse": false, "conversion": {"paramA": 0.9, "paramB": 0.1, "paramC": 0.0}}
+    }
+  },
+  "Event": {}
+}
+

@@ -1,0 +1,16 @@
+{
+  "protocol": "shm",
+  "impl_type": "callback",
+  "name": "ackermann_gamepad_shm",
+  "direction": "inout",
+  "io": {
+    "robots": [
+      {
+        "name": "AckermannVehicle",
+        "pdu": [
+          { "name": "hako_cmd_game", "notify_on_recv": false }
+        ]
+      }
+    ]
+  }
+}

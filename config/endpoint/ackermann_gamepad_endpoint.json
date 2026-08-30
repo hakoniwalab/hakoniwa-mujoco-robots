@@ -1,0 +1,6 @@
+{
+  "name": "ackermann_gamepad_endpoint",
+  "pdu_def_path": "../ackermann-gamepad-pdudef-compact.json",
+  "cache": "cache/buffer.json",
+  "comm": "comm/shm_ackermann_gamepad_comm.json"
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://hakoniwa.dev/schemas/hakoniwa-asset-manifest.schema.json",
+  "name": "Hunter V2 Ackermann",
+  "description": "Hunter model binding for the shared generic Ackermann Hakoniwa asset.",
+  "model": "../../../hakoniwa-mbody-registry/bodies/hunter_v2/generated/hunter_v2.minimal_world.xml",
+  "pdu_def": "../../config/ackermann-gamepad-pdudef-compact.json",
+  "endpoint": "../../config/endpoint/ackermann_gamepad_endpoint.json",
+  "runtime_config": "ackermann-runtime.json",
+  "components": [
+    {"id": "front_left_steer", "kind": "actuator", "type": "joint_position_actuator", "config": "../../config/actuator/joint/hunter_front_left_steer.json"},
+    {"id": "front_right_steer", "kind": "actuator", "type": "joint_position_actuator", "config": "../../config/actuator/joint/hunter_front_right_steer.json"},
+    {"id": "rear_left_wheel", "kind": "actuator", "type": "joint_velocity_actuator", "config": "../../config/actuator/joint/hunter_rear_left_wheel.json"},
+    {"id": "rear_right_wheel", "kind": "actuator", "type": "joint_velocity_actuator", "config": "../../config/actuator/joint/hunter_rear_right_wheel.json"}
+  ]
+}

@@ -110,6 +110,10 @@ bool LoadAssetManifestFromJson(
     manifest.model = resolve_path(base_dir, manifest.model);
     manifest.pdu_def = resolve_path(base_dir, manifest.pdu_def);
     manifest.endpoint = resolve_path(base_dir, manifest.endpoint);
+    if (root.contains("runtime_config") && root.at("runtime_config").is_string()) {
+        manifest.runtime_config = resolve_path(
+            base_dir, root.at("runtime_config").get<std::string>());
+    }
 
     if (!root.contains("components") || !root.at("components").is_array()) {
         if (error_message != nullptr) {

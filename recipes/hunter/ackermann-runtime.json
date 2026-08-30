@@ -1,0 +1,52 @@
+{
+  "$schema": "../../config/assets/schema/ackermann-runtime.schema.json",
+  "geometry": {
+    "wheelbase_m": 0.65142,
+    "track_width_m": 0.585,
+    "wheel_radius_m": 0.164,
+    "max_steering_angle_rad": 0.461,
+    "max_wheel_angular_velocity_rad_s": 10.0
+  },
+  "bindings": {
+    "asset_name": "AckermannVehicle",
+    "pdu_name": "hako_cmd_game",
+    "endpoint_name": "ackermann_gamepad_endpoint",
+    "base_freejoint": "base_freejoint",
+    "components": {
+      "steering_left": "front_left_steer",
+      "steering_right": "front_right_steer",
+      "drive_left": "rear_left_wheel",
+      "drive_right": "rear_right_wheel"
+    },
+    "joints": {
+      "steering_left": "front_left_steering_joint",
+      "steering_right": "front_right_steering_joint",
+      "drive_left": "rear_left_wheel_joint",
+      "drive_right": "rear_right_wheel_joint"
+    },
+    "actuators": {
+      "steering_left": "front_left_steer_motor",
+      "steering_right": "front_right_steer_motor",
+      "drive_left": "rear_left_wheel_motor",
+      "drive_right": "rear_right_wheel_motor"
+    }
+  },
+  "control": {
+    "max_linear_velocity_m_s": 1.5,
+    "deadzone": 0.06,
+    "max_linear_acceleration_m_s2": 3.0,
+    "max_steering_rate_rad_s": 3.0,
+    "realtime_sync_steps": 1
+  },
+  "smoke": {
+    "duration_sec": 3.0,
+    "straight_speed_m_s": 0.8,
+    "turn_speed_m_s": 1.0,
+    "turn_steering_rad": 0.25,
+    "idle_max_horizontal_drift_m": 0.02,
+    "straight_min_progress_ratio": 0.25,
+    "turn_min_displacement_m": 0.25,
+    "turn_min_abs_yaw_rad": 0.20,
+    "steering_tracking_error_rad": 0.08
+  }
+}

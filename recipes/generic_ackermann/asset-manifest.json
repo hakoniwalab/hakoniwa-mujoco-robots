@@ -1,0 +1,35 @@
+{
+  "$schema": "https://hakoniwa.dev/schemas/hakoniwa-asset-manifest.schema.json",
+  "name": "Generic Ackermann Golf Cart",
+  "description": "Launcher runtime binding for the MBody-managed generic Ackermann body.",
+  "model": "../../../hakoniwa-mbody-registry/bodies/generic_ackermann_golf_cart/generated/model.minimal_world.xml",
+  "pdu_def": "../../config/ackermann-gamepad-pdudef-compact.json",
+  "endpoint": "../../config/endpoint/ackermann_gamepad_endpoint.json",
+  "runtime_config": "ackermann-runtime.json",
+  "components": [
+    {
+      "id": "front_left_steer",
+      "kind": "actuator",
+      "type": "joint_position_actuator",
+      "config": "../../config/actuator/joint/generic_ackermann_front_left_steer.json"
+    },
+    {
+      "id": "front_right_steer",
+      "kind": "actuator",
+      "type": "joint_position_actuator",
+      "config": "../../config/actuator/joint/generic_ackermann_front_right_steer.json"
+    },
+    {
+      "id": "rear_left_wheel",
+      "kind": "actuator",
+      "type": "joint_velocity_actuator",
+      "config": "../../config/actuator/joint/generic_ackermann_rear_left_wheel.json"
+    },
+    {
+      "id": "rear_right_wheel",
+      "kind": "actuator",
+      "type": "joint_velocity_actuator",
+      "config": "../../config/actuator/joint/generic_ackermann_rear_right_wheel.json"
+    }
+  ]
+}
