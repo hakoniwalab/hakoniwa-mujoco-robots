@@ -16,6 +16,11 @@
     "$schema": {
       "type": "string"
     },
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Optional manifest contract version. Omitted legacy manifests are interpreted as version 1."
+    },
     "name": {
       "type": "string",
       "minLength": 1
@@ -68,7 +73,8 @@
             "sensor",
             "actuator",
             "state_output",
-            "command_input"
+            "command_input",
+            "controller"
           ]
         },
         "type": {
