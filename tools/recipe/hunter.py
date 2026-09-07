@@ -32,7 +32,9 @@ def business_pack_root() -> Path:
 
 
 def foundation_python() -> Path:
-    return business_pack_root() / "work/foundation/install/python/bin/python3"
+    configured = os.getenv("HAKONIWA_HOME", "").strip()
+    prefix = Path(configured).expanduser().resolve() if configured else business_pack_root() / "work/foundation/install"
+    return prefix / "python/bin/python3"
 
 
 def required(path: Path, label: str) -> Path:

@@ -59,7 +59,8 @@ def generated_model() -> Path:
 
 
 def foundation_root() -> Path:
-    return business_pack_root() / "work/foundation"
+    configured = os.getenv("HAKONIWA_HOME", "").strip()
+    return Path(configured).expanduser().resolve() if configured else business_pack_root() / "work/foundation"
 
 
 def install_root() -> Path:
