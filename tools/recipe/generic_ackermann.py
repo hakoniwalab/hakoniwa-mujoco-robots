@@ -59,12 +59,13 @@ def generated_model() -> Path:
 
 
 def foundation_root() -> Path:
-    configured = os.getenv("HAKONIWA_HOME", "").strip()
-    return Path(configured).expanduser().resolve() if configured else business_pack_root() / "work/foundation"
+    return install_root().parent
 
 
 def install_root() -> Path:
-    return foundation_root() / "install"
+    # HAKONIWA_HOME is the install prefix, not its Foundation parent.
+    configured = os.getenv("HAKONIWA_HOME", "").strip()
+    return Path(configured).expanduser().resolve() if configured else business_pack_root() / "work/foundation/install"
 
 
 def foundation_python() -> Path:
