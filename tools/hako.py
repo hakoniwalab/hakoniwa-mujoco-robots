@@ -137,10 +137,13 @@ def resolve_command(
     native_args: list[str],
     *,
     build_dir: str = "auto",
+    explicit_build_dir: str | None = None,
 ) -> tuple[list[str], dict[str, str]]:
     root = _repo_root()
     env = dict(os.environ)
     resolved_build_dir = _resolved_build_dir(build_dir, root)
+    if explicit_build_dir is not None:
+        resolved_build_dir = Path(explicit_build_dir).expanduser().resolve()
 
     if sys.platform == "win32":
         script = root / "build-win.ps1"
@@ -155,7 +158,8 @@ def resolve_command(
         if command == "doctor":
             cmd.append("-DoctorOnly")
         if resolved_build_dir is not None:
-            cmd.extend(["-BuildDirName", build_dir])
+            native_build_dir = str(resolved_build_dir) if explicit_build_dir is not None else build_dir
+            cmd.extend(["-BuildDirName", native_build_dir])
         cmd.extend(native_args)
         return cmd, env
 
@@ -176,6 +180,7 @@ def create_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--dry-run", action="store_true", help="print the delegated command only")
     parser.add_argument("command", choices=["doctor", "build"])
+    parser.add_argument("--build-dir", default=None, help="explicit build directory, relative to cwd; overrides manifest build.dir")
     parser.add_argument(
         "--config",
         default=None,
@@ -203,9 +208,11 @@ def main(argv: list[str] | None = None) -> int:
     cfg = resolve_config(load_simple_yaml(manifest))
     build_dir = cfg["build"]["dir"]
 
-    command, env = resolve_command(args.command, native_args, build_dir=build_dir)
+    command, env = resolve_command(
+        args.command, native_args, build_dir=build_dir, explicit_build_dir=args.build_dir
+    )
     print(f"Build manifest: {manifest}")
-    print(f"Build directory: {build_dir}")
+    print(f"Build directory: {Path(args.build_dir).expanduser().resolve() if args.build_dir is not None else build_dir}")
     print(">", subprocess.list2cmdline(command))
     if args.dry_run:
         return 0

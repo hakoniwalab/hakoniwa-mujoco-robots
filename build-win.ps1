@@ -167,7 +167,11 @@ function Invoke-Preflight {
 
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SourceDir = Join-Path $RepoRoot "src"
-$BuildDir = Join-Path $RepoRoot $BuildDirName
+$BuildDir = if ([System.IO.Path]::IsPathRooted($BuildDirName)) {
+    $BuildDirName
+} else {
+    Join-Path $RepoRoot $BuildDirName
+}
 $UseViewerValue = if ($DisableViewer) { "OFF" } else { "ON" }
 
 $ResolvedGenerator = $Generator

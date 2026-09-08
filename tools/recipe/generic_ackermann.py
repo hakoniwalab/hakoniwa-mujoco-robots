@@ -26,6 +26,11 @@ PROFILES = {
     },
 }
 selected_profile = "golf-cart"
+selected_state_dir: Path | None = None
+
+
+def state_dir() -> Path:
+    return selected_state_dir or repo_root() / ".hako"
 
 
 class RecipeError(RuntimeError):
@@ -306,7 +311,7 @@ def validate_model() -> int:
         str(validator),
         profile()["body"],
         "--report",
-        str(repo_root() / f".hako/work/{selected_profile}/validation-report.json"),
+        str(state_dir() / "work" / selected_profile / "validation-report.json"),
     ]).returncode
 
 
@@ -319,7 +324,7 @@ def optimize_model(trials: int | None) -> int:
         str(optimizer),
         profile()["body"],
         "--output",
-        str(repo_root() / f".hako/work/{selected_profile}/optimization"),
+        str(state_dir() / "work" / selected_profile / "optimization"),
     ]
     if trials is not None:
         command.extend(["--trials", str(trials)])
@@ -381,6 +386,7 @@ def control(operation: str) -> int:
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="Operate the generic Ackermann PS5 Recipe")
+    result.add_argument("--state-dir", help="validation/optimization state directory (default: repository root/.hako; relative to cwd)")
     result.add_argument(
         "command",
         choices=("forge", "verify-forge", "validate", "optimize", "configure", "build", "doctor", "smoke", "start", "status", "stop"),
@@ -392,9 +398,10 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    global selected_profile
+    global selected_profile, selected_state_dir
     args = parser().parse_args(argv)
     selected_profile = args.vehicle
+    selected_state_dir = Path(args.state_dir).expanduser().resolve() if args.state_dir else None
     if args.command == "forge":
         return forge()
     if args.command == "verify-forge":

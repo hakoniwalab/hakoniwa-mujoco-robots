@@ -11,6 +11,11 @@ import sys
 
 
 BODY = "hunter_v2"
+selected_state_dir: Path | None = None
+
+
+def state_dir() -> Path:
+    return selected_state_dir or repo_root() / ".hako"
 
 
 class RecipeError(RuntimeError):
@@ -58,7 +63,7 @@ def validate_model() -> int:
     root = mbody_root()
     python = required(foundation_python(), "Foundation Python")
     validator = required(root / "tools/ackermann/validate.py", "MBody Ackermann validator")
-    report = repo_root() / ".hako/work/hunter/validation-report.json"
+    report = state_dir() / "work/hunter/validation-report.json"
     args = [str(python), str(validator), BODY, "--report", str(report)]
     print("+", subprocess.list2cmdline(args), flush=True)
     return subprocess.run(args, cwd=repo_root(), check=False).returncode
@@ -68,7 +73,7 @@ def optimize_model(trials: int | None) -> int:
     root = mbody_root()
     python = required(foundation_python(), "Foundation Python")
     optimizer = required(root / "tools/ackermann/optimize.py", "MBody Ackermann optimizer")
-    output = repo_root() / ".hako/work/hunter/optimization"
+    output = state_dir() / "work/hunter/optimization"
     args = [str(python), str(optimizer), BODY, "--output", str(output)]
     if trials is not None:
         args.extend(["--trials", str(trials)])
@@ -82,6 +87,8 @@ def runtime_command(operation: str, headless: bool) -> int:
         "Generic Ackermann runtime Recipe",
     )
     args = [sys.executable, str(runtime_recipe), operation, "--vehicle", "hunter"]
+    if selected_state_dir is not None:
+        args.extend(["--state-dir", str(selected_state_dir)])
     if headless:
         args.append("--headless")
     print("+", subprocess.list2cmdline(args), flush=True)
@@ -115,7 +122,9 @@ def doctor() -> int:
 
 
 def main() -> int:
+    global selected_state_dir
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--state-dir", help="validation/optimization state directory (default: repository root/.hako; relative to cwd)")
     parser.add_argument(
         "command",
         choices=("forge", "verify-forge", "validate", "optimize", "doctor", "configure", "build", "smoke", "start", "status", "stop"),
@@ -123,6 +132,7 @@ def main() -> int:
     parser.add_argument("--trials", type=int, help="override Ackermann optimization trial count")
     parser.add_argument("--headless", action="store_true", help="disable the MuJoCo Viewer")
     args = parser.parse_args()
+    selected_state_dir = Path(args.state_dir).expanduser().resolve() if args.state_dir else None
     if args.command == "forge":
         return command(False)
     if args.command == "verify-forge":
