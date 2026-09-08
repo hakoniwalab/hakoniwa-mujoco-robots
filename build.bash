@@ -4,7 +4,7 @@ set -euo pipefail
 PROJECT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${HAKO_BUILD_DIR:-${PROJECT_ROOT}/src/cmake-build}"
 
-CORE_PREFIX="${HAKONIWA_CORE_ROOT:-/usr/local/hakoniwa}"
+CORE_PREFIX="${HAKONIWA_CORE_ROOT:-${HAKONIWA_HOME:-/usr/local/hakoniwa}}"
 ENDPOINT_PREFIX="${HAKONIWA_PDU_ENDPOINT_ROOT:-${CORE_PREFIX}}"
 USE_THIRDPARTY_HAKONIWA=0
 EXTRA_CMAKE_ARGS=()

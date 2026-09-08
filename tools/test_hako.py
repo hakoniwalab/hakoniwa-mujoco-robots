@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -68,6 +69,24 @@ class ManifestTests(unittest.TestCase):
 
 
 class NativeMappingTests(unittest.TestCase):
+    def test_cli_build_directory_overrides_manifest_on_both_platforms(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            expected = str(Path(tmp).resolve() / "external")
+            previous = Path.cwd()
+            try:
+                os.chdir(tmp)
+                args, native = HAKO.parse_cli(["build", "--build-dir", "external", "--", "-G", "Ninja"])
+                for platform in ("linux", "win32"):
+                    with self.subTest(platform=platform), patch.object(HAKO.sys, "platform", platform), patch.object(HAKO, "_powershell", return_value="pwsh"):
+                        command, env = HAKO.resolve_command(args.command, native, build_dir="out/legacy", explicit_build_dir=args.build_dir)
+                        if platform == "win32":
+                            self.assertEqual(command[command.index("-BuildDirName") + 1], expected)
+                        else:
+                            self.assertEqual(env["HAKO_BUILD_DIR"], expected)
+                        self.assertEqual(command[-2:], ["-G", "Ninja"])
+            finally:
+                os.chdir(previous)
+
     def test_windows_preflight_accepts_an_initially_empty_issue_collection(self):
         script = (REPO_ROOT / "build-win.ps1").read_text(encoding="utf-8-sig")
         function_start = script.index("function Add-Issue")
@@ -128,6 +147,50 @@ class NativeMappingTests(unittest.TestCase):
                 "-DoctorOnly",
             ],
         )
+
+
+class RecipeStateTests(unittest.TestCase):
+    def load_recipe(self, name):
+        spec = importlib.util.spec_from_file_location(name, REPO_ROOT / "tools" / "recipe" / f"{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_validation_and_optimization_use_selected_state_and_keep_default(self):
+        for name in ("generic_ackermann", "hunter"):
+            module = self.load_recipe(name)
+            with self.subTest(recipe=name), tempfile.TemporaryDirectory() as tmp, patch.object(module, "required", side_effect=lambda path, label: path):
+                root = Path(tmp)
+                with patch.object(module, "repo_root", return_value=root), patch.object(module.subprocess, "run") as run:
+                    run.return_value.returncode = 0
+                    for state in (None, root / "host-state", root / "docker-state"):
+                        module.selected_state_dir = state
+                        selected = state or root / ".hako"
+                        module.validate_model()
+                        command = run.call_args.args[0]
+                        report = Path(command[command.index("--report") + 1])
+                        self.assertTrue(report.is_relative_to(selected))
+                        module.optimize_model(2)
+                        command = run.call_args.args[0]
+                        output = Path(command[command.index("--output") + 1])
+                        self.assertTrue(output.is_relative_to(selected))
+                        self.assertEqual(command[-2:], ["--trials", "2"])
+
+    def test_generic_cli_resolves_relative_state_and_resets_default(self):
+        module = self.load_recipe("generic_ackermann")
+        with patch.object(module, "validate_model", return_value=0):
+            self.assertEqual(module.main(["validate", "--state-dir", "external-state"]), 0)
+            self.assertEqual(module.state_dir(), (Path.cwd() / "external-state").resolve())
+            module.main(["validate"])
+            self.assertEqual(module.state_dir(), REPO_ROOT / ".hako")
+
+    def test_hunter_cli_propagates_state_to_generic_runtime(self):
+        module = self.load_recipe("hunter")
+        with patch.object(module, "required", side_effect=lambda path, label: path), patch.object(module.subprocess, "run") as run, patch.object(module.sys, "argv", ["hunter.py", "build", "--state-dir", "external-state"]):
+            run.return_value.returncode = 0
+            self.assertEqual(module.main(), 0)
+            command = run.call_args.args[0]
+            self.assertEqual(command[command.index("--state-dir") + 1], str((Path.cwd() / "external-state").resolve()))
 
 
 if __name__ == "__main__":
