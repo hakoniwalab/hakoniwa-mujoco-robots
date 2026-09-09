@@ -392,14 +392,23 @@ else()
         set(HAKO_CONDUCTOR_LINK_TARGET "${HAKO_CONDUCTOR_LIB}")
     endif()
 
+    if(NOT hakoniwa_pdu_endpoint_FOUND)
+        message(STATUS
+            "hakoniwa_pdu_endpoint was not usable during quiet package discovery; "
+            "retrying with dependency diagnostics enabled."
+        )
+        find_package(hakoniwa_pdu_endpoint CONFIG)
+    endif()
+
     if(hakoniwa_pdu_endpoint_FOUND)
         set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
     else()
         message(FATAL_ERROR
-            "hakoniwa_pdu_endpoint package config not found.\n"
+            "hakoniwa_pdu_endpoint package could not be loaded.\n"
             "Checked CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}\n"
-            "Set HAKONIWA_PDU_ENDPOINT_PREFIX to the install root that contains lib/cmake/hakoniwa_pdu_endpoint.\n"
-            "Passing a build directory such as build-win or build-shared is not supported here; run cmake --install for hakoniwa-pdu-endpoint first."
+            "The package config may be absent, or one of its find_dependency() requirements may be unavailable; see the CMake diagnostics above.\n"
+            "If the config is absent, set HAKONIWA_PDU_ENDPOINT_PREFIX to the install root that contains lib/cmake/hakoniwa_pdu_endpoint.\n"
+            "Passing a build directory such as build-win or build-shared is not supported here; install hakoniwa-pdu-endpoint first."
         )
     endif()
 endif()
