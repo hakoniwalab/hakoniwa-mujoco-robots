@@ -4,9 +4,29 @@
 
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
+
+namespace {
+
+int scene_geom_capacity(const mjModel* model)
+{
+    constexpr long long kMinimumCapacity = 2000;
+    constexpr long long kMinimumReserve = 1000;
+    const long long model_geoms = model == nullptr
+        ? 0
+        : std::max(0LL, static_cast<long long>(model->ngeom));
+    const long long reserve = std::max(kMinimumReserve, model_geoms / 10);
+    const long long requested = std::max(kMinimumCapacity, model_geoms + reserve);
+    return static_cast<int>(std::min(
+        requested,
+        static_cast<long long>(std::numeric_limits<int>::max())));
+}
+
+}  // namespace
 
 MujocoRenderRuntime::MujocoRenderRuntime(
     mjModel* model,
@@ -111,7 +131,10 @@ void MujocoRenderRuntime::Initialize()
     mjv_defaultOption(&option_);
     mjv_defaultScene(&scene_);
     mjr_defaultContext(&context_);
-    mjv_makeScene(model_, &scene_, 2000);
+    const int maxgeom = scene_geom_capacity(model_);
+    std::cout << "[INFO] MuJoCo Viewer scene capacity: model_geoms="
+              << model_->ngeom << " maxgeom=" << maxgeom << std::endl;
+    mjv_makeScene(model_, &scene_, maxgeom);
     mjr_makeContext(model_, &context_, mjFONTSCALE_150);
 }
 
