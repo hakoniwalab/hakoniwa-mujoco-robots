@@ -79,6 +79,7 @@ public:
     void SetOverlayCallback(ViewerOverlayCallback overlay);
     void SetPreRenderCallback(ViewerPreRenderCallback pre_render);
     void SetKeyCallback(ViewerKeyCallback key_callback);
+    bool SetFollowBody(const char* body_name);
     void Run();
     void MakeContextCurrent();
     bool HasVisibleWindow() const;
@@ -93,6 +94,8 @@ private:
     static void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
     void Initialize();
+    void UpdateFollowCamera();
+    void ToggleFollowCamera();
     void HandleMouseButton(int button, int action, int mods);
     void HandleMouseMove(double xpos, double ypos);
     void HandleScroll(double yoffset);
@@ -110,10 +113,16 @@ private:
     ViewerKeyCallback key_callback_;
 
     mjvCamera camera_ {};
+    mjvCamera free_camera_ {};
     mjvOption option_ {};
     mjvScene scene_ {};
     mjrContext context_ {};
     GLFWwindow* window_ {nullptr};
+    bool follow_camera_enabled_ {false};
+    int follow_body_id_ {-1};
+    double follow_yaw_offset_deg_ {0.0};
+    double follow_elevation_deg_ {-15.0};
+    double follow_distance_ {1.2};
     bool mouse_button_left_ {false};
     bool mouse_button_right_ {false};
     bool mouse_shift_down_ {false};
