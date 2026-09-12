@@ -5,6 +5,7 @@
 #include <GLFW/glfw3.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <mutex>
@@ -128,6 +129,8 @@ void MujocoRenderRuntime::Initialize()
     }
 
     mjv_defaultCamera(&camera_);
+    free_camera_ = camera_;
+    follow_body_id_ = mj_name2id(model_, mjOBJ_BODY, "vehicle");
     mjv_defaultOption(&option_);
     mjv_defaultScene(&scene_);
     mjr_defaultContext(&context_);
@@ -165,6 +168,68 @@ void MujocoRenderRuntime::SetKeyCallback(ViewerKeyCallback key_callback)
     key_callback_ = std::move(key_callback);
 }
 
+bool MujocoRenderRuntime::SetFollowBody(const char* body_name)
+{
+    if (body_name == nullptr || body_name[0] == '\0') {
+        follow_body_id_ = -1;
+        follow_camera_enabled_ = false;
+        return false;
+    }
+
+    const int body_id = mj_name2id(model_, mjOBJ_BODY, body_name);
+    if (body_id < 0) {
+        std::cerr << "[WARN] Follow camera body not found: " << body_name << std::endl;
+        follow_body_id_ = -1;
+        follow_camera_enabled_ = false;
+        return false;
+    }
+
+    follow_body_id_ = body_id;
+    return true;
+}
+
+void MujocoRenderRuntime::UpdateFollowCamera()
+{
+    if (!follow_camera_enabled_ || follow_body_id_ < 0 || data_ == nullptr) {
+        return;
+    }
+
+    const mjtNum* body_pos = &data_->xpos[3 * follow_body_id_];
+    const mjtNum* body_mat = &data_->xmat[9 * follow_body_id_];
+    constexpr double kRadToDeg = 180.0 / 3.14159265358979323846;
+    const double yaw_deg = std::atan2(
+        static_cast<double>(body_mat[3]),
+        static_cast<double>(body_mat[0])) * kRadToDeg;
+
+    camera_.lookat[0] = body_pos[0];
+    camera_.lookat[1] = body_pos[1];
+    camera_.lookat[2] = body_pos[2] + 0.08;
+    camera_.distance = follow_distance_;
+    camera_.azimuth = 90.0 - yaw_deg + follow_yaw_offset_deg_;
+    camera_.elevation = follow_elevation_deg_;
+}
+
+void MujocoRenderRuntime::ToggleFollowCamera()
+{
+    if (follow_body_id_ < 0) {
+        std::cout << "[INFO] Camera follow target is not configured." << std::endl;
+        return;
+    }
+
+    if (!follow_camera_enabled_) {
+        free_camera_ = camera_;
+        follow_camera_enabled_ = true;
+        UpdateFollowCamera();
+    } else {
+        follow_camera_enabled_ = false;
+        camera_ = free_camera_;
+    }
+
+    std::cout << "[INFO] Camera mode: "
+              << (follow_camera_enabled_ ? "follow" : "free")
+              << std::endl;
+}
+
 void MujocoRenderRuntime::Run()
 {
     if (!HasVisibleWindow()) {
@@ -184,6 +249,7 @@ void MujocoRenderRuntime::Run()
                 pre_render_();
             }
 
+            UpdateFollowCamera();
             mjv_updateScene(
                 model_,
                 data_,
@@ -278,6 +344,10 @@ void MujocoRenderRuntime::HandleMouseMove(double xpos, double ypos)
     last_x_ = xpos;
     last_y_ = ypos;
 
+    if (follow_camera_enabled_) {
+        return;
+    }
+
     int mode = mjMOUSE_MOVE_V;
     if (mouse_button_left_) {
         mode = mjMOUSE_ROTATE_H;
@@ -290,6 +360,9 @@ void MujocoRenderRuntime::HandleMouseMove(double xpos, double ypos)
 
 void MujocoRenderRuntime::HandleScroll(double yoffset)
 {
+    if (follow_camera_enabled_) {
+        return;
+    }
     mjv_moveCamera(model_, mjMOUSE_ZOOM, 0.0, 0.05 * yoffset, &scene_, &camera_);
 }
 
@@ -297,6 +370,9 @@ void MujocoRenderRuntime::HandleKeyboard(int key, int action, int mods)
 {
     if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE) {
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
+    }
+    if (action == GLFW_PRESS && key == GLFW_KEY_C) {
+        ToggleFollowCamera();
     }
     if (key_callback_) {
         key_callback_(key, action, mods);
