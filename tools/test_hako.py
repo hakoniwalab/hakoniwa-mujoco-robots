@@ -149,49 +149,5 @@ class NativeMappingTests(unittest.TestCase):
         )
 
 
-class RecipeStateTests(unittest.TestCase):
-    def load_recipe(self, name):
-        spec = importlib.util.spec_from_file_location(name, REPO_ROOT / "tools" / "recipe" / f"{name}.py")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-    def test_validation_and_optimization_use_selected_state_and_keep_default(self):
-        for name in ("generic_ackermann", "hunter"):
-            module = self.load_recipe(name)
-            with self.subTest(recipe=name), tempfile.TemporaryDirectory() as tmp, patch.object(module, "required", side_effect=lambda path, label: path):
-                root = Path(tmp)
-                with patch.object(module, "repo_root", return_value=root), patch.object(module.subprocess, "run") as run:
-                    run.return_value.returncode = 0
-                    for state in (None, root / "host-state", root / "docker-state"):
-                        module.selected_state_dir = state
-                        selected = state or root / ".hako"
-                        module.validate_model()
-                        command = run.call_args.args[0]
-                        report = Path(command[command.index("--report") + 1])
-                        self.assertTrue(report.is_relative_to(selected))
-                        module.optimize_model(2)
-                        command = run.call_args.args[0]
-                        output = Path(command[command.index("--output") + 1])
-                        self.assertTrue(output.is_relative_to(selected))
-                        self.assertEqual(command[-2:], ["--trials", "2"])
-
-    def test_generic_cli_resolves_relative_state_and_resets_default(self):
-        module = self.load_recipe("generic_ackermann")
-        with patch.object(module, "validate_model", return_value=0):
-            self.assertEqual(module.main(["validate", "--state-dir", "external-state"]), 0)
-            self.assertEqual(module.state_dir(), (Path.cwd() / "external-state").resolve())
-            module.main(["validate"])
-            self.assertEqual(module.state_dir(), REPO_ROOT / ".hako")
-
-    def test_hunter_cli_propagates_state_to_generic_runtime(self):
-        module = self.load_recipe("hunter")
-        with patch.object(module, "required", side_effect=lambda path, label: path), patch.object(module.subprocess, "run") as run, patch.object(module.sys, "argv", ["hunter.py", "build", "--state-dir", "external-state"]):
-            run.return_value.returncode = 0
-            self.assertEqual(module.main(), 0)
-            command = run.call_args.args[0]
-            self.assertEqual(command[command.index("--state-dir") + 1], str((Path.cwd() / "external-state").resolve()))
-
-
 if __name__ == "__main__":
     unittest.main()

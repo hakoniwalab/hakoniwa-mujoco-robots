@@ -892,7 +892,7 @@ The top-level README keeps only the entry points, setup, and sample commands. Us
 MIT License
 
 
-## Separate build and Recipe state directories
+## Separate native build directory
 
 `python tools/hako.py build --build-dir /path/to/environment/mujoco-build`
 selects an external build directory on POSIX and Windows. The CLI option overrides
@@ -901,17 +901,7 @@ symlinks are resolved. Without this option, the existing manifest/native default
 remain in effect. POSIX builds use `HAKONIWA_CORE_ROOT`, then `HAKONIWA_HOME`, then
 `/usr/local/hakoniwa` for the Core prefix.
 
-The generic Ackermann and Hunter Recipe entry points also accept
-`--state-dir /path/to/environment/mujoco-state`. This relocates validation reports
-and optimization outputs from `<repository>/.hako/work/<vehicle>` to
-`<state-dir>/work/<vehicle>`. The default remains `<repository>/.hako`.
-For example:
-
-```bash
-python tools/recipe/generic_ackermann.py validate --vehicle golf-cart --state-dir ../host-state/mujoco
-python tools/recipe/hunter.py optimize --state-dir ../host-state/mujoco --trials 2
-```
-
-This state option does not relocate model Forge outputs, runtime Recipe workspaces,
-or native builds; configure those separately. Robot Arm's Business Pack Recipe
-continues to provide its own build directory.
+Concrete Ackermann vehicle applications, Recipes, and PS5 frontends are owned
+by `hakoniwa-urban-mobility`. This repository provides the shared MuJoCo
+physics, Viewer, mirror-body, and contact/impulse backend used by those
+applications.

@@ -1,5 +1,4 @@
 add_subdirectory(joint)
 add_subdirectory(agilex_tracer)
-add_subdirectory(generic_ackermann)
 add_subdirectory(unitree_go1)
 add_subdirectory(shadow_hand)

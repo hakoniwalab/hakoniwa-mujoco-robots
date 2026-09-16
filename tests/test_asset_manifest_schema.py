@@ -24,7 +24,7 @@ class AssetManifestSchemaTest(unittest.TestCase):
         cls.schema = load_json(SCHEMA_PATH)
         Draft202012Validator.check_schema(cls.schema)
         cls.validator = Draft202012Validator(cls.schema)
-        cls.base_manifest = load_json(ROOT / "recipes/generic_ackermann/asset-manifest.json")
+        cls.base_manifest = load_json(ROOT / "config/assets/tb3-hakoniwa-asset.json")
 
     def test_existing_manifests_remain_valid_without_schema_version(self):
         paths = [
