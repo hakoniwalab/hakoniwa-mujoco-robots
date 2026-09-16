@@ -3,6 +3,19 @@
 One compiled Hakoniwa asset runs different four-wheel Ackermann MJCF models.
 Vehicle-specific C++ implementations are not part of the contract.
 
+## MuJoCo model formats
+
+The shared world loader accepts canonical MuJoCo XML (`.xml`) and compiled
+MuJoCo binary models (`.mjb`). XML remains the editable, portable source of
+truth. MJB is a generated runtime artifact for large composed worlds where XML
+compilation would otherwise delay every startup.
+
+MJB files are bound to the MuJoCo version used to generate them. Generate and
+reload-validate an MJB with the same MuJoCo shared library used by the consuming
+asset, record the source XML, MJB, and library hashes, and regenerate the MJB
+after a MuJoCo upgrade. Hakoniwa Business Pack provides
+`tools/mujoco_model_compiler.py` for this materialization contract.
+
 ## Package contract
 
 ```text

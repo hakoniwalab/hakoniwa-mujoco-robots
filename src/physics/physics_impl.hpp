@@ -6,8 +6,13 @@
 #include "actuator/named_actuator_impl.hpp"
 #include "actuator/joint_trajectory_actuator_impl.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
+#include <filesystem>
 #include <stdexcept>
+#include <string>
 #include <unordered_map>
 
 namespace hako {
@@ -160,16 +165,62 @@ namespace impl {
     };
     class WorldImpl : public IWorld
     {
+    private:
+        static std::string ModelExtension(const std::string& model_file)
+        {
+            std::string extension = std::filesystem::path(model_file).extension().string();
+            std::transform(
+                extension.begin(), extension.end(), extension.begin(),
+                [](unsigned char value) { return static_cast<char>(std::tolower(value)); });
+            return extension;
+        }
+
     public:
         WorldImpl() {}
         virtual ~WorldImpl() {}
         void loadModel(const std::string& model_file) override
         {
-            model = mj_loadXML(model_file.c_str(), nullptr, nullptr, 0);
-            if (!model) {
-                throw std::runtime_error("Model loading failed");
+            const std::string extension = ModelExtension(model_file);
+            mjModel* loaded_model = nullptr;
+            if (extension == ".xml") {
+                std::array<char, 4096> error {};
+                loaded_model = mj_loadXML(
+                    model_file.c_str(), nullptr, error.data(),
+                    static_cast<int>(error.size()));
+                if (loaded_model == nullptr) {
+                    const std::string detail = error.data()[0] != '\0'
+                        ? std::string(": ") + error.data()
+                        : std::string();
+                    throw std::runtime_error(
+                        "MuJoCo XML model loading failed: " + model_file + detail);
+                }
+            } else if (extension == ".mjb") {
+                loaded_model = mj_loadModel(model_file.c_str(), nullptr);
+                if (loaded_model == nullptr) {
+                    throw std::runtime_error(
+                        "MuJoCo MJB model loading failed: " + model_file
+                        + ". MJB artifacts must be generated with a compatible MuJoCo version.");
+                }
+            } else {
+                throw std::runtime_error(
+                    "Unsupported MuJoCo model extension '" + extension
+                    + "': " + model_file + ". Expected .xml or .mjb.");
             }
-            data = mj_makeData(model);
+
+            mjData* loaded_data = mj_makeData(loaded_model);
+            if (loaded_data == nullptr) {
+                mj_deleteModel(loaded_model);
+                throw std::runtime_error("MuJoCo data allocation failed: " + model_file);
+            }
+
+            if (data != nullptr) {
+                mj_deleteData(data);
+            }
+            if (model != nullptr) {
+                mj_deleteModel(model);
+            }
+            model = loaded_model;
+            data = loaded_data;
             mj_forward(model, data);
         }
         void advanceTimeStep() override

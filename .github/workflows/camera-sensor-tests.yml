@@ -32,6 +32,7 @@ jobs:
           cmake -S src -B src/cmake-build -G Ninja \
             -DHAKO_USE_THIRDPARTY_HAKONIWA=ON \
             -DHAKO_BUILD_SENSOR_TESTS=ON \
+            -DHAKO_BUILD_PHYSICS_TESTS=ON \
             -DHAKO_BUILD_CAMERA_SMOKE_TESTS=OFF \
             -DUSE_VIEWER=OFF \
             -DHAKONIWA_ASSETS_LIBRARY=assets \
@@ -61,3 +62,7 @@ jobs:
       - name: Run sensor unit tests
         run: |
           cmake --build src/cmake-build --target run_sensor_unit_tests
+
+      - name: Run physics unit tests
+        run: |
+          cmake --build src/cmake-build --target run_physics_unit_tests

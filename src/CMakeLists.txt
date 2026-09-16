@@ -446,6 +446,40 @@ endif()
 
 
 add_subdirectory(sensors)
+
+option(HAKO_BUILD_PHYSICS_TESTS "Build shared MuJoCo physics tests" OFF)
+if(HAKO_BUILD_PHYSICS_TESTS)
+    add_executable(
+        world_model_loader_test
+        ${PROJECT_ROOT_DIR}/tests/physics/unit/world_model_loader_test.cpp
+    )
+    target_compile_features(world_model_loader_test PRIVATE cxx_std_20)
+    hako_configure_target_warnings(world_model_loader_test)
+    target_include_directories(world_model_loader_test
+        PRIVATE ${PROJECT_ROOT_DIR}
+        PRIVATE ${PROJECT_ROOT_DIR}/src
+        PRIVATE ${PROJECT_ROOT_DIR}/include
+    )
+    target_include_directories(world_model_loader_test SYSTEM PRIVATE
+        ${MUJOCO_SOURCE_DIR}
+        ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
+    )
+    target_link_libraries(world_model_loader_test PRIVATE ${LIBMUJOCO})
+    hako_configure_windows_runtime(world_model_loader_test)
+
+    add_custom_target(
+        physics_unit_tests
+        DEPENDS world_model_loader_test
+    )
+    add_custom_target(
+        run_physics_unit_tests
+        COMMAND $<TARGET_FILE:world_model_loader_test>
+        DEPENDS physics_unit_tests
+        WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
+        USES_TERMINAL
+    )
+endif()
+
 add_subdirectory(main_for_sample/forklift)
 add_subdirectory(main_for_sample/tb3)
 add_subdirectory(main_for_sample/drone_ball)
