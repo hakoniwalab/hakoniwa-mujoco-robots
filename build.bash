@@ -130,7 +130,9 @@ if [[ "${USE_THIRDPARTY_HAKONIWA}" != "1" ]]; then
     )
 fi
 
-CMAKE_ARGS+=("${EXTRA_CMAKE_ARGS[@]}")
+if [[ ${#EXTRA_CMAKE_ARGS[@]} -gt 0 ]]; then
+    CMAKE_ARGS+=("${EXTRA_CMAKE_ARGS[@]}")
+fi
 
 cmake "${CMAKE_ARGS[@]}"
 cmake --build "${BUILD_DIR}" --parallel

@@ -355,7 +355,7 @@ void MujocoRenderRuntime::HandleMouseMove(double xpos, double ypos)
         mode = mjMOUSE_ZOOM;
     }
 
-    mjv_moveCamera(model_, mode, dx / 200.0, dy / 200.0, &scene_, &camera_);
+    mjv_moveCamera(model_, mode, dx / 200.0, dy / 200.0, &camera_);
 }
 
 void MujocoRenderRuntime::HandleScroll(double yoffset)
@@ -363,7 +363,7 @@ void MujocoRenderRuntime::HandleScroll(double yoffset)
     if (follow_camera_enabled_) {
         return;
     }
-    mjv_moveCamera(model_, mjMOUSE_ZOOM, 0.0, 0.05 * yoffset, &scene_, &camera_);
+    mjv_moveCamera(model_, mjMOUSE_ZOOM, 0.0, 0.05 * yoffset, &camera_);
 }
 
 void MujocoRenderRuntime::HandleKeyboard(int key, int action, int mods)
