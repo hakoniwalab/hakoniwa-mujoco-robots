@@ -831,13 +831,18 @@ PYTHON_CMD=/path/to/python3.12 ./doctor.bash
 
 ### Q3. CMake cannot find `hakoniwa-core-pro` or `hakoniwa-pdu-endpoint`.
 
-Install both packages first, then re-run `./doctor.bash`.
+Build/install both dependencies through the manifest-driven `hako.py` flow in
+[Prerequisites](#prerequisites), then re-run `python tools/hako.py doctor`.
 
-If they are not installed under `/usr/local/hakoniwa`, set:
+The Endpoint install must export `hakoniwa_pdu_endpoint::core_callback`; the
+Core-free Endpoint default is not sufficient for this repository's SHM configs.
+Use `config/build/hakoniwa-pdu-endpoint-core.yaml`.
+
+If the packages are installed under a custom prefix, set:
 
 ```bash
-export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
-export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa-pdu-endpoint/install
+export HAKONIWA_CORE_ROOT=/path/to/hakoniwa/install
+export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa/install
 ```
 
 ### Q4. CMake cannot find `glfw3`.
