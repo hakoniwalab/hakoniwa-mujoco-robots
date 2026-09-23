@@ -325,12 +325,17 @@ export HAKONIWA_PDU_ENDPOINT_ROOT="$HAKONIWA_INSTALL_PREFIX"
 Build and install Hakoniwa Core first:
 
 ```bash
-python thirdparty/hakoniwa-core-pro/tools/hako.py doctor
+python thirdparty/hakoniwa-core-pro/tools/hako.py doctor \
+  --config config/build/hakoniwa-core-runtime.yaml
 python thirdparty/hakoniwa-core-pro/tools/hako.py build \
+  --config config/build/hakoniwa-core-runtime.yaml \
   --install-dir "$HAKONIWA_INSTALL_PREFIX"
 python thirdparty/hakoniwa-core-pro/tools/hako.py install \
+  --config config/build/hakoniwa-core-runtime.yaml \
   --install-dir "$HAKONIWA_INSTALL_PREFIX"
 ```
+
+The Core profile `config/build/hakoniwa-core-runtime.yaml` keeps the pinned runtime capacity while disabling Core component tests that are not required by this consumer build.
 
 This repository's runtime configs use Hakoniwa shared memory. Therefore
 `hakoniwa-pdu-endpoint` must be built with Hakoniwa Core support enabled.
