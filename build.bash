@@ -24,8 +24,10 @@ Install hints:
      export HAKONIWA_PDU_ENDPOINT_ROOT="$HAKONIWA_INSTALL_PREFIX"
 
      python thirdparty/hakoniwa-core-pro/tools/hako.py build \
+       --config "${PROJECT_ROOT}/config/build/hakoniwa-core-runtime.yaml" \
        --install-dir "$HAKONIWA_INSTALL_PREFIX"
      python thirdparty/hakoniwa-core-pro/tools/hako.py install \
+       --config "${PROJECT_ROOT}/config/build/hakoniwa-core-runtime.yaml" \
        --install-dir "$HAKONIWA_INSTALL_PREFIX"
 
   3. Build/install Endpoint with Hakoniwa Core support enabled:
