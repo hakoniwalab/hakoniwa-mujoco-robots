@@ -301,51 +301,65 @@ For compatibility, `controll.bash` is temporarily kept and internally calls `con
 
 ## Prerequisites
 
-### 1) Install hakoniwa-core-pro (required)
+### 1) Clone this repository with its pinned dependencies
+
+The normal standalone build uses the Hakoniwa Core and PDU Endpoint submodules
+pinned by this repository.
 
 ```bash
-git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
-cd hakoniwa-core-pro
-bash build.bash
-bash install.bash
+git clone https://github.com/hakoniwalab/hakoniwa-mujoco-robots.git
+cd hakoniwa-mujoco-robots
+git submodule update --init --recursive
 ```
 
-Set paths if needed:
-
-Linux:
-```bash
-export PATH=/usr/local/hakoniwa/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$LD_LIBRARY_PATH
-```
-
-macOS:
-```bash
-export PATH=/usr/local/hakoniwa/bin:$PATH
-export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
-```
-
-### 2) Install hakoniwa-pdu-endpoint (required)
-
-This repository links against the installed C++ `hakoniwa-pdu-endpoint` package.
+Choose one writable install prefix and use it consistently for Core and Endpoint:
 
 ```bash
-git clone https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git
-cd hakoniwa-pdu-endpoint
-bash build.bash
-sudo bash install.bash
+export HAKONIWA_INSTALL_PREFIX="${HAKONIWA_INSTALL_PREFIX:-$HOME/.local/hakoniwa}"
+export HAKONIWA_CORE_ROOT="$HAKONIWA_INSTALL_PREFIX"
+export HAKONIWA_PDU_ENDPOINT_ROOT="$HAKONIWA_INSTALL_PREFIX"
 ```
 
-If you install it outside `/usr/local/hakoniwa`, set:
+### 2) Build and install Core + Core-enabled Endpoint through `hako.py`
+
+Build and install Hakoniwa Core first:
 
 ```bash
-export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa-pdu-endpoint/install
+python thirdparty/hakoniwa-core-pro/tools/hako.py doctor
+python thirdparty/hakoniwa-core-pro/tools/hako.py build \
+  --install-dir "$HAKONIWA_INSTALL_PREFIX"
+python thirdparty/hakoniwa-core-pro/tools/hako.py install \
+  --install-dir "$HAKONIWA_INSTALL_PREFIX"
 ```
 
-If Hakoniwa core is also outside `/usr/local/hakoniwa`, set:
+This repository's runtime configs use Hakoniwa shared memory. Therefore
+`hakoniwa-pdu-endpoint` must be built with Hakoniwa Core support enabled.
+Use the repository-owned build profile:
+
+```text
+config/build/hakoniwa-pdu-endpoint-core.yaml
+```
+
+Then build and install Endpoint:
 
 ```bash
-export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
+python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py doctor \
+  --config config/build/hakoniwa-pdu-endpoint-core.yaml
+
+python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py build \
+  --config config/build/hakoniwa-pdu-endpoint-core.yaml
+
+python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py install \
+  --config config/build/hakoniwa-pdu-endpoint-core.yaml \
+  --install-dir "$HAKONIWA_INSTALL_PREFIX"
 ```
+
+The Endpoint repository's default `hakoniwa-build.yaml` intentionally keeps
+`features.hakoniwa_core: false` because TCP/UDP/WebSocket/Storage and similar
+Core-free uses do not require Hakoniwa Core. Do not change that default for this
+repository. The MuJoCo Robots profile explicitly requests
+`features.hakoniwa_core: true` and disables Endpoint benchmarks that are not
+part of this runtime dependency.
 
 ### 3) Install Python runtime packages (required for Python tools)
 
@@ -361,14 +375,14 @@ installs the `hakopy` Python binding. Newer installer flows may also write a
 Hakoniwa environment file; source it when it exists:
 
 ```bash
-test -f /usr/local/hakoniwa/env.bash && source /usr/local/hakoniwa/env.bash
+test -f ${HAKONIWA_INSTALL_PREFIX}/env.bash && source ${HAKONIWA_INSTALL_PREFIX}/env.bash
 ```
 
 If that file does not exist, set the equivalent environment variables manually
 when needed:
 
 ```bash
-export HAKONIWA_HOME=/usr/local/hakoniwa
+export HAKONIWA_HOME="${HAKONIWA_INSTALL_PREFIX}"
 export PATH="${HAKONIWA_HOME}/bin:${PATH}"
 export CMAKE_PREFIX_PATH="${HAKONIWA_HOME}:${CMAKE_PREFIX_PATH:-}"
 export PKG_CONFIG_PATH="${HAKONIWA_HOME}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
@@ -417,21 +431,39 @@ sudo apt-get install -y libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils libglfw3-
 
 ## Setup
 
+After the Core and Core-enabled Endpoint packages above are installed:
+
 ```bash
-git clone https://github.com/hakoniwalab/hakoniwa-mujoco-robots.git
-cd hakoniwa-mujoco-robots
-git submodule update --init --recursive
-./doctor.bash
-./build.bash
+python tools/hako.py doctor
+python tools/hako.py build
 ```
 
 - MuJoCo version is managed by `MUJOCO_VERSION.txt`.
-- `./build.bash` runs a preflight check before CMake and reports missing prerequisites such as `hakoniwa-core-pro`, `hakoniwa-pdu-endpoint`, or `glfw3`.
-- If the preflight check blocks a custom setup temporarily, use `HAKO_SKIP_PREFLIGHT=1 ./build.bash`.
-- Clean build:
+- `tools/hako.py` is the normal user-facing build entry point. The legacy
+  `build.bash` / `build-win.ps1` drivers remain underneath for platform-specific
+  compatibility.
+- `doctor.bash` also verifies that the installed Endpoint package exports
+  `hakoniwa_pdu_endpoint::core_callback`; a Core-free Endpoint install is reported
+  before runtime.
+
+### TurtleBot3 SHM smoke check
+
+TurtleBot3 is a convenient end-to-end check because its Endpoint configuration
+uses `protocol: "shm"`.
+
 ```bash
-./build.bash clean
+./src/cmake-build/main_for_sample/tb3/tb3_sim
 ```
+
+A Core-enabled Endpoint should allow the simulator to pass Endpoint creation.
+In particular, it must not fail with:
+
+```text
+protocol 'shm' requested but Hakoniwa core support is disabled
+```
+
+The same Core-enabled Endpoint contract is used by the other Hakoniwa SHM
+examples in this repository.
 
 ## Environment Diagnostics
 
@@ -770,7 +802,7 @@ First install `hakoniwa-core-pro` following its README, then check that
 `hakopy` is visible to Python 3.12:
 
 ```bash
-test -f /usr/local/hakoniwa/env.bash && source /usr/local/hakoniwa/env.bash
+test -f ${HAKONIWA_INSTALL_PREFIX}/env.bash && source ${HAKONIWA_INSTALL_PREFIX}/env.bash
 python3.12 -c "import hakopy; print(hakopy)"
 ```
 
