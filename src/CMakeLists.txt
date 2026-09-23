@@ -349,7 +349,12 @@ if(HAKO_USE_THIRDPARTY_HAKONIWA)
     set(HAKO_PDU_TYPES_INCLUDE_DIR "${HAKO_THIRDPARTY_CORE_DIR}/hakoniwa-pdu-registry/pdu/types")
     set(HAKO_ASSETS_LINK_TARGET assets)
     set(HAKO_CONDUCTOR_LINK_TARGET conductor)
-    set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
+    if(NOT TARGET hakoniwa_pdu_endpoint::core_callback)
+        message(FATAL_ERROR
+            "Vendored hakoniwa-pdu-endpoint does not provide the Core callback target required by SHM assets."
+        )
+    endif()
+    set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::core_callback)
     message(STATUS "Using vendored Hakoniwa targets from thirdparty/")
 else()
     set(HAKO_CORE_INCLUDE_ROOT "${HAKONIWA_INSTALL_PREFIX}/include/hakoniwa")
@@ -401,7 +406,14 @@ else()
     endif()
 
     if(hakoniwa_pdu_endpoint_FOUND)
-        set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::hakoniwa_pdu_endpoint)
+        if(NOT TARGET hakoniwa_pdu_endpoint::core_callback)
+            message(FATAL_ERROR
+                "hakoniwa-pdu-endpoint was found, but it was built without the Core callback target required by this repository's SHM assets.\n"
+                "Rebuild/install Endpoint with features.hakoniwa_core=true.\n"
+                "This repository provides config/build/hakoniwa-pdu-endpoint-core.yaml for that purpose."
+            )
+        endif()
+        set(HAKO_PDU_ENDPOINT_LINK_TARGET hakoniwa_pdu_endpoint::core_callback)
     else()
         message(FATAL_ERROR
             "hakoniwa_pdu_endpoint package could not be loaded.\n"
