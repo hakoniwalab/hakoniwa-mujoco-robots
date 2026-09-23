@@ -235,12 +235,17 @@ export HAKONIWA_PDU_ENDPOINT_ROOT="$HAKONIWA_INSTALL_PREFIX"
 まず Hakoniwa Core を build/install します。
 
 ```bash
-python thirdparty/hakoniwa-core-pro/tools/hako.py doctor
+python thirdparty/hakoniwa-core-pro/tools/hako.py doctor \
+  --config config/build/hakoniwa-core-runtime.yaml
 python thirdparty/hakoniwa-core-pro/tools/hako.py build \
+  --config config/build/hakoniwa-core-runtime.yaml \
   --install-dir "$HAKONIWA_INSTALL_PREFIX"
 python thirdparty/hakoniwa-core-pro/tools/hako.py install \
+  --config config/build/hakoniwa-core-runtime.yaml \
   --install-dir "$HAKONIWA_INSTALL_PREFIX"
 ```
+
+Core 側は `config/build/hakoniwa-core-runtime.yaml` を使い、このリポジトリが依存する runtime capacity を固定しつつ、consumer build には不要な Core component test を無効化します。
 
 このリポジトリの runtime config は Hakoniwa shared memory を使用します。
 そのため `hakoniwa-pdu-endpoint` は Hakoniwa Core 対応で build する必要があります。
