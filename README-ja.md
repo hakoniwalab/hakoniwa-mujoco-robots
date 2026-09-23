@@ -211,51 +211,65 @@ hako-cmd start
 
 ## 前提環境
 
-### 1) hakoniwa-core-pro の導入（必須）
+### 1) submodule を含めて clone する
+
+通常の standalone build では、このリポジトリが固定している
+Hakoniwa Core / PDU Endpoint の submodule を利用します。
 
 ```bash
-git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
-cd hakoniwa-core-pro
-bash build.bash
-bash install.bash
+git clone https://github.com/hakoniwalab/hakoniwa-mujoco-robots.git
+cd hakoniwa-mujoco-robots
+git submodule update --init --recursive
 ```
 
-必要に応じてパスを設定：
-
-Linux:
-```bash
-export PATH=/usr/local/hakoniwa/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$LD_LIBRARY_PATH
-```
-
-macOS:
-```bash
-export PATH=/usr/local/hakoniwa/bin:$PATH
-export DYLD_LIBRARY_PATH=/usr/local/hakoniwa/lib:$DYLD_LIBRARY_PATH
-```
-
-### 2) hakoniwa-pdu-endpoint の導入（必須）
-
-このリポジトリは、install 済みの C++ `hakoniwa-pdu-endpoint` package に link します。
+Core と Endpoint で同じ install prefix を使います。
 
 ```bash
-git clone https://github.com/hakoniwalab/hakoniwa-pdu-endpoint.git
-cd hakoniwa-pdu-endpoint
-bash build.bash
-sudo bash install.bash
+export HAKONIWA_INSTALL_PREFIX="${HAKONIWA_INSTALL_PREFIX:-$HOME/.local/hakoniwa}"
+export HAKONIWA_CORE_ROOT="$HAKONIWA_INSTALL_PREFIX"
+export HAKONIWA_PDU_ENDPOINT_ROOT="$HAKONIWA_INSTALL_PREFIX"
 ```
 
-`/usr/local/hakoniwa` 以外へ install した場合:
+### 2) `hako.py` で Core と Core 対応 Endpoint を build/install する
+
+まず Hakoniwa Core を build/install します。
 
 ```bash
-export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa-pdu-endpoint/install
+python thirdparty/hakoniwa-core-pro/tools/hako.py doctor
+python thirdparty/hakoniwa-core-pro/tools/hako.py build \
+  --install-dir "$HAKONIWA_INSTALL_PREFIX"
+python thirdparty/hakoniwa-core-pro/tools/hako.py install \
+  --install-dir "$HAKONIWA_INSTALL_PREFIX"
 ```
 
-Hakoniwa core も `/usr/local/hakoniwa` 以外にある場合:
+このリポジトリの runtime config は Hakoniwa shared memory を使用します。
+そのため `hakoniwa-pdu-endpoint` は Hakoniwa Core 対応で build する必要があります。
+MuJoCo Robots 側で、その build intent を次の manifest として管理します。
+
+```text
+config/build/hakoniwa-pdu-endpoint-core.yaml
+```
+
+Endpoint は次の手順で build/install します。
 
 ```bash
-export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
+python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py doctor \
+  --config config/build/hakoniwa-pdu-endpoint-core.yaml
+
+python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py build \
+  --config config/build/hakoniwa-pdu-endpoint-core.yaml
+
+python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py install \
+  --config config/build/hakoniwa-pdu-endpoint-core.yaml \
+  --install-dir "$HAKONIWA_INSTALL_PREFIX"
 ```
+
+Endpoint 本体の既定 `hakoniwa-build.yaml` が
+`features.hakoniwa_core: false` なのは意図した設計です。
+TCP / UDP / WebSocket / Storage など Core を必要としない用途まで
+Core 依存にしないためです。この既定値は変更せず、
+MuJoCo Robots 側の profile で `features.hakoniwa_core: true` を要求します。
+また、この dependency build では不要な Endpoint benchmark も無効化します。
 
 ### 3) hakoniwa-pdu Python package の導入（Python tools では必須）
 
@@ -290,21 +304,39 @@ sudo apt-get install -y libgl1 libgl1-mesa-dri libglx-mesa0 mesa-utils libglfw3-
 
 ## セットアップ
 
+上記の Core と Core 対応 Endpoint を install した後、MuJoCo Robots 本体は
+`hako.py` から build します。
+
 ```bash
-git clone https://github.com/hakoniwalab/hakoniwa-mujoco-robots.git
-cd hakoniwa-mujoco-robots
-git submodule update --init --recursive
-./doctor.bash
-./build.bash
+python tools/hako.py doctor
+python tools/hako.py build
 ```
 
-- MuJoCoバージョンは `MUJOCO_VERSION.txt` で管理します。
-- `./build.bash` は CMake 実行前に preflight check を行い、`hakoniwa-core-pro`、`hakoniwa-pdu-endpoint`、`glfw3` など不足している前提を表示します。
-- 独自環境で一時的に preflight check を回避したい場合は、`HAKO_SKIP_PREFLIGHT=1 ./build.bash` を使えます。
-- クリーンビルド:
+- MuJoCo バージョンは `MUJOCO_VERSION.txt` で管理します。
+- 通常ユーザー向けの build 入口は `tools/hako.py` です。
+  `build.bash` / `build-win.ps1` は platform 固有処理を担う互換 driver として残します。
+- `doctor.bash` は install 済み Endpoint が
+  `hakoniwa_pdu_endpoint::core_callback` を export していることも確認します。
+  Core なし Endpoint を使っている場合は runtime より前に検出します。
+
+### TurtleBot3 で SHM を確認する
+
+TurtleBot3 は Endpoint config が `protocol: "shm"` のため、
+Core 対応 Endpoint が正しく入っているか確認しやすい example です。
+
 ```bash
-./build.bash clean
+./src/cmake-build/main_for_sample/tb3/tb3_sim
 ```
+
+Core 対応 Endpoint であれば Endpoint 作成を通過し、少なくとも次のエラーでは
+停止しません。
+
+```text
+protocol 'shm' requested but Hakoniwa core support is disabled
+```
+
+この Core 対応 Endpoint 契約は、このリポジトリ内の他の Hakoniwa SHM example
+でも共通です。
 
 ## 環境診断
 
