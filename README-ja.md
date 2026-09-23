@@ -679,13 +679,19 @@ PYTHON_CMD=/path/to/python ./doctor.bash
 
 ### Q3. CMake が `hakoniwa-core-pro` や `hakoniwa-pdu-endpoint` を見つけられません。
 
-まず両方を install してから、`./doctor.bash` を再実行してください。
+[前提環境](#前提環境) の `hako.py` + build manifest 手順で両方を
+build/install してから、`python tools/hako.py doctor` を再実行してください。
 
-`/usr/local/hakoniwa` 以外に install している場合は、以下を設定します。
+このリポジトリの SHM config では、Endpoint が
+`hakoniwa_pdu_endpoint::core_callback` を export している必要があります。
+Endpoint の Core-free 既定 build ではなく
+`config/build/hakoniwa-pdu-endpoint-core.yaml` を使用してください。
+
+独自 prefix に install した場合は、以下を設定します。
 
 ```bash
-export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
-export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa-pdu-endpoint/install
+export HAKONIWA_CORE_ROOT=/path/to/hakoniwa/install
+export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa/install
 ```
 
 ### Q4. CMake が `glfw3` を見つけられません。
