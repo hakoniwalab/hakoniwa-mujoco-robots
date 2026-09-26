@@ -1,0 +1,22 @@
+# Runtime-oriented Hakoniwa Core build intent for hakoniwa-mujoco-robots.
+# Keep the pinned Core capacity defaults while avoiding Component test
+# prerequisites that are unrelated to consuming Core as a runtime dependency.
+version: 1
+
+limits:
+  asset_num: 16
+  pdu_channel_max: 8192
+  recv_event_max: 4096
+  service_client_max: 256
+  service_max: 1024
+  client_name_len_max: 64
+  service_name_len_max: 128
+
+python:
+  soabi: false
+
+features:
+  callback_assets_shared: false
+
+validation:
+  tests: false

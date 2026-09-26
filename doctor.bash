@@ -63,6 +63,21 @@ check_cmake_package() {
     fi
 }
 
+check_endpoint_core_target() {
+    local root="${HAKONIWA_PDU_ENDPOINT_ROOT:-${HAKONIWA_CORE_ROOT:-/usr/local/hakoniwa}}"
+    local targets="$root/lib/cmake/hakoniwa_pdu_endpoint/hakoniwa_pdu_endpointTargets.cmake"
+
+    if [ ! -f "$targets" ]; then
+        return
+    fi
+
+    if grep -q "hakoniwa_pdu_endpoint::core_callback" "$targets"; then
+        ok "hakoniwa-pdu-endpoint Core callback target found"
+    else
+        fail "hakoniwa-pdu-endpoint is installed without Hakoniwa Core support. Rebuild it with config/build/hakoniwa-pdu-endpoint-core.yaml via thirdparty/hakoniwa-pdu-endpoint/tools/hako.py."
+    fi
+}
+
 check_python_package() {
     local python_cmd="$1"
     local package_name="$2"
@@ -191,6 +206,7 @@ fi
 check_path_dir "thirdparty/nolman single include" "$ROOT_DIR/thirdparty/nolman/single_include/nlohmann"
 check_cmake_package "hakoniwa-core-pro" "${HAKONIWA_CORE_ROOT:-/usr/local/hakoniwa}" HAKONIWA_CORE_ROOT "lib/cmake/hakoniwa-core/hakoniwa-coreConfig.cmake"
 check_cmake_package "hakoniwa-pdu-endpoint" "${HAKONIWA_PDU_ENDPOINT_ROOT:-/usr/local/hakoniwa}" HAKONIWA_PDU_ENDPOINT_ROOT "lib/cmake/hakoniwa_pdu_endpoint/hakoniwa_pdu_endpointConfig.cmake"
+check_endpoint_core_target
 check_glfw
 
 printf '\nSummary: %d failure(s), %d warning(s)\n' "$FAILURES" "$WARNINGS"

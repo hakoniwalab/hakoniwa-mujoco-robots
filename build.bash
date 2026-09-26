@@ -13,24 +13,39 @@ print_install_help() {
     cat <<EOF
 
 Install hints:
-  hakoniwa-core-pro:
-    git clone --recursive https://github.com/hakoniwalab/hakoniwa-core-pro.git
-    cd hakoniwa-core-pro
-    bash build.bash
-    bash install.bash
+  The supported standalone dependency path is manifest-driven through hako.py.
 
-  glfw:
-    macOS:  brew install glfw
-    Ubuntu: sudo apt-get update && sudo apt-get install -y libglfw3-dev
+  1. Initialize the pinned dependencies:
+     git submodule update --init --recursive
 
-  hakoniwa-pdu-endpoint:
-    Install it into /usr/local/hakoniwa, or set:
-      export HAKONIWA_PDU_ENDPOINT_ROOT=/path/to/hakoniwa-pdu-endpoint/install
+  2. Choose one install prefix and build/install Hakoniwa Core:
+     export HAKONIWA_INSTALL_PREFIX="${HAKONIWA_INSTALL_PREFIX:-$HOME/.local/hakoniwa}"
+     export HAKONIWA_CORE_ROOT="$HAKONIWA_INSTALL_PREFIX"
+     export HAKONIWA_PDU_ENDPOINT_ROOT="$HAKONIWA_INSTALL_PREFIX"
 
-If you installed Hakoniwa core outside /usr/local/hakoniwa, set:
-  export HAKONIWA_CORE_ROOT=/path/to/hakoniwa-core-pro/install
+     python thirdparty/hakoniwa-core-pro/tools/hako.py build \
+       --config "${PROJECT_ROOT}/config/build/hakoniwa-core-runtime.yaml" \
+       --install-dir "$HAKONIWA_INSTALL_PREFIX"
+     python thirdparty/hakoniwa-core-pro/tools/hako.py install \
+       --config "${PROJECT_ROOT}/config/build/hakoniwa-core-runtime.yaml" \
+       --install-dir "$HAKONIWA_INSTALL_PREFIX"
 
-To use the Hakoniwa submodules in this repository, pass:
+  3. Build/install Endpoint with Hakoniwa Core support enabled:
+     python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py build \
+       --config "${PROJECT_ROOT}/config/build/hakoniwa-pdu-endpoint-core.yaml"
+     python thirdparty/hakoniwa-pdu-endpoint/tools/hako.py install \
+       --config "${PROJECT_ROOT}/config/build/hakoniwa-pdu-endpoint-core.yaml" \
+       --install-dir "$HAKONIWA_INSTALL_PREFIX"
+
+  4. Install GLFW:
+     macOS:  brew install glfw
+     Ubuntu: sudo apt-get update && sudo apt-get install -y libglfw3-dev
+
+The Endpoint default manifest is intentionally Core-free. This repository uses
+SHM, so use config/build/hakoniwa-pdu-endpoint-core.yaml rather than changing
+Endpoint's default.
+
+To use the Hakoniwa submodules directly as a developer compatibility path, pass:
   -DHAKO_USE_THIRDPARTY_HAKONIWA=ON
 
 To bypass this preflight check temporarily:

@@ -1,0 +1,32 @@
+# Build intent for the hakoniwa-pdu-endpoint dependency used by this repository.
+# MuJoCo robot assets communicate through Hakoniwa shared memory, so Endpoint
+# must be built with Hakoniwa Core support enabled.
+version: 1
+
+build:
+  type: Release
+  dir: build-mujoco-robots
+  shared: false
+  parallel: 0
+
+bindings:
+  python: false
+
+features:
+  hakoniwa_core: true
+  zenoh: false
+  mqtt: false
+
+validation:
+  tests: false
+  examples: false
+  tools: false
+  benchmarks: false
+  python_import: false
+
+# Leave the Core path environment-driven so the same profile can be used with
+# /usr/local/hakoniwa, a Business Pack Foundation prefix, or another local
+# install. Set HAKONIWA_CORE_ROOT before invoking Endpoint's tools/hako.py.
+paths:
+  hakoniwa_core_root: ""
+  vcpkg_root: ""
