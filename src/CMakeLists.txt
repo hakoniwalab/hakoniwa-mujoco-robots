@@ -461,6 +461,8 @@ endif()
 add_subdirectory(sensors)
 
 option(HAKO_BUILD_PHYSICS_TESTS "Build shared MuJoCo physics tests" OFF)
+set(HAKO_SENSOR_ADAPTER_INCLUDE_DIR "" CACHE PATH
+    "hakoniwa-sensor-adapter include directory (enables the ray caster test)")
 if(HAKO_BUILD_PHYSICS_TESTS)
     add_executable(
         world_model_loader_test
@@ -480,13 +482,39 @@ if(HAKO_BUILD_PHYSICS_TESTS)
     target_link_libraries(world_model_loader_test PRIVATE ${LIBMUJOCO})
     hako_configure_windows_runtime(world_model_loader_test)
 
+    set(_hako_physics_unit_tests world_model_loader_test)
+    set(_hako_physics_unit_test_commands COMMAND $<TARGET_FILE:world_model_loader_test>)
+    # The ray caster test needs the hakoniwa-sensor-adapter headers.
+    if(HAKO_SENSOR_ADAPTER_INCLUDE_DIR)
+        add_executable(
+            ray_caster_test
+            ${PROJECT_ROOT_DIR}/tests/physics/unit/ray_caster_test.cpp
+        )
+        target_compile_features(ray_caster_test PRIVATE cxx_std_20)
+        target_compile_definitions(ray_caster_test PRIVATE HAKO_MUJOCO_ROBOTS_ENABLE_RAY_CASTER)
+        hako_configure_target_warnings(ray_caster_test)
+        target_include_directories(ray_caster_test
+            PRIVATE ${PROJECT_ROOT_DIR}/src
+            PRIVATE ${PROJECT_ROOT_DIR}/include
+        )
+        target_include_directories(ray_caster_test SYSTEM PRIVATE
+            ${MUJOCO_SOURCE_DIR}
+            ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
+            ${HAKO_SENSOR_ADAPTER_INCLUDE_DIR}
+        )
+        target_link_libraries(ray_caster_test PRIVATE ${LIBMUJOCO})
+        hako_configure_windows_runtime(ray_caster_test)
+        list(APPEND _hako_physics_unit_tests ray_caster_test)
+        list(APPEND _hako_physics_unit_test_commands COMMAND $<TARGET_FILE:ray_caster_test>)
+    endif()
+
     add_custom_target(
         physics_unit_tests
-        DEPENDS world_model_loader_test
+        DEPENDS ${_hako_physics_unit_tests}
     )
     add_custom_target(
         run_physics_unit_tests
-        COMMAND $<TARGET_FILE:world_model_loader_test>
+        ${_hako_physics_unit_test_commands}
         DEPENDS physics_unit_tests
         WORKING_DIRECTORY ${PROJECT_ROOT_DIR}
         USES_TERMINAL
