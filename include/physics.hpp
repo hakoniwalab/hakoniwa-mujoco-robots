@@ -17,9 +17,10 @@ namespace hako::robots::physics
      *
      * The sensor axes are x forward, y left, z up. position [m] and
      * orientation (unit quaternion w, x, y, z) are given in the frame of
-     * mount_body. Geoms of exclude_root_body and of the bodies under it are
-     * never hit; when it is empty, the mount body is the root. For an arm,
-     * the base is the usual root, so the arm's own links are not hit.
+     * mount_body. Geoms of the mount body (the sensor housing) and of the
+     * bodies under it are never hit. exclude_root_body, when set, adds a
+     * second subtree that is never hit, for example an arm's base to hide
+     * the whole arm; by default the arm stays visible, as with a real sensor.
      */
     struct RayCasterSpec
     {
