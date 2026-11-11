@@ -11,6 +11,13 @@
 #if defined(HAKO_MUJOCO_ROBOTS_ENABLE_RAY_CASTER)
 #include "physics/mujoco_ray_caster.hpp"
 #endif
+// The image renderer needs the hakoniwa-sensor-adapter headers and GLFW. Define
+// HAKO_MUJOCO_ROBOTS_ENABLE_IMAGE_RENDERER for every source of a program that
+// includes this header, or for none.
+#if defined(HAKO_MUJOCO_ROBOTS_ENABLE_IMAGE_RENDERER)
+#include "physics/mujoco_frame_drawer.hpp"
+#include "physics/render_server.hpp"
+#endif
 
 #include <algorithm>
 #include <array>
@@ -252,6 +259,13 @@ namespace impl {
 #if defined(HAKO_MUJOCO_ROBOTS_ENABLE_RAY_CASTER)
         std::shared_ptr<hakoniwa::sensor_adapter::IRayCaster> createRayCaster(const RayCasterSpec& spec) override {
             return std::make_shared<MujocoRayCaster>(model, data, spec);
+        }
+#endif
+#if defined(HAKO_MUJOCO_ROBOTS_ENABLE_IMAGE_RENDERER)
+        std::shared_ptr<hakoniwa::sensor_adapter::IImageRenderer> createImageRenderer() override {
+            auto& server = RenderServer::instance();
+            server.set_drawer_factory(&MujocoFrameDrawer::create);
+            return std::make_shared<RenderServerClient>(model, data, server, std::chrono::seconds(10));
         }
 #endif
         

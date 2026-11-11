@@ -506,6 +506,41 @@ if(HAKO_BUILD_PHYSICS_TESTS)
         hako_configure_windows_runtime(ray_caster_test)
         list(APPEND _hako_physics_unit_tests ray_caster_test)
         list(APPEND _hako_physics_unit_test_commands COMMAND $<TARGET_FILE:ray_caster_test>)
+
+        # Render server without OpenGL (a fake drawer).
+        add_executable(
+            render_server_test
+            ${PROJECT_ROOT_DIR}/tests/physics/unit/render_server_test.cpp
+        )
+        target_compile_features(render_server_test PRIVATE cxx_std_20)
+        hako_configure_target_warnings(render_server_test)
+        target_include_directories(render_server_test PRIVATE ${PROJECT_ROOT_DIR}/src ${PROJECT_ROOT_DIR}/include)
+        target_include_directories(render_server_test SYSTEM PRIVATE
+            ${MUJOCO_SOURCE_DIR} ${HAKO_SENSOR_ADAPTER_INCLUDE_DIR})
+        find_package(Threads REQUIRED)
+        target_link_libraries(render_server_test PRIVATE Threads::Threads)
+        list(APPEND _hako_physics_unit_tests render_server_test)
+        list(APPEND _hako_physics_unit_test_commands COMMAND $<TARGET_FILE:render_server_test>)
+
+        # Render server with MuJoCo's OpenGL renderer (needs a display).
+        if(TARGET mujoco-common)
+            add_executable(
+                render_drawer_test
+                ${PROJECT_ROOT_DIR}/tests/physics/unit/render_drawer_test.cpp
+            )
+            target_compile_features(render_drawer_test PRIVATE cxx_std_20)
+            target_compile_definitions(render_drawer_test PRIVATE HAKO_MUJOCO_ROBOTS_ENABLE_IMAGE_RENDERER)
+            hako_configure_target_warnings(render_drawer_test)
+            target_include_directories(render_drawer_test PRIVATE ${PROJECT_ROOT_DIR}/src ${PROJECT_ROOT_DIR}/include)
+            target_include_directories(render_drawer_test SYSTEM PRIVATE
+                ${MUJOCO_SOURCE_DIR}
+                ${PROJECT_ROOT_DIR}/thirdparty/nolman/single_include
+                ${HAKO_SENSOR_ADAPTER_INCLUDE_DIR})
+            target_link_libraries(render_drawer_test PRIVATE mujoco-common ${LIBMUJOCO} Threads::Threads)
+            hako_configure_windows_runtime(render_drawer_test)
+            list(APPEND _hako_physics_unit_tests render_drawer_test)
+            list(APPEND _hako_physics_unit_test_commands COMMAND $<TARGET_FILE:render_drawer_test>)
+        endif()
     endif()
 
     add_custom_target(
