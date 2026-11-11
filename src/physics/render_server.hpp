@@ -22,6 +22,7 @@
 #include <condition_variable>
 #include <cstddef>
 #include <deque>
+#include <exception>
 #include <functional>
 #include <map>
 #include <memory>
@@ -62,6 +63,12 @@ struct RenderJob
     bool ok {false};
 };
 
+/**
+ * Worlds and clients: the server keeps one drawer per world, keyed by the
+ * world's mjModel and mjData. A world is expected to live for the whole run of
+ * the process and is not reloaded; a client (RenderServerClient) must not be
+ * used after its world is gone or has loaded another model.
+ */
 class RenderServer
 {
 public:
@@ -171,7 +178,16 @@ public:
                 std::lock_guard<std::mutex> lock(job->mutex);
                 job->state = RenderJob::State::Drawing;
             }
-            const bool ok = draw(*job, factory);
+            // A drawer that throws must not leave its requester waiting forever.
+            bool ok = false;
+            try {
+                ok = draw(*job, factory);
+            } catch (const std::exception& e) {
+                fail_all(job->requests, job->count, job->statuses,
+                         std::string("rendering failed: ") + e.what());
+            } catch (...) {
+                fail_all(job->requests, job->count, job->statuses, "rendering failed");
+            }
             {
                 std::lock_guard<std::mutex> lock(job->mutex);
                 job->ok = ok;

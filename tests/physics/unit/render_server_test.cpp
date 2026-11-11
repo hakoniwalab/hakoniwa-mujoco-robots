@@ -184,6 +184,39 @@ void ShutdownFailsPending()
            "a submission after shutdown fails at once");
 }
 
+// A drawer that throws fails the job with the reason; the server goes on serving.
+class ThrowingDrawer final : public IFrameDrawer
+{
+public:
+    bool draw(const sa::RenderRequest*, std::size_t, sa::RenderStatus*) override
+    {
+        throw std::runtime_error("out of memory");
+    }
+};
+
+void DrawerThrows()
+{
+    RenderServer server;
+    int made = 0;
+    server.set_drawer_factory([&](const mjModel*, mjData*, std::string&) -> std::unique_ptr<IFrameDrawer> {
+        ++made;
+        return std::make_unique<ThrowingDrawer>();
+    });
+    std::atomic_bool running {true};
+    std::thread server_thread([&]() { server.run(running, 1ms); });
+    std::vector<std::uint8_t> buffer;
+    sa::RenderRequest r = Request("cam", buffer);
+    sa::RenderStatus first {};
+    const bool ok_first = server.submit(nullptr, nullptr, &r, 1, &first, 5s);
+    sa::RenderStatus second {};
+    const bool ok_second = server.submit(nullptr, nullptr, &r, 1, &second, 5s);
+    running = false;
+    server_thread.join();
+    Expect(!ok_first && first.error.find("out of memory") != std::string::npos,
+           "a throwing drawer fails the job with the reason");
+    Expect(!ok_second && !second.error.empty(), "the server keeps serving after an exception");
+}
+
 // A drawer that cannot be made fails the job with its reason.
 void DrawerFactoryError()
 {
@@ -213,6 +246,7 @@ int main()
         DrawingIsWaitedFor();
         ShutdownFailsPending();
         DrawerFactoryError();
+        DrawerThrows();
     } catch (const std::exception& e) {
         std::cerr << "FAIL: " << e.what() << std::endl;
         return 1;
