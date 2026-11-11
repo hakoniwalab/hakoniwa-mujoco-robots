@@ -5,8 +5,30 @@
 #include <memory>
 #include <string>
 
+namespace hakoniwa::sensor_adapter
+{
+    class IRayCaster;
+}
+
 namespace hako::robots::physics
 {
+    /**
+     * Where a ray caster is mounted and what it never hits.
+     *
+     * The sensor axes are x forward, y left, z up. position [m] and
+     * orientation (unit quaternion w, x, y, z) are given in the frame of
+     * mount_body. Geoms of exclude_root_body and of the bodies under it are
+     * never hit; when it is empty, the mount body is the root. For an arm,
+     * the base is the usual root, so the arm's own links are not hit.
+     */
+    struct RayCasterSpec
+    {
+        std::string mount_body;
+        double position[3] {0.0, 0.0, 0.0};
+        double orientation[4] {1.0, 0.0, 0.0, 0.0};
+        std::string exclude_root_body;
+    };
+
     class IRigidBody
     {
     public:
@@ -48,6 +70,13 @@ namespace hako::robots::physics
         virtual std::shared_ptr<actuator::IJointActuator> createJointActuator() { return nullptr; }
         virtual std::shared_ptr<actuator::INamedActuator> createNamedActuator() { return nullptr; }
         virtual std::shared_ptr<actuator::IJointTrajectoryActuator> createJointTrajectoryActuator() { return nullptr; }
+        /**
+         * Creates a ray caster for range sensors (hakoniwa-sensor-adapter
+         * IRayCaster). Rays are cast at the state of the last mj_forward; the
+         * caller recomputes after mj_step. Returns nullptr when the world has
+         * no ray caster. Throws std::invalid_argument for an unknown body.
+         */
+        virtual std::shared_ptr<hakoniwa::sensor_adapter::IRayCaster> createRayCaster(const RayCasterSpec&) { return nullptr; }
     };
 
 }

@@ -5,6 +5,12 @@
 #include "actuator/joint_actuator_impl.hpp"
 #include "actuator/named_actuator_impl.hpp"
 #include "actuator/joint_trajectory_actuator_impl.hpp"
+// The ray caster needs the hakoniwa-sensor-adapter headers. Define
+// HAKO_MUJOCO_ROBOTS_ENABLE_RAY_CASTER for every source of a program that
+// includes this header, or for none.
+#if defined(HAKO_MUJOCO_ROBOTS_ENABLE_RAY_CASTER)
+#include "physics/mujoco_ray_caster.hpp"
+#endif
 
 #include <algorithm>
 #include <array>
@@ -243,6 +249,11 @@ namespace impl {
         std::shared_ptr<actuator::IJointTrajectoryActuator> createJointTrajectoryActuator() override {
             return std::make_shared<actuator::impl::JointTrajectoryActuatorImpl>(model, data);
         }
+#if defined(HAKO_MUJOCO_ROBOTS_ENABLE_RAY_CASTER)
+        std::shared_ptr<hakoniwa::sensor_adapter::IRayCaster> createRayCaster(const RayCasterSpec& spec) override {
+            return std::make_shared<MujocoRayCaster>(model, data, spec);
+        }
+#endif
         
     };
 }  // namespace impl
