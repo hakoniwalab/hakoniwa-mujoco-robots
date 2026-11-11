@@ -13,14 +13,16 @@
 #include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace hako::robots::physics::impl
 {
 
 /**
  * Rays start at the mounted pose of the last mj_forward / mj_step, in the
- * sensor axes (x forward, y left, z up). Geoms of the exclusion root body and
- * of the bodies under it are never hit. object_id is the MuJoCo geom id and
+ * sensor axes (x forward, y left, z up). Geoms of the mount body (the sensor
+ * housing) and of the exclusion root, and of the bodies under them, are
+ * never hit. object_id is the MuJoCo geom id and
  * the normal is in the sensor axes. The caster reads the model and the data
  * and never changes them.
  */
@@ -38,12 +40,16 @@ public:
         if (body_id_ <= 0) {
             throw std::invalid_argument("ray caster mount body is not a MuJoCo body: " + spec.mount_body);
         }
-        exclude_body_ = body_id_;
+        // The mount body is always excluded; an exclusion root is added to it.
+        excluded_roots_.push_back(body_id_);
         if (!spec.exclude_root_body.empty()) {
-            exclude_body_ = mj_name2id(model_, mjOBJ_BODY, spec.exclude_root_body.c_str());
-            if (exclude_body_ <= 0) {
+            const int root = mj_name2id(model_, mjOBJ_BODY, spec.exclude_root_body.c_str());
+            if (root <= 0) {
                 throw std::invalid_argument(
                     "ray caster exclusion root is not a MuJoCo body: " + spec.exclude_root_body);
+            }
+            if (root != body_id_) {
+                excluded_roots_.push_back(root);
             }
         }
         mjtNum q[4] = {spec.orientation[0], spec.orientation[1], spec.orientation[2], spec.orientation[3]};
@@ -114,19 +120,20 @@ private:
         mju_mulMatMat(rotation, R, mount_rotation_, 3, 3, 3);
     }
 
-    // A geom is excluded when its body is the exclusion root or under it.
+    // A geom is excluded when its body is one of the excluded roots or under one.
     bool is_excluded(int geom_id) const
     {
-        if (exclude_body_ < 0 || geom_id < 0) return false;
+        if (geom_id < 0) return false;
         for (int b = model_->geom_bodyid[geom_id]; b > 0; b = model_->body_parentid[b])
-            if (b == exclude_body_) return true;
+            for (const int root : excluded_roots_)
+                if (b == root) return true;
         return false;
     }
 
     const mjModel* model_ {nullptr};
     const mjData* data_ {nullptr};
     int body_id_ {-1};
-    int exclude_body_ {-1};
+    std::vector<int> excluded_roots_;
     mjtNum mount_position_[3] {0, 0, 0};
     mjtNum mount_rotation_[9] {1, 0, 0, 0, 1, 0, 0, 0, 1};
 };

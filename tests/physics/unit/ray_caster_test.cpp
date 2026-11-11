@@ -19,12 +19,16 @@ using hako::robots::physics::impl::MujocoRayCaster;
 // The floor is z = 0. The robot base is at z = 1 (its own geom off to the
 // side) with a link 0.5 m ahead (near face x = 0.45) and a sensor body with a
 // housing at the base origin. A wall stands ahead (near face x = 2.9).
+// A second housing stands on the world beside the robot (y = -0.5).
 const char* kXml = R"(
 <mujoco>
   <worldbody>
     <geom name="floor" type="plane" size="5 5 0.1"/>
     <body name="wall" pos="3 0 1">
       <geom name="wall" type="box" size="0.1 1 1"/>
+    </body>
+    <body name="floor_housing" pos="0 -0.5 1">
+      <geom name="floor_housing" type="cylinder" size="0.035 0.02"/>
     </body>
     <body name="base" pos="0 0 1">
       <geom name="base" type="sphere" size="0.05" pos="0 0.3 0"/>
@@ -121,6 +125,30 @@ void DistanceToBoxAndSelfExclusion(const Model& m)
     ExpectNear(hit.normal.x, -1.0, 1e-9, "wall normal faces the sensor");
 }
 
+void HousingOnWorldStaysExcludedWithRoot(const Model& m)
+{
+    // The housing is not under the base: hiding the robot must not unhide it.
+    RayCasterSpec spec;
+    spec.mount_body = "floor_housing";
+    spec.exclude_root_body = "base";
+    MujocoRayCaster caster(m.model, m.data, spec);
+    auto hit = Cast(caster, 1, 0, 0, 10.0);
+    Expect(hit.hit && hit.object_id == m.geom("wall"), "the own housing is skipped, the wall is hit");
+    ExpectNear(hit.distance, 2.9, 1e-5, "distance from the world housing to the wall");
+    // Towards the robot (+y): the link is excluded with the base; nothing else there.
+    hit = Cast(caster, 0.5, 0.5, 0, 10.0);
+    Expect(!hit.hit || (hit.object_id != m.geom("link") && hit.object_id != m.geom("base")
+               && hit.object_id != m.geom("floor_housing")),
+        "neither the robot nor the own housing is hit");
+
+    // Without a root, the robot is visible from the world housing.
+    RayCasterSpec visible;
+    visible.mount_body = "floor_housing";
+    MujocoRayCaster sees_robot(m.model, m.data, visible);
+    hit = Cast(sees_robot, 0.5, 0.5, 0, 10.0);
+    Expect(hit.hit && hit.object_id == m.geom("link"), "the robot's link is visible by default");
+}
+
 void MissBeyondMaxDistance(const Model& m)
 {
     MujocoRayCaster caster(m.model, m.data, Spec("base"));
@@ -210,6 +238,7 @@ int main()
         DistanceToPlane(m);
         DistanceToBoxAndSelfExclusion(m);
         MissBeyondMaxDistance(m);
+        HousingOnWorldStaysExcludedWithRoot(m);
         MountPoseAndNormalInSensorAxes(m);
         ReadsOnly(m);
         RejectsUnknownBodies(m);
