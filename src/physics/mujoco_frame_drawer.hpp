@@ -160,7 +160,7 @@ public:
             const std::size_t pixels = static_cast<std::size_t>(w) * h;
             if ((request.outputs & sa::kRenderRgb) != 0) {
                 rgb_raw_.resize(pixels * 3);
-                if (!draw_one(request, color_context_, rgb_raw_.data(), nullptr)) {
+                if (!draw_one(request, color_context_, rgb_raw_.data(), nullptr, false)) {
                     status.error = request.camera_name + ": offscreen colour rendering is not available";
                     all_ok = false;
                     continue;
@@ -175,7 +175,7 @@ public:
             }
             if ((request.outputs & sa::kRenderDepth) != 0) {
                 depth_raw_.resize(pixels);
-                if (!draw_one(request, depth_context_, nullptr, depth_raw_.data())) {
+                if (!draw_one(request, depth_context_, nullptr, depth_raw_.data(), true)) {
                     status.error = request.camera_name + ": offscreen depth rendering is not available";
                     all_ok = false;
                     continue;
@@ -313,8 +313,10 @@ private:
     }
 
     // Draws one request into an offscreen buffer and reads it back (rows bottom-up).
+    // opaque: draw see-through geoms as solid. MuJoCo writes no depth for them, so a
+    // depth image would look through a translucent wall that the rays would hit.
     bool draw_one(const hakoniwa::sensor_adapter::RenderRequest& request, mjrContext& context,
-                  unsigned char* rgb, float* depth)
+                  unsigned char* rgb, float* depth, bool opaque)
     {
         const int w = static_cast<int>(request.camera.width);
         const int h = static_cast<int>(request.camera.height);
@@ -328,6 +330,14 @@ private:
         }
         // The camera is set on the scene after mjv_updateScene, so the model is not changed.
         mjv_updateScene(model_, data_, &option_, nullptr, &camera_, mjCAT_ALL, &scene_);
+        if (opaque) {
+            // Only the scene copy changes; invisible geoms (alpha 0) stay invisible, like for rays.
+            for (int i = 0; i < scene_.ngeom; ++i) {
+                if (scene_.geoms[i].rgba[3] > 0.0f) {
+                    scene_.geoms[i].rgba[3] = 1.0f;
+                }
+            }
+        }
         const auto& pose = request.pose;
         const auto& intrinsics = request.camera;
         mjtNum sensor_to_world[4] = {
