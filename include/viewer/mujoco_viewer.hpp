@@ -78,6 +78,12 @@ public:
 
     void SetOverlayCallback(ViewerOverlayCallback overlay);
     void SetPreRenderCallback(ViewerPreRenderCallback pre_render);
+    /**
+     * @brief Called once per loop pass, outside the viewer's mutex, before the
+     * viewer takes it. Use it to serve work owned by this thread, such as
+     * camera requests to the render server.
+     */
+    void SetIdleCallback(std::function<void()> idle);
     void SetKeyCallback(ViewerKeyCallback key_callback);
     bool SetFollowBody(const char* body_name);
     void Run();
@@ -110,6 +116,7 @@ private:
     MujocoRenderWindowMode window_mode_ {MujocoRenderWindowMode::Visible};
     ViewerOverlayCallback overlay_;
     ViewerPreRenderCallback pre_render_;
+    std::function<void()> idle_;
     ViewerKeyCallback key_callback_;
 
     mjvCamera camera_ {};

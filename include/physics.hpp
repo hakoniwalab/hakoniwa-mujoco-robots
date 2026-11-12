@@ -8,6 +8,7 @@
 namespace hakoniwa::sensor_adapter
 {
     class IRayCaster;
+    class IImageRenderer;
 }
 
 namespace hako::robots::physics
@@ -78,6 +79,16 @@ namespace hako::robots::physics
          * no ray caster. Throws std::invalid_argument for an unknown body.
          */
         virtual std::shared_ptr<hakoniwa::sensor_adapter::IRayCaster> createRayCaster(const RayCasterSpec&) { return nullptr; }
+        /**
+         * Creates an image renderer for camera sensors (hakoniwa-sensor-adapter
+         * IImageRenderer). Each call hands the requests to the process's render
+         * server and waits: the server draws on the thread that runs it (the
+         * main thread, see RenderServer), at the world state the caller froze by
+         * waiting. Returns nullptr when the world has no renderer. The world
+         * must live for the whole run and not load another model; the
+         * renderer must not be used after that.
+         */
+        virtual std::shared_ptr<hakoniwa::sensor_adapter::IImageRenderer> createImageRenderer() { return nullptr; }
     };
 
 }

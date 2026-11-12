@@ -158,6 +158,11 @@ void MujocoRenderRuntime::SetOverlayCallback(ViewerOverlayCallback overlay)
     overlay_ = std::move(overlay);
 }
 
+void MujocoRenderRuntime::SetIdleCallback(std::function<void()> idle)
+{
+    idle_ = std::move(idle);
+}
+
 void MujocoRenderRuntime::SetPreRenderCallback(ViewerPreRenderCallback pre_render)
 {
     pre_render_ = std::move(pre_render);
@@ -241,6 +246,11 @@ void MujocoRenderRuntime::Run()
         int framebuffer_height = 0;
         glfwGetFramebufferSize(window_, &framebuffer_width, &framebuffer_height);
         const mjrRect viewport = {0, 0, framebuffer_width, framebuffer_height};
+
+        // Outside the mutex: a requester may hold it while it waits for this work.
+        if (idle_) {
+            idle_();
+        }
 
         {
             std::lock_guard<std::mutex> lock(mutex_);
